@@ -4,21 +4,30 @@ __pycache__/
 *.class
 .Python
 venv/
+
+# Chrome/Selenium files
 automation_chrome_profile/
+Default/
+Code Cache/
+GrShaderCache/
+GraphiteDawnCache/
+ShaderCache/
+*Cache*/
+component_crx_cache/
+optimization_guide_model_store/
+
+# Logs and databases
 logs/
+*.log
+*.db
+*.db-journal
 
 # Test files
 .pytest_cache/
 .coverage
 
-# Screenshots and error images
-*.png
-screenshots/
-
-# Database
-*.db
+# Environment
+.env
 
 # OS
 .DS_Store
-.env
-*.log

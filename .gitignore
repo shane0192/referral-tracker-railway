@@ -1,70 +1,47 @@
+# Project-specific
+.env
+automation_chrome_profile/
+screenshots/
+*.png
+
+# Chrome/Selenium files - both in scraper and utils
+**/AutofillStates/
+**/CertificateRevocation/
+**/ChromeFeatureState
+**/Crowd Deny/
+**/Default/
+**/DevToolsActivePort
+**/FileTypePolicies/
+**/First Run
+**/FirstPartySetsPreloaded/
+**/GrShaderCache/
+**/GraphiteDawnCache/
+**/Last Version
+**/Local State
+**/OnDeviceHeadSuggestModel/
+**/OptimizationHints/
+**/OriginTrials/
+**/PKIMetadata/
+**/PrivacySandboxAttestationsPreloaded/
+**/SSLErrorAssistant/
+**/SafetyTips/
+**/ShaderCache/
+**/Subresource Filter/
+**/TpcdMetadata/
+**/TrustTokenKeyCommitments/
+**/Variations
+**/ZxcvbnData/
+**/component_crx_cache/
+**/optimization_guide_model_store/
+**/segmentation_platform/
+
 # Python
 __pycache__/
 *.py[cod]
 *.class
 .Python
 venv/
-*.pyc
-*.pyo
-*.pyd
-.Python
-env/
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
 *.egg-info/
-.installed.cfg
-*.egg
 
-# Chrome/Selenium - ALL possible artifacts
-src/scraper/AutofillStates/
-src/scraper/BrowserMetrics*
-src/scraper/CertificateRevocation/
-src/scraper/ChromeFeatureState/
-src/scraper/Crowd Deny/
-src/scraper/DevToolsActivePort
-src/scraper/FileTypePolicies/
-src/scraper/First Run
-src/scraper/FirstPartySetsPreloaded/
-src/scraper/OnDeviceHeadSuggestModel/
-src/scraper/OptimizationHints/
-src/scraper/OriginTrials/
-src/scraper/PKIMetadata/
-src/scraper/PrivacySandboxAttestationsPreloaded/
-src/scraper/SSLErrorAssistant/
-src/scraper/SafetyTips/
-src/scraper/Subresource Filter/
-src/scraper/TpcdMetadata/
-src/scraper/TrustTokenKeyCommitments/
-src/scraper/ZxcvbnData/
-src/scraper/Default/
-src/scraper/GrShaderCache/
-src/scraper/ShaderCache/
-src/scraper/GraphiteDawnCache/
-src/scraper/Local State
-src/scraper/Last Version
-src/scraper/Variations
-
-# Database and logs
-*.db
-*.db-journal
-*.log
-chrome_debug.log
-
-# OS generated files
+# OS
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db

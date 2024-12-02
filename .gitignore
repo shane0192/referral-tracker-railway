@@ -2,26 +2,23 @@
 __pycache__/
 *.py[cod]
 *.class
-*.so
 .Python
 venv/
-ENV/
-
-# Chrome Profile
-src/utils/Default/
 automation_chrome_profile/
-**/Code Cache/
-**/Cache/
-**/GPUCache/
-**/ShaderCache/
-**/GrShaderCache/
-**/Service Worker/
+logs/
 
-# OS files
+# Test files
+.pytest_cache/
+.coverage
+
+# Screenshots and error images
+*.png
+screenshots/
+
+# Database
+*.db
+
+# OS
 .DS_Store
 .env
 *.log
-
-# Data files (optional - remove if you want to track these)
-# data/*.csv
-# data/*.db

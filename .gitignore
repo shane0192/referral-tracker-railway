@@ -4,47 +4,67 @@ __pycache__/
 *.class
 .Python
 venv/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Chrome/Selenium files - both in scraper and utils
-**/GrShaderCache/
-**/GraphiteDawnCache/
-**/ShaderCache/
-**/component_crx_cache/
-**/chrome_debug.log
-**/first_party_sets*
-**/Last Version
-**/Local State
-**/Variations
-**/DevToolsActivePort
-**/First Run
-**/Default/
-**/CacheStorage/
-**/Cache*/
-**/AutofillStates/
-**/CertificateRevocation/
-**/FileTypePolicies/
-**/segmentation_platform/
-**/Crowd Deny/
-**/ChromeFeatureState/
-**/FirstPartySetsPreloaded/
-**/OnDeviceHeadSuggestModel/
-**/OptimizationHints/
-**/OriginTrials/
-**/PKIMetadata/
-**/PrivacySandboxAttestationsPreloaded/
-**/SSLErrorAssistant/
-**/SafetyTips/
-**/Subresource Filter/
-**/TpcdMetadata/
-**/TrustTokenKeyCommitments/
-**/ZxcvbnData/
+# Chrome/Selenium - ALL possible artifacts
+src/scraper/AutofillStates/
+src/scraper/BrowserMetrics*
+src/scraper/CertificateRevocation/
+src/scraper/ChromeFeatureState/
+src/scraper/Crowd Deny/
+src/scraper/DevToolsActivePort
+src/scraper/FileTypePolicies/
+src/scraper/First Run
+src/scraper/FirstPartySetsPreloaded/
+src/scraper/OnDeviceHeadSuggestModel/
+src/scraper/OptimizationHints/
+src/scraper/OriginTrials/
+src/scraper/PKIMetadata/
+src/scraper/PrivacySandboxAttestationsPreloaded/
+src/scraper/SSLErrorAssistant/
+src/scraper/SafetyTips/
+src/scraper/Subresource Filter/
+src/scraper/TpcdMetadata/
+src/scraper/TrustTokenKeyCommitments/
+src/scraper/ZxcvbnData/
+src/scraper/Default/
+src/scraper/GrShaderCache/
+src/scraper/ShaderCache/
+src/scraper/GraphiteDawnCache/
+src/scraper/Local State
+src/scraper/Last Version
+src/scraper/Variations
 
-# Database files
+# Database and logs
 *.db
 *.db-journal
-
-# Logs
 *.log
+chrome_debug.log
 
-# OS
+# OS generated files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

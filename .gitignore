@@ -31,3 +31,15 @@ logs/
 
 # OS
 .DS_Store
+# Chrome/Selenium files
+**/Default/
+**/CacheStorage/
+**/Cache*/
+**/AutofillStates/
+**/CertificateRevocation/
+**/FileTypePolicies/
+**/segmentation_platform/
+**/Crowd Deny/
+chrome_debug.log
+*.db
+*.db-journal

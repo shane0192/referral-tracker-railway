@@ -1,0 +1,9 @@
+2024/11/29-11:27:06.085 2107 Reusing MANIFEST /Users/shanemartin/Desktop/PaperboyProjects/referral_tracker/automation_chrome_profile/Default/Local Storage/leveldb/MANIFEST-000001
+2024/11/29-11:27:06.087 2107 Recovering log #7
+2024/11/29-11:27:06.087 2107 Reusing old log /Users/shanemartin/Desktop/PaperboyProjects/referral_tracker/automation_chrome_profile/Default/Local Storage/leveldb/000007.log 
+2024/11/29-11:27:45.232 3903 Level-0 table #11: started
+2024/11/29-11:27:45.245 3903 Level-0 table #11: 13128 bytes OK
+2024/11/29-11:27:45.256 3903 Delete type=0 #7
+2024/11/29-11:29:34.236 3903 Level-0 table #13: started
+2024/11/29-11:29:34.244 3903 Level-0 table #13: 12538 bytes OK
+2024/11/29-11:29:34.258 3903 Delete type=0 #10

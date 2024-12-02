@@ -5,7 +5,18 @@ __pycache__/
 .Python
 venv/
 
-# Chrome/Selenium files
+# Chrome/Selenium files - both in scraper and utils
+**/GrShaderCache/
+**/GraphiteDawnCache/
+**/ShaderCache/
+**/component_crx_cache/
+**/chrome_debug.log
+**/first_party_sets*
+**/Last Version
+**/Local State
+**/Variations
+**/DevToolsActivePort
+**/First Run
 **/Default/
 **/CacheStorage/
 **/Cache*/
@@ -14,8 +25,6 @@ venv/
 **/FileTypePolicies/
 **/segmentation_platform/
 **/Crowd Deny/
-**/component_crx_cache/
-**/optimization_guide_model_store/
 **/ChromeFeatureState/
 **/FirstPartySetsPreloaded/
 **/OnDeviceHeadSuggestModel/
@@ -29,11 +38,6 @@ venv/
 **/TpcdMetadata/
 **/TrustTokenKeyCommitments/
 **/ZxcvbnData/
-chrome_debug.log
-DevToolsActivePort
-First Run
-Last Version
-Local State
 
 # Database files
 *.db

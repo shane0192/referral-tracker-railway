@@ -6,32 +6,6 @@ __pycache__/
 venv/
 
 # Chrome/Selenium files
-automation_chrome_profile/
-Default/
-Code Cache/
-GrShaderCache/
-GraphiteDawnCache/
-ShaderCache/
-*Cache*/
-component_crx_cache/
-optimization_guide_model_store/
-
-# Logs and databases
-logs/
-*.log
-*.db
-*.db-journal
-
-# Test files
-.pytest_cache/
-.coverage
-
-# Environment
-.env
-
-# OS
-.DS_Store
-# Chrome/Selenium files
 **/Default/
 **/CacheStorage/
 **/Cache*/
@@ -40,6 +14,33 @@ logs/
 **/FileTypePolicies/
 **/segmentation_platform/
 **/Crowd Deny/
+**/component_crx_cache/
+**/optimization_guide_model_store/
+**/ChromeFeatureState/
+**/FirstPartySetsPreloaded/
+**/OnDeviceHeadSuggestModel/
+**/OptimizationHints/
+**/OriginTrials/
+**/PKIMetadata/
+**/PrivacySandboxAttestationsPreloaded/
+**/SSLErrorAssistant/
+**/SafetyTips/
+**/Subresource Filter/
+**/TpcdMetadata/
+**/TrustTokenKeyCommitments/
+**/ZxcvbnData/
 chrome_debug.log
+DevToolsActivePort
+First Run
+Last Version
+Local State
+
+# Database files
 *.db
 *.db-journal
+
+# Logs
+*.log
+
+# OS
+.DS_Store

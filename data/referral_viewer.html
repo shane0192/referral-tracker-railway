@@ -1,0 +1,534 @@
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Referral Analytics</title>
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+                <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+                <style>
+                    .positive { color: green; }
+                    .negative { color: red; }
+                    .table-container { margin-bottom: 2rem; }
+                    .trends-panel {
+                        position: fixed;
+                        right: -500px;
+                        top: 0;
+                        width: 500px;
+                        height: 100vh;
+                        background: white;
+                        box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+                        transition: right 0.3s ease;
+                        z-index: 1050;
+                        padding: 20px;
+                        overflow-y: auto;
+                    }
+                    .trends-panel.active { right: 0; }
+                    .chart-container { margin-bottom: 20px; }
+                    .table-row-clickable:hover {
+                        background-color: #f5f5f5;
+                        cursor: pointer;
+                    }
+                    .metrics-summary {
+                        background: #f8f9fa;
+                        padding: 15px;
+                        border-radius: 8px;
+                        margin-bottom: 20px;
+                    }
+                    
+                    .metric {
+                        margin-bottom: 10px;
+                    }
+                    
+                    .metric label {
+                        display: block;
+                        font-size: 0.9em;
+                        color: #666;
+                    }
+                    
+                    .metric span {
+                        font-size: 1.2em;
+                        font-weight: bold;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container mt-4">
+                    <h2 class="mb-4">Referral Analytics</h2>
+                    
+                    <!-- Add Client and Date Selectors -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="clientSelect">Client</label>
+                                <select class="form-select" id="clientSelect">
+                                    <option value="all">All Clients</option>
+<option value="ATH Media LLC">ATH Media LLC</option>
+<option value="Adam Graham">Adam Graham</option>
+<option value="Chris Donnelly">Chris Donnelly</option>
+<option value="ConvertKit">ConvertKit</option>
+<option value="Eric Partaker">Eric Partaker</option>
+<option value="Good Good Good">Good Good Good</option>
+<option value="Life's A Game with Amanda Goetz">Life's A Game with Amanda Goetz</option>
+<option value="Micro-Agency Launchpad">Micro-Agency Launchpad</option>
+<option value="Nathan Barry">Nathan Barry</option>
+<option value="The Perfect Loaf">The Perfect Loaf</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="dateRangeSelect">Date Range</label>
+                                <select class="form-select" id="dateRangeSelect">
+                                    <option value="1">24 hours</option>
+                                    <option value="7">7 days</option>
+                                    <option value="14">14 days</option>
+                                    <option value="30" selected>30 days</option>
+                                    <option value="90">90 days</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="defaultDashboard">
+                        <h3 class="mb-4">Largest Referral Imbalances</h3>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th onclick="sortTable('partner')" style="cursor: pointer;">Partner</th>
+                                        <th onclick="sortTable('received')" style="cursor: pointer;">Received</th>
+                                        <th onclick="sortTable('sent')" style="cursor: pointer;">Sent</th>
+                                        <th onclick="sortTable('balance')" style="cursor: pointer;">Balance</th>
+                                        <th onclick="sortTable('balance')" style="cursor: pointer;">All-Time Balance</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                    <tr class="table-row-clickable" 
+                        onclick="showTrendsPanel(0, 23119, -23119, 'Ali Abdaal')">
+                        <td>Ali Abdaal</td>
+                        <td>0</td>
+                        <td>23,119</td>
+                        <td>-23,119</td>
+                    </tr>
+                
+
+                    <tr class="table-row-clickable" 
+                        onclick="showTrendsPanel(0, 19600, -19600, 'Contrarian Thinking')">
+                        <td>Contrarian Thinking</td>
+                        <td>0</td>
+                        <td>19,600</td>
+                        <td>-19,600</td>
+                    </tr>
+                
+
+                    <tr class="table-row-clickable" 
+                        onclick="showTrendsPanel(8768, 0, 8768, 'Design.dev')">
+                        <td>Design.dev</td>
+                        <td>8,768</td>
+                        <td>0</td>
+                        <td>8,768</td>
+                    </tr>
+                
+
+                    <tr class="table-row-clickable" 
+                        onclick="showTrendsPanel(3700, 10194, -6494, 'Ramit Sethi')">
+                        <td>Ramit Sethi</td>
+                        <td>3,700</td>
+                        <td>10,194</td>
+                        <td>-6,494</td>
+                    </tr>
+                
+
+                    <tr class="table-row-clickable" 
+                        onclick="showTrendsPanel(6109, 11896, -5787, 'Rapid Transformation Newsletter')">
+                        <td>Rapid Transformation Newsletter</td>
+                        <td>6,109</td>
+                        <td>11,896</td>
+                        <td>-5,787</td>
+                    </tr>
+                
+
+                    <tr class="table-row-clickable" 
+                        onclick="showTrendsPanel(6109, 11896, -5787, 'Rapid Transformation Newsletter')">
+                        <td>Rapid Transformation Newsletter</td>
+                        <td>6,109</td>
+                        <td>11,896</td>
+                        <td>-5,787</td>
+                    </tr>
+                
+
+                    <tr class="table-row-clickable" 
+                        onclick="showTrendsPanel(1821, 7557, -5736, 'The Curiosity Chronicle')">
+                        <td>The Curiosity Chronicle</td>
+                        <td>1,821</td>
+                        <td>7,557</td>
+                        <td>-5,736</td>
+                    </tr>
+                
+
+                    <tr class="table-row-clickable" 
+                        onclick="showTrendsPanel(5918, 246, 5672, 'Every')">
+                        <td>Every</td>
+                        <td>5,918</td>
+                        <td>246</td>
+                        <td>5,672</td>
+                    </tr>
+                
+
+                    <tr class="table-row-clickable" 
+                        onclick="showTrendsPanel(1966, 7596, -5630, 'The Curiosity Chronicle')">
+                        <td>The Curiosity Chronicle</td>
+                        <td>1,966</td>
+                        <td>7,596</td>
+                        <td>-5,630</td>
+                    </tr>
+                
+
+                    <tr class="table-row-clickable" 
+                        onclick="showTrendsPanel(3611, 8052, -4441, 'Ramit Sethi')">
+                        <td>Ramit Sethi</td>
+                        <td>3,611</td>
+                        <td>8,052</td>
+                        <td>-4,441</td>
+                    </tr>
+                
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trends Panel -->
+                <div id="trendsPanel" class="trends-panel">
+                    <button type="button" class="btn-close" aria-label="Close" onclick="closeTrendsPanel()"></button>
+                    <h2>Partnership Trends</h2>
+                    
+                    <!-- Summary Section -->
+                    <div class="metrics-summary mb-4">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <h5>Current Period</h5>
+                                <div class="metric">
+                                    <label>Received</label>
+                                    <span id="receivedMetric">0</span>
+                                </div>
+                                <div class="metric">
+                                    <label>Sent</label>
+                                    <span id="sentMetric">0</span>
+                                </div>
+                                <div class="metric">
+                                    <label>Balance</label>
+                                    <span id="balanceMetric">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Trend Chart -->
+                    <div class="chart-container">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+
+                <script>
+                    let exchangeChart = null;
+                    let currentSort = { column: 'balance', direction: 'desc' };
+                    let tableData = [];
+
+                    function formatNumber(num) {
+                        return new Intl.NumberFormat().format(num);
+                    }
+                    
+                    function showTrendsPanel(received, sent, balance, partner) {
+                        console.log('Showing trends for:', partner);
+                        
+                        const panel = document.getElementById('trendsPanel');
+                        panel.classList.add('active');
+                        
+                        // Update current metrics
+                        document.getElementById('receivedMetric').textContent = received.toLocaleString();
+                        document.getElementById('sentMetric').textContent = sent.toLocaleString();
+                        document.getElementById('balanceMetric').textContent = balance.toLocaleString();
+                        
+                        // Get current client and date range
+                        const client = document.getElementById('clientSelect').value;
+                        const dateRange = document.getElementById('dateRangeSelect').value;
+                        
+                        // Fetch trend data
+                        fetch(`http://localhost:5001/api/partnership-metrics?account=${encodeURIComponent(client)}&partner=${encodeURIComponent(partner)}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.trend_data) {
+                                    updateTrendChart(data.trend_data);
+                                }
+                            })
+                            .catch(error => console.error('Error:', error));
+                    }
+
+                    function closeTrendsPanel() {
+                        const panel = document.getElementById('trendsPanel');
+                        panel.classList.remove('active');
+                    }
+
+                    function updateTrendChart(trendData) {
+                        if (window.trendChart) {
+                            window.trendChart.destroy();
+                        }
+                        
+                        const ctx = document.getElementById('trendChart').getContext('2d');
+                        window.trendChart = new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: trendData.dates,
+                                datasets: [
+                                    {
+                                        label: 'Received',
+                                        data: trendData.received,
+                                        borderColor: 'rgb(75, 192, 192)',
+                                        tension: 0.1
+                                    },
+                                    {
+                                        label: 'Sent',
+                                        data: trendData.sent,
+                                        borderColor: 'rgb(255, 99, 132)',
+                                        tension: 0.1
+                                    },
+                                    {
+                                        label: 'Balance',
+                                        data: trendData.balance,
+                                        borderColor: 'rgb(54, 162, 235)',
+                                        tension: 0.1
+                                    }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                plugins: {
+                                    title: {
+                                        display: true,
+                                        text: 'Referral Trends Over Time'
+                                    }
+                                },
+                                scales: {
+                                    y: {
+                                        beginAtZero: true
+                                    }
+                                }
+                            }
+                        });
+                    }
+
+                    function formatBalanceValue(value) {
+                        if (isNaN(value)) value = 0;
+                        const cls = value >= 0 ? 'positive' : 'negative';
+                        return `<span class="${cls}">${value.toLocaleString()}</span>`;
+                    }
+
+                    // Add to the script section
+                    // Initialize date inputs
+                    document.addEventListener('DOMContentLoaded', function() {
+                        // Populate client select
+                        const clientSelect = document.getElementById('clientSelect');
+                        // Add event listeners
+                        dateRangeSelect.addEventListener('change', refreshData);
+                        clientSelect.addEventListener('change', refreshData);
+                    });
+
+                    function refreshData() {
+                        const dateRange = document.getElementById('dateRangeSelect').value;
+                        const client = document.getElementById('clientSelect').value;
+                        
+                        console.log('Refreshing data for:', {
+                            dateRange,
+                            client
+                        });
+                        // TODO: Add API call to refresh data
+                    }
+
+                    // Add these function definitions before your event listeners
+                    let imbalances = [];
+
+                    function formatDate(date) {
+                        return date.toISOString().split('T')[0];  // Returns YYYY-MM-DD format
+                    }
+
+                    function loadDefaultDashboard() {
+                        console.log('Loading dashboard...');
+                        
+                        // Get dates for the last 24 hours
+                        const end = new Date();
+                        const start = new Date(end);
+                        start.setDate(end.getDate() - 1);
+                        
+                        const startStr = formatDate(start);
+                        const endStr = formatDate(end);
+                        
+                        console.log(`Date range: ${startStr} to ${endStr}`);
+                        
+                        const url = `http://localhost:5001/api/largest-imbalances?start=${startStr}&end=${endStr}`;
+                        console.log('Fetching from:', url);
+                        
+                        fetch(url)
+                            .then(response => {
+                                if (!response.ok) {
+                                    console.error('Server response:', response.status, response.statusText);
+                                    throw new Error(`HTTP error! status: ${response.status}`);
+                                }
+                                return response.json();
+                            })
+                            .then(data => {
+                                console.log('Received data:', data);
+                                renderTable(data);
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                document.getElementById('imbalancesTableBody').innerHTML = 
+                                    `<tr><td colspan="5" class="text-center">Error loading data: ${error.message}</td></tr>`;
+                            });
+                    }
+
+                    function sortTable(column) {
+                        const direction = currentSort.column === column && currentSort.direction === 'desc' ? 'asc' : 'desc';
+                        
+                        tableData.sort((a, b) => {
+                            let valueA, valueB;
+                            
+                            switch(column) {
+                                case 'partner':
+                                    valueA = a.partner || '';
+                                    valueB = b.partner || '';
+                                    return direction === 'desc' ? valueB.localeCompare(valueA) : valueA.localeCompare(valueB);
+                                case 'received':
+                                    valueA = a.period_received || a.received || 0;
+                                    valueB = b.period_received || b.received || 0;
+                                    break;
+                                case 'sent':
+                                    valueA = a.period_sent || a.sent || 0;
+                                    valueB = b.period_sent || b.sent || 0;
+                                    break;
+                                case 'balance':
+                                    valueA = a.period_balance || a.imbalance || 0;
+                                    valueB = b.period_balance || b.imbalance || 0;
+                                    break;
+                            }
+                            
+                            return direction === 'desc' ? valueA - valueB : valueB - valueA;
+                        });
+                        
+                        currentSort = { column, direction };
+                        renderTable();
+                    }
+
+                    function updateTableHeaders() {
+                        const isDefaultView = document.getElementById('clientSelect').value === 'all';
+                        const thead = document.querySelector('table thead tr');
+                        
+                        thead.innerHTML = isDefaultView ? `
+                            <th onclick="sortTable('partner')" style="cursor: pointer;">Partner</th>
+                            <th onclick="sortTable('account')" style="cursor: pointer;">Client</th>
+                            <th onclick="sortTable('received')" style="cursor: pointer;">Received</th>
+                            <th onclick="sortTable('sent')" style="cursor: pointer;">Sent</th>
+                            <th onclick="sortTable('balance')" style="cursor: pointer;">Balance</th>
+                            <th onclick="sortTable('balance')" style="cursor: pointer;">All-Time Balance</th>
+                        ` : `
+                            <th onclick="sortTable('partner')" style="cursor: pointer;">Partner</th>
+                            <th onclick="sortTable('received')" style="cursor: pointer;">Received</th>
+                            <th onclick="sortTable('sent')" style="cursor: pointer;">Sent</th>
+                            <th onclick="sortTable('balance')" style="cursor: pointer;">Balance</th>
+                            <th onclick="sortTable('balance')" style="cursor: pointer;">All-Time Balance</th>
+                        `;
+                    }
+
+                    function renderTable() {
+                        const tbody = document.querySelector('table tbody');
+                        tbody.innerHTML = '';
+                        
+                        const isDefaultView = document.getElementById('clientSelect').value === 'all';
+                        
+                        tableData.forEach(item => {
+                            const row = document.createElement('tr');
+                            row.className = 'table-row-clickable';
+                            const periodBalanceClass = (item.period_balance || 0) >= 0 ? 'positive' : 'negative';
+                            const allTimeBalanceClass = (item.all_time_balance || 0) >= 0 ? 'positive' : 'negative';
+                            
+                            row.innerHTML = isDefaultView ? `
+                                <td>${item.partner}</td>
+                                <td>${item.account || ''}</td>
+                                <td>${(item.period_received || 0).toLocaleString()}</td>
+                                <td>${(item.period_sent || 0).toLocaleString()}</td>
+                                <td class="${periodBalanceClass}">${(item.period_balance || 0).toLocaleString()}</td>
+                                <td class="${allTimeBalanceClass}">${(item.all_time_balance || 0).toLocaleString()}</td>
+                            ` : `
+                                <td>${item.partner}</td>
+                                <td>${(item.period_received || 0).toLocaleString()}</td>
+                                <td>${(item.period_sent || 0).toLocaleString()}</td>
+                                <td class="${periodBalanceClass}">${(item.period_balance || 0).toLocaleString()}</td>
+                                <td class="${allTimeBalanceClass}">${(item.all_time_balance || 0).toLocaleString()}</td>
+                            `;
+                            
+                            row.onclick = () => showTrendsPanel(
+                                item.period_received || 0,
+                                item.period_sent || 0,
+                                item.period_balance || 0,
+                                item.partner
+                            );
+                            
+                            tbody.appendChild(row);
+                        });
+                    }
+
+                    function updateTable(data) {
+                        tableData = data;
+                        sortTable('balance'); // Default sort by balance
+                    }
+
+                    // Your existing event listener code remains the same
+                    document.addEventListener('DOMContentLoaded', function() {
+                        // Initial load of default dashboard
+                        loadDefaultDashboard();
+
+                        // Add event listeners for selectors
+                        document.getElementById('clientSelect').addEventListener('change', function() {
+                            const selectedClient = this.value;
+                            const selectedDays = document.getElementById('dateRangeSelect').value;
+                            
+                            // Calculate date range
+                            const end = new Date();
+                            const start = new Date();
+                            start.setDate(start.getDate() - parseInt(selectedDays));
+                            
+                            if (selectedClient === 'all') {
+                                loadDefaultDashboard();
+                            } else {
+                                const fetchConfig = {
+                                    method: 'GET',
+                                    mode: 'cors',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Accept': 'application/json'
+                                    }
+                                };
+                                
+                                const url = new URL('http://localhost:5001/api/partnership-metrics');
+                                url.searchParams.append('account', selectedClient);
+                                url.searchParams.append('start', start.toISOString().split('T')[0]);
+                                url.searchParams.append('end', end.toISOString().split('T')[0]);
+                                
+                                fetch(url, fetchConfig)
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        console.log('API Response:', data);
+                                        updateTable(data);
+                                    })
+                                    .catch(error => console.error('Error:', error));
+                            }
+                        });
+
+                        document.getElementById('dateRangeSelect').addEventListener('change', function() {
+                            document.getElementById('clientSelect').dispatchEvent(new Event('change'));
+                        });
+                    });
+                </script>
+            </body>
+            </html>
+            

@@ -45,3 +45,16 @@ venv/
 
 # OS
 .DS_Store
+# Database files
+data/referral_data.db
+**/first_party_sets.db
+**/first_party_sets.db-journal
+
+# Logs
+logs/
+*.log
+scraper.log
+**/chrome_debug.log
+
+# Additional Chrome files
+**/BrowserMetrics-spare.pma

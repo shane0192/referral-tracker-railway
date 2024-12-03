@@ -192,22 +192,25 @@ def get_largest_imbalances():
             all_partners = set(list(period_stats.keys()) + list(latest_stats.keys()))
             
             for partner in all_partners:
-                period = period_stats.get(partner, {'received': 0, 'sent': 0})
-                latest = latest_stats.get(partner, {'received': 0, 'sent': 0})
+                period_received = period_stats.get(partner, {'received': 0})['received']
+                period_sent = period_stats.get(partner, {'sent': 0})['sent']
+                period_balance = period_received - period_sent
                 
-                period_balance = period['received'] - period['sent']
-                all_time_balance = latest['received'] - latest['sent']
+                latest_received = latest_stats.get(partner, {'received': 0})['received']
+                latest_sent = latest_stats.get(partner, {'sent': 0})['sent']
+                all_time_balance = latest_received - latest_sent
                 
                 results.append({
                     'partner': partner,
-                    'received': period['received'],
-                    'sent': period['sent'],
-                    'balance': period_balance,
+                    'period_received': period_received,
+                    'period_sent': period_sent,
+                    'period_balance': period_balance,
                     'all_time_balance': all_time_balance
                 })
             
-            # Sort by absolute period balance
-            results.sort(key=lambda x: abs(x['balance']), reverse=True)
+            # Sort by period_balance ascending (worst performing first)
+            results.sort(key=lambda x: x['period_balance'])
+            
             return jsonify(results)
             
         finally:
@@ -450,6 +453,25 @@ def get_partnership_trends():
                         for rec in r.recommending_me if rec['creator'] == partner), 0) for r in records],
                     'sent': [next((safe_int_convert(rec['subscribers']) 
                         for rec in r.my_recommendations if rec['creator'] == partner), 0) for r in records]
+                },
+                'daily_changes': {
+                    'dates': [r.date.strftime('%Y-%m-%d') for r in records[1:]],  # Skip first date
+                    'received': [
+                        curr - prev for curr, prev in zip(
+                            [next((safe_int_convert(rec['subscribers']) 
+                                for rec in r.recommending_me if rec['creator'] == partner), 0) for r in records][1:],
+                            [next((safe_int_convert(rec['subscribers']) 
+                                for rec in r.recommending_me if rec['creator'] == partner), 0) for r in records][:-1]
+                        )
+                    ],
+                    'sent': [
+                        curr - prev for curr, prev in zip(
+                            [next((safe_int_convert(rec['subscribers']) 
+                                for rec in r.my_recommendations if rec['creator'] == partner), 0) for r in records][1:],
+                            [next((safe_int_convert(rec['subscribers']) 
+                                for rec in r.my_recommendations if rec['creator'] == partner), 0) for r in records][:-1]
+                        )
+                    ]
                 },
                 'growth': {
                     'daily_change': round((received_change + sent_change) / days_between, 1),

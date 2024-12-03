@@ -4,6 +4,9 @@
                 <title>Referral Analytics</title>
                 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
                 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+                <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+                <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
                 <style>
                     .positive { color: green; }
                     .negative { color: red; }
@@ -22,7 +25,20 @@
                         overflow-y: auto;
                     }
                     .trends-panel.active { right: 0; }
-                    .chart-container { margin-bottom: 20px; }
+                    .chart-container {
+                        height: 300px !important;
+                        position: relative;
+                        margin-bottom: 40px;
+                    }
+                    
+                    .chart-container canvas {
+                        max-height: 100%;
+                    }
+                    
+                    .chart-container h4 {
+                        margin-bottom: 20px;
+                    }
+                    
                     .table-row-clickable:hover {
                         background-color: #f5f5f5;
                         cursor: pointer;
@@ -92,6 +108,71 @@
                     .trend-direction.declining {
                         background: #ffe6e6;
                         color: #660000;
+                    }
+
+                    /* Ensure tooltips appear above the panel */
+                    .tooltip {
+                        z-index: 1060 !important;
+                    }
+                    
+                    /* Style the partner name header */
+                    #partnerNameHeader {
+                        font-size: 1.5rem;
+                        margin: 0;
+                        padding: 0;
+                    }
+
+                    .partner-name {
+                        font-size: 1.75rem;
+                        font-weight: 600;
+                        margin: 0;
+                        padding: 0;
+                    }
+
+                    .trends-panel {
+                        padding: 20px;
+                    }
+
+                    /* Ensure tooltips are visible */
+                    .tooltip {
+                        z-index: 9999 !important;
+                    }
+
+                    .trends-panel h1 {
+                        font-size: 2rem;
+                        margin-bottom: 0.5rem;
+                    }
+                    
+                    .trends-panel .partner-name {
+                        font-size: 1.5rem;
+                        color: #666;
+                        margin-top: 0;
+                    }
+
+                    .panel-header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: flex-start;
+                        margin-bottom: 2rem;
+                    }
+
+                    .title-section h1 {
+                        font-size: 2rem;
+                        margin-bottom: 0.5rem;
+                    }
+
+                    .title-section .partner-name {
+                        font-size: 1.25rem;
+                        color: #666;
+                        margin-top: 0;
+                    }
+
+                    /* Style the info icons */
+                    .bi-info-circle {
+                        font-size: 0.9em;
+                        color: #6c757d;
+                        cursor: help;
+                        margin-left: 4px;
                     }
                 </style>
             </head>
@@ -276,11 +357,15 @@
 
                 <!-- Trends Panel -->
                 <div id="trendsPanel" class="trends-panel">
-                    <div class="d-flex justify-content-between mb-4">
-                        <h3>Partnership Trends</h3>
-                        <button type="button" class="btn-close" onclick="this.parentElement.parentElement.classList.remove('active')"></button>
+                    <div class="panel-header">
+                        <div class="title-section">
+                            <h1>Partnership Trends</h1>
+                            <h2 id="partnerName" class="partner-name"></h2>
+                        </div>
+                        <button type="button" class="btn-close" onclick="closeTrendsPanel()"></button>
                     </div>
                     
+                   
                     <div class="current-period">
                         <h4>Current Period</h4>
                         <div class="metrics-summary">
@@ -303,23 +388,49 @@
                         <h4>Growth Metrics</h4>
                         <div class="metrics-summary">
                             <div class="metric">
-                                <label>Daily Change</label>
-                                <span id="dailyChangeMetric">0</span>
+                                <label>
+                                    Daily Change 
+                                    <i class="bi bi-info-circle" 
+                                       data-bs-toggle="tooltip" 
+                                       data-bs-placement="left" 
+                                       title="The average number of new subscribers gained or lost per day during the selected period. A positive number (154.5) means you're gaining an average of 154.5 subscribers each day."></i>
+                                </label>
+                                <span id="dailyChangeMetric"></span>
                             </div>
                             <div class="metric">
-                                <label>Growth Rate</label>
-                                <span id="growthRateMetric">0%</span>
+                                <label>
+                                    Growth Rate 
+                                    <i class="bi bi-info-circle" 
+                                       data-bs-toggle="tooltip" 
+                                       data-bs-placement="left" 
+                                       title="The percentage increase or decrease in total subscribers over the selected period. A rate of 3.3% means your subscriber count has grown by 3.3% since the start of the period."></i>
+                                </label>
+                                <span id="growthRateMetric"></span>
                             </div>
                             <div class="metric">
-                                <label>Trend</label>
-                                <span id="trendDirectionMetric">-</span>
+                                <label>
+                                    Trend 
+                                    <i class="bi bi-info-circle" 
+                                       data-bs-toggle="tooltip" 
+                                       data-bs-placement="left" 
+                                       title="The overall direction of the partnership. 'Improving' means you're receiving more subscribers than you're sending, 'Declining' means you're sending more than receiving, and 'Stable' means the exchange is roughly equal."></i>
+                                </label>
+                                <span id="trendMetric"></span>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="chart-container mt-4">
+                    <div class="chart-container mt-4 mb-5" style="height: 300px; position: relative;">
                         <h4>Historical Trend</h4>
                         <canvas id="trendChart"></canvas>
+                    </div>
+
+                    <!-- Add significant margin between charts -->
+                    <div style="margin: 60px 0;"></div>
+
+                    <div class="chart-container mt-5" style="height: 300px; position: relative;">
+                        <h4>Daily Changes</h4>
+                        <canvas id="dailyTrendChart"></canvas>
                     </div>
                 </div>
 
@@ -334,6 +445,8 @@
                     
                     function showTrendsPanel(received, sent, balance, partner) {
                         console.log('showTrendsPanel called with:', { received, sent, balance, partner });
+                        
+                        document.getElementById('partnerName').textContent = partner;
                         
                         const panel = document.getElementById('trendsPanel');
                         panel.classList.add('active');
@@ -369,7 +482,7 @@
                                         data.growth.daily_change.toLocaleString();
                                     document.getElementById('growthRateMetric').textContent = 
                                         `${data.growth.growth_rate.toLocaleString()}%`;
-                                    document.getElementById('trendDirectionMetric').textContent = 
+                                    document.getElementById('trendMetric').textContent = 
                                         data.growth.trend_direction;
                                 }
                                 
@@ -377,6 +490,24 @@
                                 if (data.historical_data) {
                                     updateTrendChart(data.historical_data);
                                 }
+                                
+                                // Destroy existing tooltips
+                                const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+                                tooltips.forEach(el => {
+                                    const tooltip = bootstrap.Tooltip.getInstance(el);
+                                    if (tooltip) {
+                                        tooltip.dispose();
+                                    }
+                                });
+                                
+                                // Initialize new tooltips
+                                tooltips.forEach(el => {
+                                    new bootstrap.Tooltip(el, {
+                                        container: 'body',
+                                        placement: 'left',
+                                        trigger: 'hover'
+                                    });
+                                });
                             })
                             .catch(error => {
                                 console.error('Error fetching trends:', error);
@@ -389,18 +520,22 @@
                     }
 
                     function updateTrendChart(historicalData) {
+                        console.log('Updating charts with data:', historicalData);
+                        
+                        // Historical Trend Chart
                         const ctx = document.getElementById('trendChart');
                         if (!ctx) {
                             console.error('Trend chart canvas not found');
                             return;
                         }
 
-                        // Check if there's an existing chart instance
+                        // Clear any existing chart
                         const existingChart = Chart.getChart(ctx);
                         if (existingChart) {
                             existingChart.destroy();
                         }
 
+                        // Create historical trend chart
                         new Chart(ctx, {
                             type: 'line',
                             data: {
@@ -419,9 +554,101 @@
                             },
                             options: {
                                 responsive: true,
+                                maintainAspectRatio: false,
                                 scales: {
                                     y: {
-                                        beginAtZero: true
+                                        beginAtZero: true,
+                                        max: Math.max(...historicalData.received, ...historicalData.sent) * 1.1,
+                                        grid: {
+                                            drawBorder: false
+                                        }
+                                    },
+                                    x: {
+                                        grid: {
+                                            drawBorder: false
+                                        }
+                                    }
+                                },
+                                plugins: {
+                                    legend: {
+                                        position: 'top'
+                                    }
+                                }
+                            }
+                        });
+
+                        // Daily Changes Chart
+                        const dailyCtx = document.getElementById('dailyTrendChart');
+                        if (!dailyCtx) {
+                            console.error('Daily trend chart canvas not found');
+                            return;
+                        }
+
+                        // Clear any existing daily chart
+                        const existingDailyChart = Chart.getChart(dailyCtx);
+                        if (existingDailyChart) {
+                            existingDailyChart.destroy();
+                        }
+
+                        // Calculate daily changes
+                        const dailyReceived = [];
+                        const dailySent = [];
+                        
+                        for (let i = 1; i < historicalData.received.length; i++) {
+                            dailyReceived.push(historicalData.received[i] - historicalData.received[i-1]);
+                            dailySent.push(historicalData.sent[i] - historicalData.sent[i-1]);
+                        }
+
+                        // Create daily changes chart
+                        new Chart(dailyCtx, {
+                            type: 'line',
+                            data: {
+                                labels: historicalData.dates.slice(1),
+                                datasets: [{
+                                    label: 'Daily Received',
+                                    data: dailyReceived,
+                                    borderColor: 'rgb(75, 192, 192)',
+                                    backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                                    tension: 0.1,
+                                    fill: true
+                                }, {
+                                    label: 'Daily Sent',
+                                    data: dailySent,
+                                    borderColor: 'rgb(255, 99, 132)',
+                                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                                    tension: 0.1,
+                                    fill: true
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        max: Math.max(...dailyReceived, ...dailySent) * 1.1,
+                                        grid: {
+                                            drawBorder: false
+                                        }
+                                    },
+                                    x: {
+                                        grid: {
+                                            drawBorder: false
+                                        }
+                                    }
+                                },
+                                plugins: {
+                                    legend: {
+                                        position: 'top'
+                                    }
+                                },
+                                elements: {
+                                    point: {
+                                        radius: 4,
+                                        hoverRadius: 6
+                                    },
+                                    line: {
+                                        borderWidth: 2
                                     }
                                 }
                             }
@@ -475,30 +702,36 @@
                     function loadDefaultDashboard() {
                         console.log('Loading dashboard...');
                         
-                        // Get dates for the last 24 hours
+                        // Get selected date range
+                        const dateRange = document.getElementById('dateRangeSelect').value;
                         const end = new Date();
                         const start = new Date(end);
-                        start.setDate(end.getDate() - 1);
+                        start.setDate(end.getDate() - parseInt(dateRange));
                         
                         const startStr = formatDate(start);
                         const endStr = formatDate(end);
                         
-                        console.log(`Date range: ${startStr} to ${endStr}`);
-                        
                         const url = `http://localhost:5001/api/largest-imbalances?start=${startStr}&end=${endStr}`;
-                        console.log('Fetching from:', url);
                         
                         fetch(url)
                             .then(response => {
                                 if (!response.ok) {
-                                    console.error('Server response:', response.status, response.statusText);
                                     throw new Error(`HTTP error! status: ${response.status}`);
                                 }
                                 return response.json();
                             })
                             .then(data => {
-                                console.log('Received data:', data);
-                                renderTable(data);
+                                // Update table data
+                                tableData = data;
+                                
+                                // Always sort by balance (negative first)
+                                tableData.sort((a, b) => {
+                                    const balanceA = a.period_balance || 0;
+                                    const balanceB = b.period_balance || 0;
+                                    return balanceA - balanceB; // This puts negative numbers first
+                                });
+                                
+                                renderTable();
                             })
                             .catch(error => {
                                 console.error('Error:', error);
@@ -647,7 +880,34 @@
                         });
 
                         document.getElementById('dateRangeSelect').addEventListener('change', function() {
-                            document.getElementById('clientSelect').dispatchEvent(new Event('change'));
+                            const selectedClient = document.getElementById('clientSelect').value;
+                            const dateRange = this.value;
+                            
+                            // Calculate dates
+                            const end = new Date();
+                            const start = new Date();
+                            start.setDate(end.getDate() - parseInt(dateRange));
+                            
+                            if (selectedClient === 'all') {
+                                loadDefaultDashboard();
+                            } else {
+                                // Use partnership-metrics endpoint for specific client
+                                fetch(`http://localhost:5001/api/partnership-metrics?` + 
+                                    `account=${encodeURIComponent(selectedClient)}&` +
+                                    `start=${start.toISOString().split('T')[0]}&` +
+                                    `end=${end.toISOString().split('T')[0]}`)
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        // Update table data and maintain sort
+                                        tableData = data.sort((a, b) => {
+                                            const balanceA = a.period_balance || 0;
+                                            const balanceB = b.period_balance || 0;
+                                            return balanceA - balanceB; // This puts negative numbers first
+                                        });
+                                        renderTable();
+                                    })
+                                    .catch(error => console.error('Error:', error));
+                            }
                         });
                     });
 
@@ -798,6 +1058,117 @@
                                     `).join('');
                             })
                             .catch(error => console.error('Error:', error));
+                    }
+
+                    // Initialize all tooltips
+                    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+                    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                        return new bootstrap.Tooltip(tooltipTriggerEl)
+                    })
+
+                    function updateTooltips(startDate, endDate, partnerName) {
+                        // Format dates for display
+                        const formatDate = (date) => {
+                            return new Date(date).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                            });
+                        };
+                        
+                        const period = `${formatDate(startDate)} to ${formatDate(endDate)}`;
+                        
+                        // Update tooltip text
+                        const dailyChangeTooltip = document.getElementById('dailyChangeTooltip');
+                        const growthRateTooltip = document.getElementById('growthRateTooltip');
+                        const trendTooltip = document.getElementById('trendTooltip');
+                        
+                        dailyChangeTooltip.setAttribute('title', 
+                            `The average number of subscribers gained or lost per day from ${period}`);
+                        growthRateTooltip.setAttribute('title', 
+                            `Percentage increase or decrease in subscribers from ${period}`);
+                        trendTooltip.setAttribute('title', 
+                            `Overall direction of subscriber growth from ${period}`);
+                        
+                        // Make sure to destroy and reinitialize tooltips
+                        const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+                        tooltips.forEach(el => {
+                            const tooltip = bootstrap.Tooltip.getInstance(el);
+                            if (tooltip) {
+                                tooltip.dispose();
+                            }
+                            new bootstrap.Tooltip(el, {
+                                container: 'body',
+                                placement: 'left'
+                            });
+                        });
+                    }
+                    
+                    // Call this function whenever you update your data
+                    // For example, in your loadData() function:
+                    async function loadData() {
+                        const dateRange = document.getElementById('dateRangeSelect').value;
+                        const end = new Date();
+                        const start = new Date();
+                        start.setDate(end.getDate() - parseInt(dateRange));
+                        
+                        updateTooltips(start, end);
+                        
+                        // ... rest of your loadData function
+                    }
+
+                    function showPartnerTrends(creator) {
+                        const panel = document.querySelector('.trends-panel');
+                        // Set the partner name
+                        document.getElementById('partnerName').textContent = creator;
+                        
+                        // Show the panel
+                        panel.classList.add('active');
+                        
+                        console.log('Setting partner name to:', creator); // Debug log
+                    }
+
+                    // Wherever you handle the click to open the panel
+                    function onPartnerClick(creator) {
+                        console.log('Opening panel for:', creator);
+                        showPartnerTrends(creator);
+                    }
+
+                    async function fetchImbalances() {
+                        const client = document.getElementById('clientSelect').value;
+                        const dateRange = document.getElementById('dateRangeSelect').value;
+                        
+                        // Calculate dates
+                        const end = new Date();
+                        const start = new Date();
+                        start.setDate(end.getDate() - parseInt(dateRange));
+                        
+                        try {
+                            // Use partnership-metrics for specific clients, largest-imbalances for 'all' view
+                            const endpoint = client === 'all' 
+                                ? 'largest-imbalances' 
+                                : 'partnership-metrics';
+                                
+                            const response = await fetch(
+                                `http://localhost:5001/api/${endpoint}?` + 
+                                `account=${encodeURIComponent(client)}&` +
+                                `start=${start.toISOString().split('T')[0]}&` +
+                                `end=${end.toISOString().split('T')[0]}`
+                            );
+                            
+                            const data = await response.json();
+                            
+                            // Sort by period_balance (negative first)
+                            tableData = data.sort((a, b) => {
+                                const balanceA = a.period_balance || 0;
+                                const balanceB = b.period_balance || 0;
+                                return balanceA - balanceB;
+                            });
+                            
+                            renderTable();
+                        } catch (error) {
+                            console.error('Error:', error);
+                        }
                     }
                 </script>
             </body>

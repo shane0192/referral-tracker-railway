@@ -193,6 +193,19 @@ class ConvertKitScraper:
             return
         
         try:
+            # First ensure we're on the creator network page
+            print("\nEnsuring we're on the Creator Network page...")
+            self.driver.get("https://app.kit.com/creator-network")
+            time.sleep(5)  # Wait for navigation
+            
+            # Verify we're on the correct page
+            current_url = self.driver.current_url
+            print(f"Current URL: {current_url}")
+            if "creator-network" not in current_url:
+                print("⚠️ Not on Creator Network page! Attempting to navigate...")
+                self.navigate_to_creator_network()
+                time.sleep(5)  # Additional wait after navigation
+            
             print("Starting data collection...")
             data = {
                 'date': datetime.now().strftime('%Y-%m-%d'),
@@ -286,117 +299,95 @@ class ConvertKitScraper:
         """Helper method to get specific columns from the table"""
         for attempt in range(max_retries):
             try:
-                rows = []
-                print(f"Attempt {attempt + 1} of {max_retries}")
+                print(f"\nAttempt {attempt + 1} of {max_retries}")
+                print(f"Current URL: {self.driver.current_url}")
                 
-                # Keep existing wait times
-                time.sleep(5)
+                # Take screenshot for debugging
+                screenshot_name = f"table_attempt_{attempt + 1}.png"
+                self.driver.save_screenshot(screenshot_name)
                 
-                # Add this new section to find headers
-                print("Looking for table headers...")
-                headers = WebDriverWait(self.driver, 20).until(
-                    EC.presence_of_all_elements_located((By.CSS_SELECTOR, "thead th"))
-                )
+                # Wait longer initially
+                print("Initial wait...")
+                time.sleep(15)
                 
-                # Find column indices
-                subscribers_idx = None
-                conversion_rate_idx = None
-                for idx, header in enumerate(headers):
-                    header_text = header.text.strip().upper()
-                    if "SUBSCRIBERS" in header_text:
-                        subscribers_idx = idx
-                    elif "CONVERSION" in header_text:
-                        conversion_rate_idx = idx
-                        
-                if subscribers_idx is None or conversion_rate_idx is None:
-                    raise Exception(f"Could not find required columns. Headers found: {[h.text for h in headers]}")
+                # Try different table selectors
+                selectors = [
+                    "table",  # Basic table
+                    "//table",  # XPath table
+                    "//div[contains(@class, 'table')]",  # Div that might be styled as table
+                    "//div[contains(@role, 'table')]"  # ARIA table role
+                ]
                 
-                print(f"Found columns - Subscribers: {subscribers_idx}, Conversion Rate: {conversion_rate_idx}")
-                
-                # Keep the rest of your existing code, but update the cell indexing:
-                # Replace cells[1] with cells[subscribers_idx]
-                # Replace cells[2] with cells[conversion_rate_idx]
-                
-                # Wait longer for table and data to load
-                time.sleep(5)  # Add explicit wait for page load
-                
-                # Wait for table to be visible and get all rows with longer timeout
-                table_rows = WebDriverWait(self.driver, 20).until(  # Increased timeout to 20 seconds
-                    EC.presence_of_all_elements_located((By.CSS_SELECTOR, "tbody tr"))
-                )
-                
-                # Additional wait for data to populate
-                if tab_type == "recommending_me":
-                    # Wait for at least one div with numbers to be present
-                    WebDriverWait(self.driver, 10).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "td div.text-sm.leading-6"))
-                    )
-                
-                # Limit to first 10 rows
-                table_rows = table_rows[:10]
-                print(f"Processing top 7 rows from table")
-                
-                # Get and process rows
-                all_none = True  # Track if all values are None
-                for index, row in enumerate(table_rows):
+                table = None
+                for selector in selectors:
                     try:
-                        # Get all cells in the row
-                        cells = row.find_elements(By.CSS_SELECTOR, "td")
-                        
-                        if len(cells) >= 3:
-                            creator = cells[0].text.strip()
-                            
-                            if tab_type == "recommending_me":
-                                # For "Recommending Me" tab, get numbers from the div
-                                subscribers_div = cells[subscribers_idx].find_element(By.CSS_SELECTOR, "div.text-sm.leading-6")
-                                subscribers = subscribers_div.text.split('==')[0].strip()
-                                
-                                conversion_div = cells[conversion_rate_idx].find_element(By.CSS_SELECTOR, "div.text-sm.leading-6")
-                                conversion_rate = conversion_div.text.split('==')[0].strip()
-                            else:
-                                # For "My Recommendations" tab, get direct text
-                                subscribers = cells[subscribers_idx].text.strip()
-                                conversion_rate = cells[conversion_rate_idx].text.strip()
-                            
-                            # Convert empty strings to None
-                            subscribers = subscribers if subscribers else None
-                            conversion_rate = conversion_rate if conversion_rate else None
-                            
-                            if subscribers or conversion_rate:  # If either has a value
-                                all_none = False
-                                
-                            rows.append({
-                                'creator': creator,
-                                'subscribers': subscribers,
-                                'conversion_rate': conversion_rate
-                            })
-                            print(f"Added row {index + 1}: {creator} - Subscribers: {subscribers}, Conversion: {conversion_rate}")
+                        print(f"\nTrying selector: {selector}")
+                        if selector.startswith("//"):
+                            table = WebDriverWait(self.driver, 10).until(
+                                EC.presence_of_element_located((By.XPATH, selector))
+                            )
+                        else:
+                            table = WebDriverWait(self.driver, 10).until(
+                                EC.presence_of_element_located((By.CSS_SELECTOR, selector))
+                            )
+                        print("Found table!")
+                        break
                     except Exception as e:
-                        print(f"Skipped row {index + 1} due to error: {str(e)}")
+                        print(f"Selector failed: {str(e)}")
                         continue
                 
-                # If all values were None and we haven't exceeded retries, try again
-                if all_none and attempt < max_retries - 1:
-                    print(f"\n⚠️ All values were None. Waiting longer and retrying... (Attempt {attempt + 1})")
-                    time.sleep(5 * (attempt + 1))  # Increase wait time with each retry
-                    continue
+                if not table:
+                    raise Exception("Could not find table with any selector")
                 
-                return rows
+                # Get rows
+                print("\nLooking for rows...")
+                rows = table.find_elements(By.TAG_NAME, "tr")
+                print(f"Found {len(rows)} rows")
+                
+                data = []
+                for row in rows:
+                    try:
+                        cells = row.find_elements(By.TAG_NAME, "td")
+                        if len(cells) >= 4:  # Ensure there are enough cells
+                            creator = cells[0].text.strip()
+                            subscribers = cells[2].text.strip()  # Adjusted index for subscribers
+                            conversion = cells[3].text.strip()  # Adjusted index for conversion rate
+                            
+                            if creator and subscribers and conversion:
+                                data.append({
+                                    'creator': creator,
+                                    'subscribers': subscribers,
+                                    'conversion_rate': conversion
+                                })
+                                print(f"Added row: {creator} - {subscribers} - {conversion}")
+                    except Exception as e:
+                        print(f"Error processing row: {str(e)}")
+                        continue
+                
+                if data:
+                    return data
+                
+                print("No data found in table, retrying...")
+                time.sleep(10)  # Wait before retry
                 
             except Exception as e:
                 print(f"Failed to get table data: {str(e)}")
-                self.driver.save_screenshot(f"table_error_attempt_{attempt + 1}.png")
                 if attempt < max_retries - 1:
                     print(f"Retrying... (Attempt {attempt + 1})")
-                    time.sleep(5 * (attempt + 1))
+                    time.sleep(10 * (attempt + 1))
                     continue
                 return []
 
     def save_referral_data(self, account_name, recommending_me_data, my_recommendations_data):
         """Save referral data to CSV with account name"""
         try:
-            # Update the path to the correct location
-            csv_path = 'referral_tracker/src/data/referral_data.csv'
+            # Get the absolute path to the project root
+            project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+            
+            # Create the absolute path to the CSV file
+            csv_path = os.path.join(project_root, 'src', 'data', 'referral_data.csv')
+            
+            print(f"Using absolute path: {csv_path}")
             
             current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             rows = []
@@ -441,6 +432,7 @@ class ConvertKitScraper:
             
         except Exception as e:
             print(f"Error saving data for {account_name}: {e}")
+            print(f"Current working directory: {os.getcwd()}")  # Debug print
 
     def get_available_accounts(self):
         """Get list of available accounts from dropdown"""
@@ -589,7 +581,24 @@ class ConvertKitScraper:
             creator_network_url = "https://app.kit.com/creator-network"
             print(f"Navigating to Creator Network: {creator_network_url}")
             self.driver.get(creator_network_url)
-            print(f"Current URL: {self.driver.current_url}")
+            
+            # Wait for navigation
+            time.sleep(5)
+            
+            # Verify we reached the correct page
+            current_url = self.driver.current_url
+            print(f"Current URL after navigation: {current_url}")
+            
+            if "creator-network" not in current_url:
+                print("⚠️ Navigation failed - not on Creator Network page")
+                # Take screenshot for debugging
+                self.driver.save_screenshot("navigation_failed.png")
+                return False
+            
+            print("✅ Successfully navigated to Creator Network")
+            return True
+            
         except Exception as e:
             print(f"Failed to navigate to Creator Network: {str(e)}")
+            self.driver.save_screenshot("navigation_error.png")
             raise

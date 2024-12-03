@@ -5,8 +5,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ConvertKit credentials and URLs
-CONVERTKIT_EMAIL = os.getenv('support@paperboystudios.co')
-CONVERTKIT_PASSWORD = os.getenv('!!Ytpammt4s!')
+CONVERTKIT_EMAIL = 'support@paperboystudios.co'
+CONVERTKIT_PASSWORD = '!!Ytpammt4s!'
 CONVERTKIT_LOGIN_URL = 'https://app.kit.com/'
 CONVERTKIT_DASHBOARD_URL = 'https://app.kit.com/creator-network'
 

@@ -45,48 +45,38 @@ def get_partnership_metrics():
     print(f"End date: {end_date_str}")
     
     try:
-        # Convert dates and set time to start/end of day
+        # Convert dates and set time to include all of today
         start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0)
         end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
         
+        # Add logging to debug date ranges
+        print(f"Querying data from {start_date} to {end_date}")
+        
         session = db.Session()
         try:
-            # Get records for the account
             records = session.query(ReferralData)\
                 .filter(ReferralData.account_name == account)\
                 .filter(ReferralData.date <= end_date)\
+                .filter(ReferralData.date >= start_date)\
                 .order_by(ReferralData.date)\
                 .all()
-
-            print(f"\nFound {len(records)} total records for account")
-            
-            # Find baseline (last record before start_date) and latest record
-            baseline_record = None
-            latest_record = None
-            
+                
+            print(f"Found {len(records)} records")
             for record in records:
-                print(f"Checking record from {record.date}")
-                if record.date < start_date:
-                    baseline_record = record
-                if record.date <= end_date:
-                    latest_record = record
-
-            if not latest_record:
-                print("No records found in date range")
+                print(f"Record date: {record.date}")
+                
+            if not records:
                 return jsonify([])
-
-            # If no baseline record, use the first record in the period
-            if not baseline_record and latest_record:
-                baseline_record = latest_record
-
-            print(f"\nBaseline record date: {baseline_record.date}")
-            print(f"Latest record date: {latest_record.date}")
+            
+            # Use first and last records in the period
+            baseline_record = records[0]  # First record in period
+            latest_record = records[-1]   # Last record in period
             
             # Process metrics
             results = []
             all_partners = set()
             
-            # Get all unique partners
+            # Get all unique partners from both records
             for record in [baseline_record, latest_record]:
                 all_partners.update(rec['creator'] for rec in record.recommending_me)
                 all_partners.update(rec['creator'] for rec in record.my_recommendations)
@@ -398,9 +388,212 @@ def import_csv_data():
 @app.after_request
 def after_request(response):
     response.headers.add('Access-Control-Allow-Origin', 'http://localhost:8000')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control')
     response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    response.headers.add('Access-Control-Max-Age', '86400')
     return response
+
+@app.route('/api/partnership-trends')
+def get_partnership_trends():
+    try:
+        account = request.args.get('account')
+        partner = request.args.get('partner')
+        start_date = datetime.strptime(request.args.get('start'), '%Y-%m-%d')
+        end_date = datetime.strptime(request.args.get('end'), '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+        
+        print(f"\n=== Partnership Trends Request ===")
+        print(f"Account: {account}")
+        print(f"Partner: {partner}")
+        print(f"Date range: {start_date} to {end_date}")
+        
+        session = db.Session()
+        try:
+            records = session.query(ReferralData)\
+                .filter(ReferralData.account_name == account)\
+                .filter(ReferralData.date >= start_date)\
+                .filter(ReferralData.date <= end_date)\
+                .order_by(ReferralData.date)\
+                .all()
+            
+            print(f"Found {len(records)} records")
+            for record in records:
+                print(f"Record date: {record.date}")
+            
+            if not records:
+                return jsonify({'error': 'No data found'})
+            
+            # Get baseline and latest records
+            baseline_record = records[0]
+            latest_record = records[-1]
+            
+            # Get metrics for the specific partner
+            baseline_received = next((safe_int_convert(rec['subscribers']) 
+                for rec in baseline_record.recommending_me if rec['creator'] == partner), 0)
+            baseline_sent = next((safe_int_convert(rec['subscribers']) 
+                for rec in baseline_record.my_recommendations if rec['creator'] == partner), 0)
+            
+            latest_received = next((safe_int_convert(rec['subscribers']) 
+                for rec in latest_record.recommending_me if rec['creator'] == partner), 0)
+            latest_sent = next((safe_int_convert(rec['subscribers']) 
+                for rec in latest_record.my_recommendations if rec['creator'] == partner), 0)
+            
+            # Calculate changes
+            received_change = latest_received - baseline_received
+            sent_change = latest_sent - baseline_sent
+            days_between = max((latest_record.date - baseline_record.date).days, 1)
+            
+            response_data = {
+                'historical_data': {
+                    'dates': [r.date.strftime('%Y-%m-%d') for r in records],
+                    'received': [next((safe_int_convert(rec['subscribers']) 
+                        for rec in r.recommending_me if rec['creator'] == partner), 0) for r in records],
+                    'sent': [next((safe_int_convert(rec['subscribers']) 
+                        for rec in r.my_recommendations if rec['creator'] == partner), 0) for r in records]
+                },
+                'growth': {
+                    'daily_change': round((received_change + sent_change) / days_between, 1),
+                    'growth_rate': round(((latest_received + latest_sent) / max(baseline_received + baseline_sent, 1) - 1) * 100, 1),
+                    'trend_direction': 'Improving' if received_change > sent_change else 'Declining'
+                }
+            }
+            
+            print(f"Sending response: {response_data}")
+            return jsonify(response_data)
+            
+        finally:
+            session.close()
+            
+    except Exception as e:
+        print(f"Error in partnership trends: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/partnership-metrics', methods=['OPTIONS'])
+def handle_options():
+    response = jsonify({'status': 'ok'})
+    return response
+
+@app.route('/admin/database')
+def database_admin():
+    session = db.Session()
+    try:
+        # Get all records grouped by date and account
+        records = session.query(ReferralData)\
+            .order_by(ReferralData.date.desc(), ReferralData.account_name)\
+            .all()
+
+        # Create a simple HTML interface
+        html = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Database Admin</title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+            <style>
+                .record-row:hover { background-color: #f5f5f5; }
+                .delete-btn { color: red; cursor: pointer; }
+            </style>
+        </head>
+        <body>
+            <div class="container mt-4">
+                <h1>Database Management</h1>
+                <div class="mb-3">
+                    <button class="btn btn-primary" onclick="reimportCSV()">Reimport from CSV</button>
+                    <button class="btn btn-danger" onclick="clearDatabase()">Clear Database</button>
+                </div>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Account</th>
+                            <th>Recommending Me</th>
+                            <th>My Recommendations</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in records %}
+                        <tr class="record-row">
+                            <td>{{ record.date.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            <td>{{ record.account_name }}</td>
+                            <td>{{ record.recommending_me|length }} entries</td>
+                            <td>{{ record.my_recommendations|length }} entries</td>
+                            <td>
+                                <span class="delete-btn" onclick="deleteRecord('{{ record.id }}')">🗑️</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <script>
+                function deleteRecord(id) {
+                    if (confirm('Are you sure you want to delete this record?')) {
+                        fetch(`/admin/delete-record/${id}`, {method: 'DELETE'})
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) location.reload();
+                                else alert('Error deleting record');
+                            });
+                    }
+                }
+                
+                function reimportCSV() {
+                    if (confirm('This will reimport data from CSV. Continue?')) {
+                        fetch('/api/test/import-csv')
+                            .then(response => response.json())
+                            .then(data => {
+                                alert(data.message);
+                                location.reload();
+                            });
+                    }
+                }
+                
+                function clearDatabase() {
+                    if (confirm('This will delete ALL records! Are you sure?')) {
+                        fetch('/admin/clear-database', {method: 'POST'})
+                            .then(response => response.json())
+                            .then(data => {
+                                alert(data.message);
+                                location.reload();
+                            });
+                    }
+                }
+            </script>
+        </body>
+        </html>
+        """
+        return render_template_string(html, records=records)
+    finally:
+        session.close()
+
+@app.route('/admin/delete-record/<int:record_id>', methods=['DELETE'])
+def delete_record(record_id):
+    session = db.Session()
+    try:
+        record = session.query(ReferralData).get(record_id)
+        if record:
+            session.delete(record)
+            session.commit()
+            return jsonify({'success': True})
+        return jsonify({'success': False, 'error': 'Record not found'})
+    finally:
+        session.close()
+
+@app.route('/admin/clear-database', methods=['POST'])
+def clear_database():
+    session = db.Session()
+    try:
+        count = session.query(ReferralData).delete()
+        session.commit()
+        return jsonify({
+            'success': True,
+            'message': f'Deleted {count} records'
+        })
+    finally:
+        session.close()
 
 if __name__ == '__main__':
     print("Starting Flask server...")
@@ -414,4 +607,7 @@ if __name__ == '__main__':
     print("  - GET /debug/db")
     print("  - GET /debug/trends")
     print("  - GET /api/test/import-csv")
+    print("  - GET /admin/database")
+    print("  - DELETE /admin/delete-record/<int:record_id>")
+    print("  - POST /admin/clear-database")
     app.run(host='0.0.0.0', port=5001, debug=True)

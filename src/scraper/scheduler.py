@@ -1,5 +1,5 @@
 from apscheduler.schedulers.blocking import BlockingScheduler
-from convertkit_scraper import ConvertKitScraper
+from .convertkit_scraper import ConvertKitScraper
 from datetime import datetime, timedelta
 import logging
 import json
@@ -36,10 +36,13 @@ class ScraperScheduler:
             json.dump({'last_run': datetime.now().isoformat()}, f)
             
     def should_run(self):
-        last_run = self.get_last_run()
-        if not last_run:
-            return True
-        return datetime.now() - last_run > timedelta(hours=20)
+        # Original logic
+        # if self.last_run and (datetime.now() - self.last_run).total_seconds() < self.min_interval:
+        #     logging.info("Skipping run - too soon since last successful run")
+        #     return False
+        
+        # Force run
+        return True
 
     def run_scraper(self):
         """Run the scraper if needed"""
@@ -48,6 +51,7 @@ class ScraperScheduler:
             return
             
         try:
+            # Create scraper instance without parameters
             scraper = ConvertKitScraper()
             
             if not scraper.login():

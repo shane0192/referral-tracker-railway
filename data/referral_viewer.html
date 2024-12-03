@@ -48,6 +48,51 @@
                         font-size: 1.2em;
                         font-weight: bold;
                     }
+                    .partnership-trends {
+                        background: white;
+                        padding: 20px;
+                        border-radius: 8px;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                        margin-top: 20px;
+                    }
+
+                    .current-period .stats {
+                        display: grid;
+                        grid-template-columns: repeat(3, 1fr);
+                        gap: 20px;
+                        margin: 15px 0;
+                    }
+
+                    .relationship-summary {
+                        display: grid;
+                        grid-template-columns: repeat(2, 1fr);
+                        gap: 20px;
+                        margin: 20px 0;
+                    }
+
+                    .trend-item {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        padding: 10px;
+                        border-bottom: 1px solid #eee;
+                    }
+
+                    .trend-direction {
+                        padding: 4px 8px;
+                        border-radius: 4px;
+                        font-size: 0.9em;
+                    }
+
+                    .trend-direction.improving {
+                        background: #e6ffe6;
+                        color: #006600;
+                    }
+
+                    .trend-direction.declining {
+                        background: #ffe6e6;
+                        color: #660000;
+                    }
                 </style>
             </head>
             <body>
@@ -84,6 +129,37 @@
                                     <option value="30" selected>30 days</option>
                                     <option value="90">90 days</option>
                                 </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Add this after the date selector, before the table -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5>Partnership Health</h5>
+                                    <div class="d-flex justify-content-between">
+                                        <div class="metric">
+                                            <label>Improving</label>
+                                            <span id="improving-relationships" class="positive">0</span>
+                                        </div>
+                                        <div class="metric">
+                                            <label>Declining</label>
+                                            <span id="declining-relationships" class="negative">0</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5>Fastest Growing</h5>
+                                    <div id="trends-list">
+                                        <!-- Top partners will be listed here -->
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -200,32 +276,49 @@
 
                 <!-- Trends Panel -->
                 <div id="trendsPanel" class="trends-panel">
-                    <button type="button" class="btn-close" aria-label="Close" onclick="closeTrendsPanel()"></button>
-                    <h2>Partnership Trends</h2>
+                    <div class="d-flex justify-content-between mb-4">
+                        <h3>Partnership Trends</h3>
+                        <button type="button" class="btn-close" onclick="this.parentElement.parentElement.classList.remove('active')"></button>
+                    </div>
                     
-                    <!-- Summary Section -->
-                    <div class="metrics-summary mb-4">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <h5>Current Period</h5>
-                                <div class="metric">
-                                    <label>Received</label>
-                                    <span id="receivedMetric">0</span>
-                                </div>
-                                <div class="metric">
-                                    <label>Sent</label>
-                                    <span id="sentMetric">0</span>
-                                </div>
-                                <div class="metric">
-                                    <label>Balance</label>
-                                    <span id="balanceMetric">0</span>
-                                </div>
+                    <div class="current-period">
+                        <h4>Current Period</h4>
+                        <div class="metrics-summary">
+                            <div class="metric">
+                                <label>Received</label>
+                                <span id="receivedMetric">0</span>
+                            </div>
+                            <div class="metric">
+                                <label>Sent</label>
+                                <span id="sentMetric">0</span>
+                            </div>
+                            <div class="metric">
+                                <label>Balance</label>
+                                <span id="balanceMetric">0</span>
                             </div>
                         </div>
                     </div>
-
-                    <!-- Trend Chart -->
-                    <div class="chart-container">
+                    
+                    <div class="trend-metrics mt-4">
+                        <h4>Growth Metrics</h4>
+                        <div class="metrics-summary">
+                            <div class="metric">
+                                <label>Daily Change</label>
+                                <span id="dailyChangeMetric">0</span>
+                            </div>
+                            <div class="metric">
+                                <label>Growth Rate</label>
+                                <span id="growthRateMetric">0%</span>
+                            </div>
+                            <div class="metric">
+                                <label>Trend</label>
+                                <span id="trendDirectionMetric">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-container mt-4">
+                        <h4>Historical Trend</h4>
                         <canvas id="trendChart"></canvas>
                     </div>
                 </div>
@@ -240,29 +333,54 @@
                     }
                     
                     function showTrendsPanel(received, sent, balance, partner) {
-                        console.log('Showing trends for:', partner);
+                        console.log('showTrendsPanel called with:', { received, sent, balance, partner });
                         
                         const panel = document.getElementById('trendsPanel');
                         panel.classList.add('active');
-                        
-                        // Update current metrics
-                        document.getElementById('receivedMetric').textContent = received.toLocaleString();
-                        document.getElementById('sentMetric').textContent = sent.toLocaleString();
-                        document.getElementById('balanceMetric').textContent = balance.toLocaleString();
                         
                         // Get current client and date range
                         const client = document.getElementById('clientSelect').value;
                         const dateRange = document.getElementById('dateRangeSelect').value;
                         
-                        // Fetch trend data
-                        fetch(`http://localhost:5001/api/partnership-metrics?account=${encodeURIComponent(client)}&partner=${encodeURIComponent(partner)}`)
-                            .then(response => response.json())
+                        // Calculate dates
+                        const end = new Date();
+                        const start = new Date();
+                        start.setDate(end.getDate() - parseInt(dateRange));
+                        
+                        const url = `http://localhost:5001/api/partnership-trends?account=${encodeURIComponent(client)}&partner=${encodeURIComponent(partner)}&start=${start.toISOString().split('T')[0]}&end=${end.toISOString().split('T')[0]}&t=${Date.now()}`;
+                        console.log('Fetching from URL:', url);
+                        
+                        fetch(url)
+                            .then(response => {
+                                console.log('Response status:', response.status);
+                                return response.json();
+                            })
                             .then(data => {
-                                if (data.trend_data) {
-                                    updateTrendChart(data.trend_data);
+                                console.log('Received trend data:', data);
+                                
+                                // Update current metrics
+                                document.getElementById('receivedMetric').textContent = received.toLocaleString();
+                                document.getElementById('sentMetric').textContent = sent.toLocaleString();
+                                document.getElementById('balanceMetric').textContent = balance.toLocaleString();
+                                
+                                // Update growth metrics
+                                if (data.growth) {
+                                    document.getElementById('dailyChangeMetric').textContent = 
+                                        data.growth.daily_change.toLocaleString();
+                                    document.getElementById('growthRateMetric').textContent = 
+                                        `${data.growth.growth_rate.toLocaleString()}%`;
+                                    document.getElementById('trendDirectionMetric').textContent = 
+                                        data.growth.trend_direction;
+                                }
+                                
+                                // Update trend chart if we have historical data
+                                if (data.historical_data) {
+                                    updateTrendChart(data.historical_data);
                                 }
                             })
-                            .catch(error => console.error('Error:', error));
+                            .catch(error => {
+                                console.error('Error fetching trends:', error);
+                            });
                     }
 
                     function closeTrendsPanel() {
@@ -270,45 +388,37 @@
                         panel.classList.remove('active');
                     }
 
-                    function updateTrendChart(trendData) {
-                        if (window.trendChart) {
-                            window.trendChart.destroy();
+                    function updateTrendChart(historicalData) {
+                        const ctx = document.getElementById('trendChart');
+                        if (!ctx) {
+                            console.error('Trend chart canvas not found');
+                            return;
                         }
-                        
-                        const ctx = document.getElementById('trendChart').getContext('2d');
-                        window.trendChart = new Chart(ctx, {
+
+                        // Check if there's an existing chart instance
+                        const existingChart = Chart.getChart(ctx);
+                        if (existingChart) {
+                            existingChart.destroy();
+                        }
+
+                        new Chart(ctx, {
                             type: 'line',
                             data: {
-                                labels: trendData.dates,
-                                datasets: [
-                                    {
-                                        label: 'Received',
-                                        data: trendData.received,
-                                        borderColor: 'rgb(75, 192, 192)',
-                                        tension: 0.1
-                                    },
-                                    {
-                                        label: 'Sent',
-                                        data: trendData.sent,
-                                        borderColor: 'rgb(255, 99, 132)',
-                                        tension: 0.1
-                                    },
-                                    {
-                                        label: 'Balance',
-                                        data: trendData.balance,
-                                        borderColor: 'rgb(54, 162, 235)',
-                                        tension: 0.1
-                                    }
-                                ]
+                                labels: historicalData.dates,
+                                datasets: [{
+                                    label: 'Received',
+                                    data: historicalData.received,
+                                    borderColor: 'rgb(75, 192, 192)',
+                                    tension: 0.1
+                                }, {
+                                    label: 'Sent',
+                                    data: historicalData.sent,
+                                    borderColor: 'rgb(255, 99, 132)',
+                                    tension: 0.1
+                                }]
                             },
                             options: {
                                 responsive: true,
-                                plugins: {
-                                    title: {
-                                        display: true,
-                                        text: 'Referral Trends Over Time'
-                                    }
-                                },
                                 scales: {
                                     y: {
                                         beginAtZero: true
@@ -327,11 +437,21 @@
                     // Add to the script section
                     // Initialize date inputs
                     document.addEventListener('DOMContentLoaded', function() {
-                        // Populate client select
-                        const clientSelect = document.getElementById('clientSelect');
-                        // Add event listeners
-                        dateRangeSelect.addEventListener('change', refreshData);
-                        clientSelect.addEventListener('change', refreshData);
+                        // Clear any existing data
+                        tableData = [];
+                        
+                        // Clear any existing charts
+                        const ctx = document.getElementById('trendChart');
+                        if (ctx) {
+                            const existingChart = Chart.getChart(ctx);
+                            if (existingChart) {
+                                existingChart.destroy();
+                            }
+                        }
+                        
+                        // Then load fresh data
+                        loadDefaultDashboard();
+                        // ... rest of your existing code ...
                     });
 
                     function refreshData() {
@@ -503,9 +623,11 @@
                                 const fetchConfig = {
                                     method: 'GET',
                                     mode: 'cors',
+                                    credentials: 'include',
                                     headers: {
                                         'Content-Type': 'application/json',
-                                        'Accept': 'application/json'
+                                        'Accept': 'application/json',
+                                        'Cache-Control': 'no-cache'
                                     }
                                 };
                                 
@@ -528,6 +650,155 @@
                             document.getElementById('clientSelect').dispatchEvent(new Event('change'));
                         });
                     });
+
+                    // Add this function to fetch trends
+                    async function fetchPartnershipTrends() {
+                        const client = document.getElementById('clientSelect').value;
+                        const dateRange = document.getElementById('dateRangeSelect').value;
+                        
+                        // Calculate start and end dates based on selected range
+                        const end = new Date();
+                        const start = new Date();
+                        start.setDate(end.getDate() - parseInt(dateRange));
+                        
+                        const startStr = start.toISOString().split('T')[0];
+                        const endStr = end.toISOString().split('T')[0];
+                        
+                        try {
+                            const response = await fetch(`http://localhost:5001/api/partnership-trends?account=${client}&start=${startStr}&end=${endStr}`);
+                            const trends = await response.json();
+                            
+                            // Update the trends panel
+                            updateTrendsPanel(trends);
+                        } catch (error) {
+                            console.error('Error fetching partnership trends:', error);
+                        }
+                    }
+
+                    // Add this function to update the UI
+                    function updateTrendsPanel(trends) {
+                        const trendsPanel = document.querySelector('.partnership-trends');
+                        if (!trendsPanel) {
+                            // Create the panel if it doesn't exist
+                            createTrendsPanel();
+                        }
+                        
+                        // Update current period stats
+                        document.getElementById('received-trend').textContent = trends.overall.received.end_total;
+                        document.getElementById('sent-trend').textContent = trends.overall.sent.end_total;
+                        document.getElementById('balance-trend').textContent = 
+                            trends.overall.received.end_total - trends.overall.sent.end_total;
+                        
+                        // Update summary stats
+                        document.getElementById('improving-relationships').textContent = 
+                            trends.summary.improving_relationships;
+                        document.getElementById('declining-relationships').textContent = 
+                            trends.summary.declining_relationships;
+                        
+                        // Update fastest growing partners
+                        const trendsList = document.getElementById('trends-list');
+                        trendsList.innerHTML = trends.partner_trends
+                            .slice(0, 5)  // Show top 5
+                            .map(partner => `
+                                <div class="trend-item">
+                                    <div class="partner-name">${partner.partner}</div>
+                                    <div class="trend-stats">
+                                        <div>Growth: ${partner.growth.growth_rate}%</div>
+                                        <div>Daily Change: ${partner.growth.daily_change}</div>
+                                        <div class="trend-direction ${partner.growth.trend_direction.toLowerCase()}">
+                                            ${partner.growth.trend_direction}
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('');
+                    }
+
+                    // Add this function to create the trends panel
+                    function createTrendsPanel() {
+                        const panel = document.createElement('div');
+                        panel.className = 'partnership-trends';
+                        panel.innerHTML = `
+                            <h2>Partnership Trends</h2>
+                            <div class="current-period">
+                                <h3>Current Period</h3>
+                                <div class="stats">
+                                    <div>
+                                        <label>Received</label>
+                                        <span id="received-trend">0</span>
+                                    </div>
+                                    <div>
+                                        <label>Sent</label>
+                                        <span id="sent-trend">0</span>
+                                    </div>
+                                    <div>
+                                        <label>Balance</label>
+                                        <span id="balance-trend">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="relationship-summary">
+                                <div>
+                                    <label>Improving Relationships</label>
+                                    <span id="improving-relationships">0</span>
+                                </div>
+                                <div>
+                                    <label>Declining Relationships</label>
+                                    <span id="declining-relationships">0</span>
+                                </div>
+                            </div>
+                            <div class="fastest-growing">
+                                <h3>Fastest Growing Partnerships</h3>
+                                <div id="trends-list"></div>
+                            </div>
+                        `;
+                        
+                        document.querySelector('.container').appendChild(panel);
+                    }
+
+                    // Update the existing loadData function to include trends
+                    async function loadData() {
+                        await Promise.all([
+                            fetchImbalances(),
+                            updateDashboardTrends()
+                        ]);
+                    }
+
+                    // Add function to update dashboard trends
+                    function updateDashboardTrends() {
+                        const client = document.getElementById('clientSelect').value;
+                        const dateRange = document.getElementById('dateRangeSelect').value;
+                        
+                        // Calculate dates
+                        const end = new Date();
+                        const start = new Date();
+                        start.setDate(end.getDate() - parseInt(dateRange));
+                        
+                        fetch(`http://localhost:5001/api/overall-trends?account=${encodeURIComponent(client)}&start=${start.toISOString().split('T')[0]}&end=${end.toISOString().split('T')[0]}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                // Update improving/declining counts
+                                document.getElementById('improving-relationships').textContent = 
+                                    data.summary.improving_relationships;
+                                document.getElementById('declining-relationships').textContent = 
+                                    data.summary.declining_relationships;
+                                
+                                // Update fastest growing list
+                                const trendsList = document.getElementById('trends-list');
+                                trendsList.innerHTML = data.fastest_growing
+                                    .map(partner => `
+                                        <div class="trend-item">
+                                            <div class="partner-name">${partner.name}</div>
+                                            <div class="trend-stats">
+                                                <div>Growth: ${partner.growth_rate}%</div>
+                                                <div class="trend-direction ${partner.trend_direction.toLowerCase()}">
+                                                    ${partner.trend_direction}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `).join('');
+                            })
+                            .catch(error => console.error('Error:', error));
+                    }
                 </script>
             </body>
             </html>

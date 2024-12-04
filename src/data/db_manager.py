@@ -6,6 +6,8 @@ import pandas as pd
 from pathlib import Path
 from ..utils.config import DATABASE_URL
 import json
+import os
+import shutil
 
 Base = declarative_base()
 
@@ -302,420 +304,83 @@ class DatabaseManager:
         print("Data imported successfully!")
 
     def create_html_viewer(self):
-        """Create HTML viewer for referral analytics"""
-        session = self.Session()
+        """Create HTML viewer with avatars"""
         try:
-            # Get all unique account names (clients)
-            accounts = [r.account_name for r in session.query(ReferralData.account_name).distinct()]
-            accounts.sort()
+            # Get the latest data
+            data = self.get_latest_data()
             
-            # Create client options HTML
-            client_options = ['<option value="all">All Clients</option>']
-            client_options.extend([f'<option value="{account}">{account}</option>' for account in accounts])
+            # Setup paths
+            source_avatar_dir = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+                'data',
+                'avatars'
+            )
             
-            # Get the largest imbalances
-            imbalances = self.get_largest_imbalances()
+            # Create destination directory next to the HTML file
+            html_dir = os.path.dirname(__file__)
+            dest_avatar_dir = os.path.join(html_dir, 'avatars')
+            os.makedirs(dest_avatar_dir, exist_ok=True)
             
-            # Create table rows HTML
-            table_rows = []
-            for imb in imbalances:
-                print(f"Debug - Imbalance data: {imb}")  # Add this debug line
-                received = int(imb.get('received', 0))
-                sent = int(imb.get('sent', 0))
-                imbalance = int(imb.get('imbalance', 0))
+            # Copy avatar mapping and images
+            avatar_mapping = {}
+            if os.path.exists(os.path.join(source_avatar_dir, 'avatar_mapping.json')):
+                # Load mapping
+                with open(os.path.join(source_avatar_dir, 'avatar_mapping.json'), 'r') as f:
+                    avatar_mapping = json.load(f)
                 
-                row = f'''
-                    <tr class="table-row-clickable" 
-                        onclick="showTrendsPanel({received}, {sent}, {imbalance}, '{imb['partner']}')">
-                        <td>{imb['partner']}</td>
-                        <td>{imb.get('account', '')}</td>
-                        <td>{received:,}</td>
-                        <td>{sent:,}</td>
-                        <td>{imbalance:,}</td>
+                # Copy each avatar file
+                for filename in os.listdir(source_avatar_dir):
+                    if filename.endswith('.png'):
+                        source_path = os.path.join(source_avatar_dir, filename)
+                        dest_path = os.path.join(dest_avatar_dir, filename)
+                        shutil.copy2(source_path, dest_path)
+                
+                print(f"Copied {len(avatar_mapping)} avatars to {dest_avatar_dir}")
+            
+            # Read the template
+            template_path = os.path.join(os.path.dirname(__file__), 'referral_viewer.html')
+            with open(template_path, 'r') as f:
+                template = f.read()
+                
+            # Replace placeholders with data
+            rows = []
+            for row in data:
+                partner_name = row['partner_name']
+                avatar_file = avatar_mapping.get(partner_name, 'default.png')
+                
+                row_html = f"""
+                    <tr class="border-none hover:bg-gray-50 cursor-pointer">
+                        <td class="px-4 py-4 text-sm flex flex-row px-4 pt-3 pb-3 items-center">
+                            <img 
+                                src="avatars/{avatar_file}" 
+                                alt="{partner_name}"
+                                class="rounded-full object-cover object-center mr-4"
+                                style="display: inline; width: 48px; height: 48px;"
+                            >
+                            <div class="inline text-sm leading-6 font-semibold">{partner_name}</div>
+                        </td>
+                        <td class="px-4 py-4 text-sm text-center">{row['received']}</td>
+                        <td class="px-4 py-4 text-sm text-center">{row['sent']}</td>
+                        <td class="px-4 py-4 text-sm text-center">{row['balance']}</td>
+                        <td class="px-4 py-4 text-sm text-right">{row['all_time_balance']}</td>
                     </tr>
-                '''
-                table_rows.append(row)
+                """
+                rows.append(row_html)
+                
+            # Join all rows and insert into template
+            table_content = '\n'.join(rows)
+            html_content = template.replace('{{ table_content }}', table_content)
             
-            html_parts = []
-            html_parts.append('''
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Referral Analytics</title>
-                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-                <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-                <style>
-                    .positive { color: green; }
-                    .negative { color: red; }
-                    .table-container { margin-bottom: 2rem; }
-                    .trends-panel {
-                        position: fixed;
-                        right: -500px;
-                        top: 0;
-                        width: 500px;
-                        height: 100vh;
-                        background: white;
-                        box-shadow: -2px 0 10px rgba(0,0,0,0.1);
-                        transition: right 0.3s ease;
-                        z-index: 1050;
-                        padding: 20px;
-                        overflow-y: auto;
-                    }
-                    .trends-panel.active { right: 0; }
-                    .chart-container { margin-bottom: 20px; }
-                    .table-row-clickable:hover {
-                        background-color: #f5f5f5;
-                        cursor: pointer;
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="container mt-4">
-                    <h2 class="mb-4">Referral Analytics</h2>
-                    
-                    <!-- Add Client and Date Selectors -->
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="clientSelect">Client</label>
-                                <select class="form-select" id="clientSelect">
-                                    ''' + '\n'.join(client_options) + '''
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="dateRangeSelect">Date Range</label>
-                                <select class="form-select" id="dateRangeSelect">
-                                    <option value="1">24 hours</option>
-                                    <option value="7">7 days</option>
-                                    <option value="14">14 days</option>
-                                    <option value="30" selected>30 days</option>
-                                    <option value="90">90 days</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="defaultDashboard">
-                        <h3 class="mb-4">Largest Referral Imbalances</h3>
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th onclick="sortTable('partner')" style="cursor: pointer;">Partner</th>
-                                        <th onclick="sortTable('received')" style="cursor: pointer;">Received</th>
-                                        <th onclick="sortTable('sent')" style="cursor: pointer;">Sent</th>
-                                        <th onclick="sortTable('balance')" style="cursor: pointer;">Balance</th>
-                                        <th onclick="sortTable('balance')" style="cursor: pointer;">All-Time Balance</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ''' + '\n'.join(table_rows) + '''
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Trends Panel -->
-                <div id="trendsPanel" class="trends-panel">
-                    <div class="trends-header">
-                        <h2>Partnership Trends</h2>
-                        <span class="close-btn" onclick="closeTrendsPanel()">×</span>
-                    </div>
-                    <div class="metrics-container">
-                        <div class="metric-box">
-                            <h3>Received</h3>
-                            <span id="receivedMetric">0</span>
-                        </div>
-                        <div class="metric-box">
-                            <h3>Sent</h3>
-                            <span id="sentMetric">0</span>
-                        </div>
-                        <div class="metric-box">
-                            <h3>Current Balance</h3>
-                            <span id="balanceMetric">0</span>
-                        </div>
-                    </div>
-                    <div id="trendChart"></div>
-                </div>
-
-                <script>
-                    let exchangeChart = null;
-                    let currentSort = { column: 'balance', direction: 'desc' };
-                    let tableData = [];
-
-                    function formatNumber(num) {
-                        return new Intl.NumberFormat().format(num);
-                    }
-                    
-                    function showTrendsPanel(received, sent, balance, partner) {
-                        console.log('Received:', received, 'Sent:', sent, 'Balance:', balance, 'Partner:', partner);
-
-                        if (!partner) {
-                            console.error('Partner is undefined');
-                            return;
-                        }
-
-                        received = parseInt(received) || 0;
-                        sent = parseInt(sent) || 0;
-                        balance = parseInt(balance) || 0;
-
-                        document.getElementById('receivedMetric').textContent = received.toLocaleString();
-                        document.getElementById('sentMetric').textContent = sent.toLocaleString();
-                        document.getElementById('balanceMetric').textContent = balance.toLocaleString();
-
-                        const panel = document.getElementById('trendsPanel');
-                        panel.classList.add('active');
-                    }
-
-                    function closeTrendsPanel() {
-                        document.getElementById('trendsPanel').classList.remove('active');
-                    }
-
-                    function updateTrendChart(trendData) {
-                        if (exchangeChart) exchangeChart.destroy();
-                        
-                        const ctx = document.getElementById('exchangeChart').getContext('2d');
-                        exchangeChart = new Chart(ctx, {
-                            type: 'line',
-                            data: {
-                                labels: trendData.dates,
-                                datasets: [
-                                    {
-                                        label: 'Received',
-                                        data: trendData.received,
-                                        borderColor: 'rgb(75, 192, 192)',
-                                        tension: 0.1
-                                    },
-                                    {
-                                        label: 'Sent',
-                                        data: trendData.sent,
-                                        borderColor: 'rgb(255, 99, 132)',
-                                        tension: 0.1
-                                    },
-                                    {
-                                        label: 'Balance',
-                                        data: trendData.balance,
-                                        borderColor: 'rgb(54, 162, 235)',
-                                        tension: 0.1
-                                    }
-                                ]
-                            },
-                            options: {
-                                responsive: true,
-                                plugins: {
-                                    title: {
-                                        display: true,
-                                        text: 'Partnership Trend Over Time'
-                                    }
-                                }
-                            }
-                        });
-                    }
-
-                    function formatBalanceValue(value) {
-                        if (isNaN(value)) value = 0;
-                        const cls = value >= 0 ? 'positive' : 'negative';
-                        return `<span class="${cls}">${value.toLocaleString()}</span>`;
-                    }
-
-                    // Add to the script section
-                    // Initialize date inputs
-                    document.addEventListener('DOMContentLoaded', function() {
-                        // Populate client select
-                        const clientSelect = document.getElementById('clientSelect');
-                        // Get unique clients from your data
-                        const clients = [...new Set(imbalances.map(item => item.partner))];
-                        clients.forEach(client => {
-                            const option = document.createElement('option');
-                            option.value = client;
-                            option.textContent = client;
-                            clientSelect.appendChild(option);
-                        });
-
-                        // Add event listeners
-                        dateRangeSelect.addEventListener('change', refreshData);
-                        clientSelect.addEventListener('change', refreshData);
-                    });
-
-                    function refreshData() {
-                        const dateRange = document.getElementById('dateRangeSelect').value;
-                        const client = document.getElementById('clientSelect').value;
-                        
-                        console.log('Refreshing data for:', {
-                            dateRange,
-                            client
-                        });
-                        // TODO: Add API call to refresh data
-                    }
-
-                    // Add these function definitions before your event listeners
-                    let imbalances = [];
-
-                    function loadDefaultDashboard() {
-                        console.log('Loading default dashboard');
-                        const dateRange = document.getElementById('dateRangeSelect').value;
-                        let url = 'http://localhost:5001/api/largest-imbalances';
-                        
-                        if (dateRange !== 'all') {
-                            const now = new Date();
-                            const startDate = new Date();
-                            startDate.setDate(now.getDate() - parseInt(dateRange));
-                            url += `?start=${startDate.toISOString().split('T')[0]}&end=${now.toISOString().split('T')[0]}`;
-                        }
-                        
-                        fetch(url)
-                            .then(response => response.json())
-                            .then(data => {
-                                imbalances = data;
-                                updateTable(data);
-                            })
-                            .catch(error => {
-                                console.error('Error:', error);
-                                const tbody = document.querySelector('table tbody');
-                                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Error loading data: ${error.message}</td></tr>`;
-                            });
-                    }
-
-                    function sortTable(column) {
-                        const direction = currentSort.column === column && currentSort.direction === 'desc' ? 'asc' : 'desc';
-                        
-                        tableData.sort((a, b) => {
-                            let valueA, valueB;
-                            
-                            switch(column) {
-                                case 'partner':
-                                    valueA = a.partner || '';
-                                    valueB = b.partner || '';
-                                    return direction === 'desc' ? valueB.localeCompare(valueA) : valueA.localeCompare(valueB);
-                                case 'received':
-                                    valueA = a.period_received || a.received || 0;
-                                    valueB = b.period_received || b.received || 0;
-                                    break;
-                                case 'sent':
-                                    valueA = a.period_sent || a.sent || 0;
-                                    valueB = b.period_sent || b.sent || 0;
-                                    break;
-                                case 'balance':
-                                    valueA = a.period_balance || a.imbalance || 0;
-                                    valueB = b.period_balance || b.imbalance || 0;
-                                    break;
-                            }
-                            
-                            return direction === 'desc' ? valueA - valueB : valueB - valueA;
-                        });
-                        
-                        currentSort = { column, direction };
-                        renderTable();
-                    }
-
-                    function updateTableHeaders() {
-                        const isDefaultView = document.getElementById('clientSelect').value === 'all';
-                        const thead = document.querySelector('table thead tr');
-                        
-                        thead.innerHTML = isDefaultView ? `
-                            <th onclick="sortTable('partner')" style="cursor: pointer;">Partner</th>
-                            <th onclick="sortTable('account')" style="cursor: pointer;">Client</th>
-                            <th onclick="sortTable('received')" style="cursor: pointer;">Received</th>
-                            <th onclick="sortTable('sent')" style="cursor: pointer;">Sent</th>
-                            <th onclick="sortTable('balance')" style="cursor: pointer;">Balance</th>
-                            <th onclick="sortTable('balance')" style="cursor: pointer;">All-Time Balance</th>
-                        ` : `
-                            <th onclick="sortTable('partner')" style="cursor: pointer;">Partner</th>
-                            <th onclick="sortTable('received')" style="cursor: pointer;">Received</th>
-                            <th onclick="sortTable('sent')" style="cursor: pointer;">Sent</th>
-                            <th onclick="sortTable('balance')" style="cursor: pointer;">Balance</th>
-                            <th onclick="sortTable('balance')" style="cursor: pointer;">All-Time Balance</th>
-                        `;
-                    }
-
-                    function renderTable() {
-                        const tbody = document.querySelector('table tbody');
-                        tbody.innerHTML = '';
-                        
-                        const isDefaultView = document.getElementById('clientSelect').value === 'all';
-                        
-                        tableData.forEach(item => {
-                            const row = document.createElement('tr');
-                            row.className = 'table-row-clickable';
-                            const balanceClass = (item.period_balance || item.imbalance || 0) >= 0 ? 'positive' : 'negative';
-                            
-                            const received = item.period_received || item.received || 0;
-                            const sent = item.period_sent || item.sent || 0;
-                            const balance = item.period_balance || item.imbalance || 0;
-                            
-                            row.innerHTML = isDefaultView ? `
-                                <td>${item.partner}</td>
-                                <td>${item.account || ''}</td>
-                                <td>${received.toLocaleString()}</td>
-                                <td>${sent.toLocaleString()}</td>
-                                <td class="${balanceClass}">${balance.toLocaleString()}</td>
-                                <td class="${balanceClass}">${balance.toLocaleString()}</td>
-                            ` : `
-                                <td>${item.partner}</td>
-                                <td>${received.toLocaleString()}</td>
-                                <td>${sent.toLocaleString()}</td>
-                                <td class="${balanceClass}">${balance.toLocaleString()}</td>
-                                <td class="${balanceClass}">${balance.toLocaleString()}</td>
-                            `;
-                            
-                            row.onclick = () => showTrendsPanel({
-                                received: received,
-                                sent: sent,
-                                balance: balance
-                            });
-                            
-                            tbody.appendChild(row);
-                        });
-                    }
-
-                    function updateTable(data) {
-                        tableData = data;
-                        sortTable('balance'); // Default sort by balance
-                    }
-
-                    // Your existing event listener code remains the same
-                    document.addEventListener('DOMContentLoaded', function() {
-                        // Initial load of default dashboard
-                        loadDefaultDashboard();
-
-                        // Add event listeners for selectors
-                        document.getElementById('clientSelect').addEventListener('change', function() {
-                            updateTableHeaders(); // Update headers when view changes
-                            const selectedClient = this.value;
-                            console.log('Selected client:', selectedClient);
-                            
-                            if (selectedClient === 'all') {
-                                loadDefaultDashboard();
-                            } else {
-                                fetch(`http://localhost:5000/api/partnership-metrics?account=${encodeURIComponent(selectedClient)}`)
-                                    .then(response => response.json())
-                                    .then(data => {
-                                        console.log('API Response:', data);
-                                        updateTable(data);
-                                    })
-                                    .catch(error => {
-                                        console.error('Error:', error);
-                                        const tbody = document.querySelector('table tbody');
-                                        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Error loading data: ${error.message}</td></tr>`;
-                                    });
-                            }
-                        });
-
-                        document.getElementById('dateRangeSelect').addEventListener('change', function() {
-                            document.getElementById('clientSelect').dispatchEvent(new Event('change'));
-                        });
-                    });
-                </script>
-            </body>
-            </html>
-            ''')
+            # Write the final HTML
+            output_path = os.path.join(os.path.dirname(__file__), 'referral_viewer.html')
+            with open(output_path, 'w') as f:
+                f.write(html_content)
+                
+            return output_path
             
-            return '\n'.join(html_parts)
-        finally:
-            session.close()
+        except Exception as e:
+            print(f"Error creating HTML viewer: {str(e)}")
+            raise
 
     def get_account_trends(self, account_name, start_date, end_date):
         """Get trend data for a specific account over the specified date range"""
@@ -924,3 +589,32 @@ class DatabaseManager:
             
         finally:
             session.close()
+
+    def renderTableRow(self, row):
+        partner_name = row['partner']  # or however you get the partner name
+        avatar_path = f"avatars/{avatar_mapping.get(partner_name, 'default.png')}"
+        
+        return f"""
+            <tr>
+                <td class="px-4 py-4 text-sm">
+                    <div class="flex flex-row items-center">
+                        <img 
+                            src="{avatar_path}" 
+                            alt="{partner_name}"
+                            class="rounded-full object-cover object-center mr-4"
+                            style="width: 48px; height: 48px;"
+                            onerror="this.src='avatars/default.png'"
+                        >
+                        <div class="text-sm leading-6 font-semibold">{partner_name}</div>
+                    </div>
+                </td>
+                <td>{row['period_received']}</td>
+                <td>{row['period_sent']}</td>
+                <td class="{'text-success' if row['period_balance'] > 0 else 'text-danger'}">
+                    {row['period_balance']}
+                </td>
+                <td class="{'text-success' if row['all_time_balance'] > 0 else 'text-danger'}">
+                    {row['all_time_balance']}
+                </td>
+            </tr>
+        """

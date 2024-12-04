@@ -17,6 +17,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from src.data.db_manager import DatabaseManager
 import pandas as pd
 from ..utils.config import CONVERTKIT_EMAIL, CONVERTKIT_PASSWORD
+import requests
+import hashlib
 
 # Add this constant
 ALLOWED_ACCOUNTS = [
@@ -601,4 +603,88 @@ class ConvertKitScraper:
         except Exception as e:
             print(f"Failed to navigate to Creator Network: {str(e)}")
             self.driver.save_screenshot("navigation_error.png")
+            raise
+
+    def scrape_partner_avatars(self):
+        """Scrape profile images from all allowed accounts"""
+        try:
+            print("\nStarting avatar collection...")
+            
+            # Create images directory if it doesn't exist
+            image_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data', 'avatars')
+            os.makedirs(image_dir, exist_ok=True)
+            print(f"Saving avatars to: {image_dir}")
+            
+            # Get all allowed accounts
+            print("\nGetting available accounts...")
+            accounts = self.get_available_accounts()
+            avatars_collected = {}
+            
+            # Process each account
+            for account in accounts:
+                try:
+                    print(f"\nProcessing account: {account['name']}")
+                    if self.switch_to_account(account):
+                        self.navigate_to_creator_network()
+                        time.sleep(3)
+                        
+                        # Find all profile entries
+                        profile_elements = self.driver.find_elements(
+                            By.XPATH,
+                            "//td[contains(@class, 'px-4 py-4')]//img[contains(@class, 'rounded-full')]/.."
+                        )
+                        
+                        print(f"Found {len(profile_elements)} potential profiles")
+                        
+                        for profile in profile_elements:
+                            try:
+                                # Get the image and name
+                                img = profile.find_element(By.XPATH, ".//img")
+                                name_element = profile.find_element(By.XPATH, ".//div[contains(@class, 'inline text-sm')]")
+                                
+                                image_url = img.get_attribute('src')
+                                creator_name = name_element.text.strip()
+                                
+                                if not image_url or not creator_name:
+                                    continue
+                                    
+                                if creator_name not in avatars_collected:
+                                    print(f"Processing avatar for: {creator_name}")
+                                    
+                                    # Download image
+                                    response = requests.get(image_url)
+                                    if response.status_code == 200:
+                                        filename = f"{hashlib.md5(creator_name.encode()).hexdigest()}.png"
+                                        filepath = os.path.join(image_dir, filename)
+                                        
+                                        with open(filepath, 'wb') as f:
+                                            f.write(response.content)
+                                        
+                                        avatars_collected[creator_name] = filename
+                                        print(f"✅ Saved avatar for {creator_name}")
+                                else:
+                                    print(f"Already have avatar for {creator_name}")
+                                    
+                            except Exception as e:
+                                print(f"Error processing profile: {str(e)}")
+                                continue
+                            
+                except Exception as e:
+                    print(f"Error processing account {account['name']}: {str(e)}")
+                    continue
+            
+            # Save mapping of names to image files
+            mapping_file = os.path.join(image_dir, 'avatar_mapping.json')
+            with open(mapping_file, 'w') as f:
+                json.dump(avatars_collected, f, indent=2)
+            
+            print(f"\n✅ Collection complete!")
+            print(f"Collected {len(avatars_collected)} unique avatars")
+            print(f"Mapping saved to: {mapping_file}")
+            
+            return avatars_collected
+            
+        except Exception as e:
+            print(f"Failed to scrape avatars: {str(e)}")
+            self.driver.save_screenshot("avatar_scraping_error.png")
             raise

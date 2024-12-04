@@ -39,10 +39,16 @@ def get_partnership_metrics():
     start_date_str = request.args.get('start')
     end_date_str = request.args.get('end')
     
-    print("\n=== Partnership Metrics API Request ===")
+    # Add default date handling
+    if not start_date_str or not end_date_str:
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=30)
+        start_date_str = start_date.strftime('%Y-%m-%d')
+        end_date_str = end_date.strftime('%Y-%m-%d')
+    
+    print(f"\n=== Partnership Metrics Request ===")
     print(f"Account: {account}")
-    print(f"Start date: {start_date_str}")
-    print(f"End date: {end_date_str}")
+    print(f"Date range: {start_date_str} to {end_date_str}")
     
     try:
         # Convert dates and set time to include all of today
@@ -54,66 +60,63 @@ def get_partnership_metrics():
         
         session = db.Session()
         try:
-            records = session.query(ReferralData)\
-                .filter(ReferralData.account_name == account)\
+            # Remove the account filter when no account specified
+            query = session.query(ReferralData)\
                 .filter(ReferralData.date <= end_date)\
-                .filter(ReferralData.date >= start_date)\
-                .order_by(ReferralData.date)\
-                .all()
+                .filter(ReferralData.date >= start_date)
                 
-            print(f"Found {len(records)} records")
+            if account:  # Only filter by account if specified
+                query = query.filter(ReferralData.account_name == account)
+                
+            records = query.order_by(ReferralData.date).all()
+            
+            # Group records by account
+            account_records = {}
             for record in records:
-                print(f"Record date: {record.date}")
-                
-            if not records:
-                return jsonify([])
+                if record.account_name not in account_records:
+                    account_records[record.account_name] = []
+                account_records[record.account_name].append(record)
             
-            # Use first and last records in the period
-            baseline_record = records[0]  # First record in period
-            latest_record = records[-1]   # Last record in period
-            
-            # Process metrics
+            # Process each account's records
             results = []
-            all_partners = set()
+            for account_name, account_data in account_records.items():
+                # Use first and last records for each account
+                baseline_record = account_data[0]
+                latest_record = account_data[-1]
+                
+                # Your existing partner processing code
+                all_partners = set()
+                for record in [baseline_record, latest_record]:
+                    all_partners.update(rec['creator'] for rec in record.recommending_me)
+                    all_partners.update(rec['creator'] for rec in record.my_recommendations)
+                
+                for partner in all_partners:
+                    # Your existing metrics calculation
+                    baseline_received = next((safe_int_convert(rec['subscribers']) 
+                        for rec in baseline_record.recommending_me if rec['creator'] == partner), 0)
+                    baseline_sent = next((safe_int_convert(rec['subscribers']) 
+                        for rec in baseline_record.my_recommendations if rec['creator'] == partner), 0)
+                    
+                    latest_received = next((safe_int_convert(rec['subscribers']) 
+                        for rec in latest_record.recommending_me if rec['creator'] == partner), 0)
+                    latest_sent = next((safe_int_convert(rec['subscribers']) 
+                        for rec in latest_record.my_recommendations if rec['creator'] == partner), 0)
+                    
+                    period_received = latest_received - baseline_received
+                    period_sent = latest_sent - baseline_sent
+                    period_balance = period_received - period_sent
+                    all_time_balance = latest_received - latest_sent
+                    
+                    results.append({
+                        'partner': partner,
+                        'account': account_name,  # Include the account name
+                        'period_received': period_received,
+                        'period_sent': period_sent,
+                        'period_balance': period_balance,
+                        'all_time_balance': all_time_balance
+                    })
             
-            # Get all unique partners from both records
-            for record in [baseline_record, latest_record]:
-                all_partners.update(rec['creator'] for rec in record.recommending_me)
-                all_partners.update(rec['creator'] for rec in record.my_recommendations)
-            
-            for partner in all_partners:
-                # Get baseline values
-                baseline_received = next((safe_int_convert(rec['subscribers']) 
-                    for rec in baseline_record.recommending_me if rec['creator'] == partner), 0)
-                baseline_sent = next((safe_int_convert(rec['subscribers']) 
-                    for rec in baseline_record.my_recommendations if rec['creator'] == partner), 0)
-                
-                # Get latest values
-                latest_received = next((safe_int_convert(rec['subscribers']) 
-                    for rec in latest_record.recommending_me if rec['creator'] == partner), 0)
-                latest_sent = next((safe_int_convert(rec['subscribers']) 
-                    for rec in latest_record.my_recommendations if rec['creator'] == partner), 0)
-                
-                # Calculate metrics
-                period_received = latest_received - baseline_received
-                period_sent = latest_sent - baseline_sent
-                period_balance = period_received - period_sent
-                all_time_balance = latest_received - latest_sent
-                
-                print(f"\nPartner: {partner}")
-                print(f"Baseline - Received: {baseline_received}, Sent: {baseline_sent}")
-                print(f"Latest - Received: {latest_received}, Sent: {latest_sent}")
-                print(f"Period changes - Received: {period_received}, Sent: {period_sent}")
-                
-                results.append({
-                    'partner': partner,
-                    'period_received': period_received,
-                    'period_sent': period_sent,
-                    'period_balance': period_balance,
-                    'all_time_balance': all_time_balance
-                })
-            
-            # Sort by absolute period balance
+            # Sort by absolute period balance across all accounts
             results.sort(key=lambda x: abs(x['period_balance']), reverse=True)
             return jsonify(results)
             
@@ -202,6 +205,7 @@ def get_largest_imbalances():
                 
                 results.append({
                     'partner': partner,
+                    'account': account,
                     'period_received': period_received,
                     'period_sent': period_sent,
                     'period_balance': period_balance,
@@ -613,6 +617,25 @@ def clear_database():
         return jsonify({
             'success': True,
             'message': f'Deleted {count} records'
+        })
+    finally:
+        session.close()
+
+@app.route('/api/debug/database')
+def debug_database():
+    session = db.Session()
+    try:
+        records = session.query(ReferralData).all()
+        return jsonify({
+            'total_records': len(records),
+            'accounts': list(set(r.account_name for r in records)),
+            'sample_dates': [r.date.strftime('%Y-%m-%d') for r in records[:5]],
+            'sample_data': [{
+                'account': r.account_name,
+                'date': r.date.strftime('%Y-%m-%d'),
+                'recommending_me': len(r.recommending_me),
+                'my_recommendations': len(r.my_recommendations)
+            } for r in records[:5]]
         })
     finally:
         session.close()

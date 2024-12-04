@@ -174,6 +174,77 @@
                         cursor: help;
                         margin-left: 4px;
                     }
+
+                    .card-body h6 {
+                        font-size: 0.9rem;
+                        color: #666;
+                        margin-bottom: 1rem;
+                    }
+                    
+                    .growth-item {
+                        margin-bottom: 0.5rem;
+                    }
+                    
+                    .growth-item .partner-name {
+                        font-size: 0.85rem;
+                        color: #333;
+                        margin-bottom: 0.1rem;
+                    }
+                    
+                    .growth-item .growth-value {
+                        font-size: 0.8rem;
+                        font-weight: 500;
+                    }
+                    
+                    .growth-value.positive {
+                        color: #28a745;
+                    }
+                    
+                    .growth-value.negative {
+                        color: #dc3545;
+                    }
+                    .growth-value-container {
+                        display: flex;
+                        align-items: baseline;
+                        gap: 4px;
+                    }
+                    
+                    .period-label {
+                        font-size: 0.7rem;
+                        color: #666;
+                        font-weight: normal;
+                    }
+                    
+                    .show-more-button {
+                        margin: 1rem 0 3rem 0;
+                        color: #6c757d;
+                        text-decoration: none;
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 0.5rem;
+                        padding: 0.5rem 1rem;
+                        border: 1px solid #dee2e6;
+                        border-radius: 4px;
+                        transition: all 0.2s ease;
+                    }
+                    
+                    .show-more-button:hover {
+                        background-color: #f8f9fa;
+                        color: #495057;
+                    }
+                    
+                    .show-more-button i {
+                        transition: transform 0.2s ease;
+                    }
+                    
+                    .show-more-button[aria-expanded="true"] i {
+                        transform: rotate(180deg);
+                    }
+                    
+                    /* Add more bottom margin to the container */
+                    .container {
+                        margin-bottom: 5rem;
+                    }
                 </style>
             </head>
             <body>
@@ -223,11 +294,11 @@
                                     <div class="d-flex justify-content-between">
                                         <div class="metric">
                                             <label>Improving</label>
-                                            <span id="improving-relationships" class="positive">0</span>
+                                            <span class="value positive">0</span>
                                         </div>
                                         <div class="metric">
                                             <label>Declining</label>
-                                            <span id="declining-relationships" class="negative">0</span>
+                                            <span class="value negative">0</span>
                                         </div>
                                     </div>
                                 </div>
@@ -236,13 +307,30 @@
                         <div class="col-md-6">
                             <div class="card">
                                 <div class="card-body">
-                                    <h5>Fastest Growing</h5>
-                                    <div id="trends-list">
-                                        <!-- Top partners will be listed here -->
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6>Fastest Growing</h6>
+                                            <div class="fastest-growing">
+                                                <!-- Will be populated dynamically -->
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6>Fastest Declining</h6>
+                                            <div class="fastest-declining">
+                                                <!-- Will be populated dynamically -->
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Add this after your existing cards, before the table -->
+                    <div class="mb-4">
+                        <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#manualEntryModal">
+                            <i class="bi bi-plus-circle"></i> Add Manual Referrals
+                        </button>
                     </div>
 
                     <div id="defaultDashboard">
@@ -251,106 +339,29 @@
                             <table class="table table-hover">
                                 <thead>
                                     <tr>
-                                        <th onclick="sortTable('partner')" style="cursor: pointer;">Partner</th>
-                                        <th onclick="sortTable('received')" style="cursor: pointer;">Received</th>
-                                        <th onclick="sortTable('sent')" style="cursor: pointer;">Sent</th>
-                                        <th onclick="sortTable('balance')" style="cursor: pointer;">Balance</th>
-                                        <th onclick="sortTable('balance')" style="cursor: pointer;">All-Time Balance</th>
+                                        <th>Partner</th>
+                                        <th>Received</th>
+                                        <th>Sent</th>
+                                        <th>Balance</th>
+                                        <th>All-Time Balance</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    
-                    <tr class="table-row-clickable" 
-                        onclick="showTrendsPanel(0, 23119, -23119, 'Ali Abdaal')">
-                        <td>Ali Abdaal</td>
-                        <td>0</td>
-                        <td>23,119</td>
-                        <td>-23,119</td>
-                    </tr>
-                
-
-                    <tr class="table-row-clickable" 
-                        onclick="showTrendsPanel(0, 19600, -19600, 'Contrarian Thinking')">
-                        <td>Contrarian Thinking</td>
-                        <td>0</td>
-                        <td>19,600</td>
-                        <td>-19,600</td>
-                    </tr>
-                
-
-                    <tr class="table-row-clickable" 
-                        onclick="showTrendsPanel(8768, 0, 8768, 'Design.dev')">
-                        <td>Design.dev</td>
-                        <td>8,768</td>
-                        <td>0</td>
-                        <td>8,768</td>
-                    </tr>
-                
-
-                    <tr class="table-row-clickable" 
-                        onclick="showTrendsPanel(3700, 10194, -6494, 'Ramit Sethi')">
-                        <td>Ramit Sethi</td>
-                        <td>3,700</td>
-                        <td>10,194</td>
-                        <td>-6,494</td>
-                    </tr>
-                
-
-                    <tr class="table-row-clickable" 
-                        onclick="showTrendsPanel(6109, 11896, -5787, 'Rapid Transformation Newsletter')">
-                        <td>Rapid Transformation Newsletter</td>
-                        <td>6,109</td>
-                        <td>11,896</td>
-                        <td>-5,787</td>
-                    </tr>
-                
-
-                    <tr class="table-row-clickable" 
-                        onclick="showTrendsPanel(6109, 11896, -5787, 'Rapid Transformation Newsletter')">
-                        <td>Rapid Transformation Newsletter</td>
-                        <td>6,109</td>
-                        <td>11,896</td>
-                        <td>-5,787</td>
-                    </tr>
-                
-
-                    <tr class="table-row-clickable" 
-                        onclick="showTrendsPanel(1821, 7557, -5736, 'The Curiosity Chronicle')">
-                        <td>The Curiosity Chronicle</td>
-                        <td>1,821</td>
-                        <td>7,557</td>
-                        <td>-5,736</td>
-                    </tr>
-                
-
-                    <tr class="table-row-clickable" 
-                        onclick="showTrendsPanel(5918, 246, 5672, 'Every')">
-                        <td>Every</td>
-                        <td>5,918</td>
-                        <td>246</td>
-                        <td>5,672</td>
-                    </tr>
-                
-
-                    <tr class="table-row-clickable" 
-                        onclick="showTrendsPanel(1966, 7596, -5630, 'The Curiosity Chronicle')">
-                        <td>The Curiosity Chronicle</td>
-                        <td>1,966</td>
-                        <td>7,596</td>
-                        <td>-5,630</td>
-                    </tr>
-                
-
-                    <tr class="table-row-clickable" 
-                        onclick="showTrendsPanel(3611, 8052, -4441, 'Ramit Sethi')">
-                        <td>Ramit Sethi</td>
-                        <td>3,611</td>
-                        <td>8,052</td>
-                        <td>-4,441</td>
-                    </tr>
-                
+                                <tbody id="activePartners">
+                                    <!-- Active partners will go here -->
+                                </tbody>
+                                
+                                <tbody id="inactivePartnersSection" class="collapse">
+                                    <!-- Inactive partners will go here -->
                                 </tbody>
                             </table>
+                            
+                            <button class="show-more-button" type="button" 
+                                    data-bs-toggle="collapse" 
+                                    data-bs-target="#inactivePartnersSection" 
+                                    aria-expanded="false">
+                                <span class="button-text">Show inactive partners</span>
+                                <i class="bi bi-chevron-down"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -724,12 +735,8 @@
                                 // Update table data
                                 tableData = data;
                                 
-                                // Always sort by balance (negative first)
-                                tableData.sort((a, b) => {
-                                    const balanceA = a.period_balance || 0;
-                                    const balanceB = b.period_balance || 0;
-                                    return balanceA - balanceB; // This puts negative numbers first
-                                });
+                                // Sort by balance (negative first)
+                                sortTable('balance');
                                 
                                 renderTable();
                             })
@@ -793,12 +800,24 @@
                     }
 
                     function renderTable() {
-                        const tbody = document.querySelector('table tbody');
+                        const tbody = document.querySelector('#activePartners');
+                        const inactiveTbody = document.querySelector('#inactivePartnersSection');
                         tbody.innerHTML = '';
+                        inactiveTbody.innerHTML = '';
                         
                         const isDefaultView = document.getElementById('clientSelect').value === 'all';
                         
-                        tableData.forEach(item => {
+                        // Split data into active and inactive partners
+                        const activePartners = tableData.filter(item => 
+                            item.period_received > 0 || item.period_sent > 0 || item.all_time_balance !== 0
+                        );
+                        
+                        const inactivePartners = tableData.filter(item => 
+                            item.period_received === 0 && item.period_sent === 0 && item.all_time_balance === 0
+                        );
+                        
+                        // Render active partners
+                        activePartners.forEach(item => {
                             const row = document.createElement('tr');
                             row.className = 'table-row-clickable';
                             const periodBalanceClass = (item.period_balance || 0) >= 0 ? 'positive' : 'negative';
@@ -828,6 +847,41 @@
                             
                             tbody.appendChild(row);
                         });
+                        
+                        // Render inactive partners
+                        inactivePartners.forEach(item => {
+                            const row = document.createElement('tr');
+                            row.className = 'table-row-clickable';
+                            row.innerHTML = isDefaultView ? `
+                                <td>${item.partner}</td>
+                                <td>${item.account || ''}</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                            ` : `
+                                <td>${item.partner}</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                            `;
+                            
+                            row.onclick = () => showTrendsPanel(0, 0, 0, item.partner);
+                            inactiveTbody.appendChild(row);
+                        });
+                        
+                        // Set initial button text
+                        const showMoreButton = document.querySelector('.show-more-button .button-text');
+                        if (showMoreButton) {
+                            const inactiveCount = inactivePartners.length;
+                            const isExpanded = document.getElementById('inactivePartnersSection').classList.contains('show');
+                            if (isExpanded) {
+                                buttonText.textContent = `Show ${inactiveCount} inactive partners`;
+                            } else {
+                                buttonText.textContent = 'Hide inactive partners';
+                            }
+                        }
                     }
 
                     function updateTable(data) {
@@ -842,6 +896,9 @@
 
                         // Add event listeners for selectors
                         document.getElementById('clientSelect').addEventListener('change', function() {
+                            console.log('Client changed:', this.value);
+                            closeTrendsPanel();
+                            
                             const selectedClient = this.value;
                             const selectedDays = document.getElementById('dateRangeSelect').value;
                             
@@ -853,7 +910,14 @@
                             if (selectedClient === 'all') {
                                 loadDefaultDashboard();
                             } else {
-                                const fetchConfig = {
+                                const url = new URL('http://localhost:5001/api/partnership-metrics');
+                                url.searchParams.append('account', selectedClient);
+                                url.searchParams.append('start', start.toISOString().split('T')[0]);
+                                url.searchParams.append('end', end.toISOString().split('T')[0]);
+                                
+                                console.log('Fetching from URL:', url.toString());
+                                
+                                fetch(url, {
                                     method: 'GET',
                                     mode: 'cors',
                                     credentials: 'include',
@@ -862,24 +926,25 @@
                                         'Accept': 'application/json',
                                         'Cache-Control': 'no-cache'
                                     }
-                                };
-                                
-                                const url = new URL('http://localhost:5001/api/partnership-metrics');
-                                url.searchParams.append('account', selectedClient);
-                                url.searchParams.append('start', start.toISOString().split('T')[0]);
-                                url.searchParams.append('end', end.toISOString().split('T')[0]);
-                                
-                                fetch(url, fetchConfig)
-                                    .then(response => response.json())
-                                    .then(data => {
-                                        console.log('API Response:', data);
-                                        updateTable(data);
-                                    })
-                                    .catch(error => console.error('Error:', error));
+                                })
+                                .then(response => {
+                                    console.log('Response status:', response.status);
+                                    return response.json();
+                                })
+                                .then(data => {
+                                    console.log('Received data:', data);
+                                    updateTable(data);
+                                    updateDashboardMetrics(data);
+                                    sortTable('balance');
+                                })
+                                .catch(error => console.error('Error:', error));
                             }
                         });
 
                         document.getElementById('dateRangeSelect').addEventListener('change', function() {
+                            // Close the trends panel when changing date range
+                            closeTrendsPanel();
+                            
                             const selectedClient = document.getElementById('clientSelect').value;
                             const dateRange = this.value;
                             
@@ -1144,13 +1209,8 @@
                         start.setDate(end.getDate() - parseInt(dateRange));
                         
                         try {
-                            // Use partnership-metrics for specific clients, largest-imbalances for 'all' view
-                            const endpoint = client === 'all' 
-                                ? 'largest-imbalances' 
-                                : 'partnership-metrics';
-                                
                             const response = await fetch(
-                                `http://localhost:5001/api/${endpoint}?` + 
+                                `http://localhost:5001/api/partnership-metrics?` + 
                                 `account=${encodeURIComponent(client)}&` +
                                 `start=${start.toISOString().split('T')[0]}&` +
                                 `end=${end.toISOString().split('T')[0]}`
@@ -1158,7 +1218,11 @@
                             
                             const data = await response.json();
                             
-                            // Sort by period_balance (negative first)
+                            // Update dashboard metrics first
+                            await updateDashboardMetrics(data);
+                            
+                            
+                            // Then update table
                             tableData = data.sort((a, b) => {
                                 const balanceA = a.period_balance || 0;
                                 const balanceB = b.period_balance || 0;
@@ -1170,7 +1234,303 @@
                             console.error('Error:', error);
                         }
                     }
+
+                    async function updateDashboardMetrics(data) {
+                        console.log('Updating dashboard metrics with data:', data);
+                        
+                        // Calculate Partnership Health
+                        const improving = data.filter(p => p.period_balance > 0).length;
+                        const declining = data.filter(p => p.period_balance < 0).length;
+                        
+                        console.log('Partnership Health metrics:', { improving, declining });
+                        
+                        // Update Partnership Health display
+                        const improvingElement = document.querySelector('.metric:nth-child(1) .value');
+                        const decliningElement = document.querySelector('.metric:nth-child(2) .value');
+                        
+                        if (improvingElement && decliningElement) {
+                            improvingElement.textContent = improving;
+                            decliningElement.textContent = declining;
+                        } else {
+                            console.error('Could not find Partnership Health elements');
+                        }
+                        
+                        // Calculate Fastest Growing and Declining
+                        const fastestGrowing = [...data]
+                            .sort((a, b) => b.period_balance - a.period_balance)
+                            .slice(0, 3)  // Get top 3
+                            .filter(p => p.period_balance > 0);  // Only positive growth
+                            
+                        const fastestDeclining = [...data]
+                            .sort((a, b) => a.period_balance - b.period_balance)
+                            .slice(0, 3)  // Get top 3
+                            .filter(p => p.period_balance < 0);  // Only negative growth
+                            
+                        console.log('Fastest Growing partners:', fastestGrowing);
+                        console.log('Fastest Declining partners:', fastestDeclining);
+                        
+                        // Update Fastest Growing section
+                        const fastestGrowingContainer = document.querySelector('.fastest-growing');
+                        const fastestDecliningContainer = document.querySelector('.fastest-declining');
+                        
+                        if (fastestGrowingContainer) {
+                            const fastestGrowingHtml = fastestGrowing
+                                .map(partner => `
+                                    <div class="growth-item">
+                                        <div class="partner-name">${partner.partner}</div>
+                                        <div class="growth-value-container">
+                                            <span class="growth-value positive">+${partner.period_balance.toLocaleString()}</span>
+                                            <span class="period-label">last ${document.getElementById('dateRangeSelect').value} days</span>
+                                        </div>
+                                    </div>
+                                `)
+                                .join('');
+                            
+                            fastestGrowingContainer.innerHTML = fastestGrowingHtml;
+                        }
+                        
+                        if (fastestDecliningContainer) {
+                            const fastestDecliningHtml = fastestDeclining
+                                .map(partner => `
+                                    <div class="growth-item">
+                                        <div class="partner-name">${partner.partner}</div>
+                                        <div class="growth-value-container">
+                                            <span class="growth-value negative">${partner.period_balance.toLocaleString()}</span>
+                                            <span class="period-label">last ${document.getElementById('dateRangeSelect').value} days</span>
+                                        </div>
+                                    </div>
+                                `)
+                                .join('');
+                            
+                            fastestDecliningContainer.innerHTML = fastestDecliningHtml;
+                        }
+                    }
+
+                    // Function to populate the partner dropdown based on current client
+                    function populatePartnerDropdown() {
+                        const currentClient = document.getElementById('clientSelect').value;
+                        const partnerSelect = document.getElementById('manualPartner');
+                        
+                        console.log('Populating partners for client:', currentClient);
+                        
+                        // Clear existing options
+                        partnerSelect.innerHTML = '<option value="">Select a partner...</option>';
+                        
+                        // Get partners from the table data instead of making an API call
+                        const partners = Array.from(document.querySelectorAll('#defaultDashboard table tbody tr'))
+                            .map(row => row.cells[0].textContent.trim());
+                        
+                        console.log('Found partners:', partners);
+                        
+                        // Add partners to dropdown
+                        partners.forEach(partner => {
+                            const option = document.createElement('option');
+                            option.value = partner;
+                            option.textContent = partner;
+                            partnerSelect.appendChild(option);
+                        });
+                    }
+
+                    // Update the modal show event to populate partners
+                    document.addEventListener('DOMContentLoaded', function() {
+                        const manualEntryModal = document.getElementById('manualEntryModal');
+                        if (manualEntryModal) {
+                            manualEntryModal.addEventListener('show.bs.modal', function (event) {
+                                populatePartnerDropdown();
+                                // Set today's date as default
+                                document.getElementById('manualDate').valueAsDate = new Date();
+                            });
+                        }
+                    });
+
+                    function submitManualEntry() {
+                        const partner = document.getElementById('manualPartner').value;
+                        const date = document.getElementById('manualDate').value;
+                        const received = document.getElementById('manualReceived').value;
+                        const sent = document.getElementById('manualSent').value;
+                        const notes = document.getElementById('manualNotes').value;
+
+                        // Validate that at least one of received or sent has a value
+                        if (!received && !sent) {
+                            alert('Please enter either a Received or Sent value');
+                            return;
+                        }
+
+                        const formData = {
+                            partner: partner,
+                            date: date,
+                            received: received ? parseInt(received) : null,  // Only include if has value
+                            sent: sent ? parseInt(sent) : null,  // Only include if has value
+                            notes: notes
+                        };
+
+                        fetch('http://localhost:5001/api/manual-referrals', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(formData)
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            // Close modal and refresh data
+                            bootstrap.Modal.getInstance(document.getElementById('manualEntryModal')).hide();
+                            refreshData();
+                            
+                            // Show success message
+                            alert('Manual referral data added successfully!');
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            alert('Error adding manual referral data');
+                        });
+                    }
+
+                    function renderDashboardTable(data) {
+                        console.log('Raw data received:', data);  // Log the initial data
+                        
+                        // Sort data to show active partners first
+                        const activePartners = data.filter(row => {
+                            const isActive = row.period_received !== 0 || row.period_sent !== 0 || row.all_time_balance !== 0;
+                            console.log(`Partner ${row.partner}: active=${isActive}`, {
+                                period_received: row.period_received,
+                                period_sent: row.period_sent,
+                                all_time_balance: row.all_time_balance
+                            });
+                            return isActive;
+                        });
+                        
+                        const inactivePartners = data.filter(row => 
+                            row.period_received === 0 && row.period_sent === 0 && row.all_time_balance === 0
+                        );
+
+                        console.log('Active partners:', activePartners);
+                        console.log('Inactive partners:', inactivePartners);
+
+                        let tableHtml = `
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Partner</th>
+                                        <th>Received</th>
+                                        <th>Sent</th>
+                                        <th>Balance</th>
+                                        <th>All-Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${activePartners.map(row => {
+                                        console.log('Rendering active row:', row);
+                                        return renderTableRow(row);
+                                    }).join('')}
+                                </tbody>
+                                <tbody id="inactivePartners" class="collapse">
+                                    ${inactivePartners.map(row => {
+                                        console.log('Rendering inactive row:', row);
+                                        return renderTableRow(row);
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                            ${inactivePartners.length > 0 ? `
+                                <button class="btn btn-link" 
+                                        data-bs-toggle="collapse" 
+                                        data-bs-target="#inactivePartners"
+                                        aria-expanded="false">
+                                    Show ${inactivePartners.length} inactive partners
+                                </button>
+                            ` : ''}
+                        `;
+
+                        document.getElementById('defaultDashboard').innerHTML = tableHtml;
+                    }
+
+                    function renderTableRow(row) {
+                        return `
+                            <tr>
+                                <td>${row.partner}</td>
+                                <td>${row.period_received}</td>
+                                <td>${row.period_sent}</td>
+                                <td class="${row.period_balance > 0 ? 'text-success' : 'text-danger'}">
+                                    ${row.period_balance}
+                                </td>
+                                <td class="${row.all_time_balance > 0 ? 'text-success' : 'text-danger'}">
+                                    ${row.all_time_balance}
+                                </td>
+                            </tr>
+                        `;
+                    }
+
+                    // Add event listener for the show/hide button
+                    document.addEventListener('DOMContentLoaded', function() {
+                        const showMoreButton = document.querySelector('.show-more-button');
+                        const inactiveSection = document.getElementById('inactivePartnersSection');
+                        
+                        if (showMoreButton && inactiveSection) {
+                            inactiveSection.addEventListener('show.bs.collapse', function() {
+                                const buttonText = showMoreButton.querySelector('.button-text');
+                                buttonText.textContent = 'Hide inactive partners';
+                            });
+
+                            inactiveSection.addEventListener('hide.bs.collapse', function() {
+                                const buttonText = showMoreButton.querySelector('.button-text');
+                                const inactiveCount = document.querySelectorAll('#inactivePartnersSection tr').length;
+                                buttonText.textContent = `Show ${inactiveCount} inactive partners`;
+                            });
+                        }
+                    });
                 </script>
+
+                <!-- Add this at the end of the body -->
+                <div class="modal fade" id="manualEntryModal" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Add Manual Referral Data</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <form id="manualEntryForm">
+                                    <div class="mb-3">
+                                        <label class="form-label">Partner</label>
+                                        <select class="form-select" id="manualPartner" required>
+                                            <option value="">Select a partner...</option>
+                                            <!-- Will be populated with current client's partners -->
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Date</label>
+                                        <input type="date" class="form-control" id="manualDate" required>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col">
+                                            <div class="mb-3">
+                                                <label class="form-label">Received</label>
+                                                <input type="number" class="form-control" id="manualReceived" 
+                                                       placeholder="Optional">
+                                            </div>
+                                        </div>
+                                        <div class="col">
+                                            <div class="mb-3">
+                                                <label class="form-label">Sent</label>
+                                                <input type="number" class="form-control" id="manualSent" 
+                                                       placeholder="Optional">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Notes</label>
+                                        <textarea class="form-control" id="manualNotes" rows="2" 
+                                                placeholder="e.g., Data from external tool"></textarea>
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-primary" onclick="submitManualEntry()">Save</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </body>
             </html>
             

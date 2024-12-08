@@ -650,7 +650,22 @@
                         color: #999;
                         cursor: help;
                     }
+
+                    .network-graph-container {
+                        width: 100%;
+                        height: 600px;
+                        background: white;
+                        border-radius: 8px;
+                        overflow: hidden;
+                    }
+
+                    .network-graph-container svg {
+                        width: 100%;
+                        height: 100%;
+                    }
                 </style>
+                <!-- Add this in the head section with other scripts -->
+                <script src="https://d3js.org/d3.v7.min.js"></script>
             </head>
             <body>
                 <div class="container mt-4">
@@ -717,13 +732,13 @@
                                         <div class="col-md-6">
                                             <h6>Fastest Growing</h6>
                                             <div class="fastest-growing">
-                                                <!-- Will be populated dynamically -->
+                                                <!-- Growing partnerships will go here -->
                                             </div>
                                         </div>
                                         <div class="col-md-6">
                                             <h6>Fastest Declining</h6>
                                             <div class="fastest-declining">
-                                                <!-- Will be populated dynamically -->
+                                                <!-- Declining partnerships will go here -->
                                             </div>
                                         </div>
                                     </div>
@@ -788,13 +803,9 @@
                         <!-- Network Graph -->
                         <div class="row mt-4">
                             <div class="col-12">
-                                <div class="card">
-                                    <div class="card-body">
-                                        <h5>Partnership Network</h5>
-                                        <div id="networkGraph" style="height: 400px;">
-                                            <!-- Will be populated with a network visualization -->
-                                        </div>
-                                    </div>
+                                <div class="card mb-4">
+                                    <h2>Network Graph</h2>
+                                    <div id="networkGraph" class="network-graph-container"></div>
                                 </div>
                             </div>
                         </div>
@@ -904,15 +915,38 @@
                 </div>
 
                 <script>
+                    // 1. Global variables (declare only once)
                     let exchangeChart = null;
                     let currentSort = { column: 'balance', direction: 'desc' };
                     let tableData = [];
                     let avatar_mapping = {};
 
+                    // 2. DOM Ready handler (single one)
+                    document.addEventListener('DOMContentLoaded', async function() {
+                        try {
+                            // Load avatar mapping
+                            const avatarResponse = await fetch('avatars/avatar_mapping.json');
+                            avatar_mapping = await avatarResponse.json();
+                            
+                            // Initialize master dashboard view
+                            toggleDashboardView('master');
+                            await updateMasterDashboard();
+                            
+                            // Initialize tooltips
+                            const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+                            tooltips.forEach(el => new bootstrap.Tooltip(el));
+                        } catch (error) {
+                            console.error('Error during initialization:', error);
+                        }
+                    });
+
+                    // 3. Format number function
                     function formatNumber(num) {
-                        return new Intl.NumberFormat().format(num);
+                        if (num === null || num === undefined) return '0';
+                        return num.toLocaleString();
                     }
                     
+                    // 4. Show trends panel function
                     function showTrendsPanel(received, sent, balance, partner) {
                         console.log('showTrendsPanel called with:', { received, sent, balance, partner });
                         
@@ -984,11 +1018,15 @@
                             });
                     }
 
+                    // 5. Close trends panel function
                     function closeTrendsPanel() {
                         const panel = document.getElementById('trendsPanel');
-                        panel.classList.remove('active');
+                        if (panel) {
+                            panel.classList.remove('active');
+                        }
                     }
 
+                    // 6. Update trend chart function
                     function updateTrendChart(historicalData) {
                         console.log('Updating charts with data:', historicalData);
                         
@@ -1125,6 +1163,7 @@
                         });
                     }
 
+                    // 7. Format balance value function
                     function formatBalanceValue(value) {
                         if (isNaN(value)) value = 0;
                         const cls = value >= 0 ? 'positive' : 'negative';
@@ -1133,25 +1172,7 @@
                                 </div>`;
                     }
 
-                    // Add to the script section
-                    // Initialize date inputs
-                    document.addEventListener('DOMContentLoaded', function() {
-                        // Clear any existing data
-                        tableData = [];
-                        
-                        // Clear any existing charts
-                        const ctx = document.getElementById('trendChart');
-                        if (ctx) {
-                            const existingChart = Chart.getChart(ctx);
-                            if (existingChart) {
-                                existingChart.destroy();
-                            }
-                        }
-                        
-                        // Then load fresh data
-                        loadDefaultDashboard();
-                        // ... rest of your existing code ...
-                    });
+                   
 
                     function refreshData() {
                         const dateRange = document.getElementById('dateRangeSelect').value;
@@ -1164,7 +1185,7 @@
                         // TODO: Add API call to refresh data
                     }
 
-                    // Add these function definitions before your event listeners
+                    // 9. Add these function definitions before your event listeners
                     let imbalances = [];
 
                     function formatDate(date) {
@@ -1371,94 +1392,123 @@
                     }
 
                     function updateTable(data) {
-                        tableData = data;
-                        sortTable('balance'); // Default sort by balance
+                        console.log('Raw data:', data);
+                        
+                        // Filter out the baseline record
+                        const baselineDate = Math.min(...data.map(item => new Date(item.date)));
+                        console.log('Baseline date:', baselineDate);
+                        
+                        // Calculate changes relative to baseline
+                        const activeData = data.filter(item => new Date(item.date) > baselineDate)
+                            .map(item => ({
+                                ...item,
+                                period_received: item.period_received - (
+                                    data.find(d => d.date === baselineDate)?.period_received || 0
+                                ),
+                                period_sent: item.period_sent - (
+                                    data.find(d => d.date === baselineDate)?.period_sent || 0
+                                )
+                            }));
+                        console.log('Processed active data:', activeData);
+
+                        // Store the processed data for sorting
+                        tableData = activeData;
+                        
+                        // Apply default sort
+                        sortTable('balance');
+                        
+                        // Render the table
+                        const tableBody = document.getElementById('activePartners');
+                        if (!tableBody) {
+                            console.error('Table body element not found');
+                            return;
+                        }
+                        
+                        const html = activeData.map(item => `
+                            <tr>
+                                <td>${item.partner}</td>
+                                <td>${formatNumber(item.period_received)}</td>
+                                <td>${formatNumber(item.period_sent)}</td>
+                                <td class="${item.period_balance >= 0 ? 'positive' : 'negative'}">
+                                    ${formatNumber(Math.abs(item.period_balance))}
+                                </td>
+                                <td class="${item.all_time_balance >= 0 ? 'positive' : 'negative'}">
+                                    ${formatNumber(Math.abs(item.all_time_balance))}
+                                </td>
+                            </tr>
+                        `).join('');
+                        
+                        tableBody.innerHTML = html;
+                        console.log('Table updated');
                     }
 
-                    // Your existing event listener code remains the same
-                    document.addEventListener('DOMContentLoaded', function() {
-                        // Initial load of default dashboard
-                        loadDefaultDashboard();
-
-                        // Add event listeners for selectors
-                        document.getElementById('clientSelect').addEventListener('change', function() {
-                            console.log('Client changed:', this.value);
-                            closeTrendsPanel();
-                            
-                            const selectedClient = this.value;
-                            const selectedDays = document.getElementById('dateRangeSelect').value;
-                            
-                            // Calculate date range
+                    // Replace or update the client selector event listener
+                    document.getElementById('clientSelect').addEventListener('change', async function() {
+                        const selectedClient = this.value;
+                        closeTrendsPanel();
+                        
+                        if (selectedClient === 'all') {
+                            toggleDashboardView('master');
+                            await updateMasterDashboard();
+                        } else {
+                            toggleDashboardView('client');
+                            // Explicitly get date range and trigger data fetch
+                            const dateRange = document.getElementById('dateRangeSelect').value;
                             const end = new Date();
                             const start = new Date();
-                            start.setDate(start.getDate() - parseInt(selectedDays));
+                            start.setDate(end.getDate() - parseInt(dateRange));
                             
-                            if (selectedClient === 'all') {
-                                loadDefaultDashboard();
-                            } else {
+                            try {
                                 const url = new URL('http://localhost:5001/api/partnership-metrics');
                                 url.searchParams.append('account', selectedClient);
                                 url.searchParams.append('start', start.toISOString().split('T')[0]);
                                 url.searchParams.append('end', end.toISOString().split('T')[0]);
                                 
-                                console.log('Fetching from URL:', url.toString());
+                                const response = await fetch(url);
+                                const data = await response.json();
                                 
-                                fetch(url, {
-                                    method: 'GET',
-                                    mode: 'cors',
-                                    credentials: 'include',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'Accept': 'application/json',
-                                        'Cache-Control': 'no-cache'
-                                    }
-                                })
-                                .then(response => {
-                                    console.log('Response status:', response.status);
-                                    return response.json();
-                                })
-                                .then(data => {
-                                    console.log('Received data:', data);
-                                    updateTable(data);
-                                    updateDashboardMetrics(data);
-                                    sortTable('balance');
-                                })
-                                .catch(error => console.error('Error:', error));
+                                // Update all necessary components
+                                tableData = data;
+                                await updateDashboardMetrics(data);
+                                renderTable();
+                            } catch (error) {
+                                console.error('Error loading client data:', error);
                             }
-                        });
-
-                        document.getElementById('dateRangeSelect').addEventListener('change', function() {
-                            // Close the trends panel when changing date range
-                            closeTrendsPanel();
-                            
-                            const selectedClient = document.getElementById('clientSelect').value;
-                            const dateRange = this.value;
-                            
-                            // Calculate dates
-                            const end = new Date();
-                            const start = new Date();
-                            start.setDate(end.getDate() - parseInt(dateRange));
-                            
-                            // Always fetch fresh data regardless of client selection
-                            const url = selectedClient === 'all' 
-                                ? `http://localhost:5001/api/largest-imbalances?start=${start.toISOString().split('T')[0]}&end=${end.toISOString().split('T')[0]}`
-                                : `http://localhost:5001/api/partnership-metrics?account=${encodeURIComponent(selectedClient)}&start=${start.toISOString().split('T')[0]}&end=${end.toISOString().split('T')[0]}`;
-                            
-                            fetch(url)
-                                .then(response => response.json())
-                                .then(data => {
-                                    // Update table data and maintain sort
-                                    tableData = data;
-                                    
-                                    // Update dashboard metrics including fastest growing/declining
-                                    updateDashboardMetrics(data);
-                                    
-                                    // Render the table with the new data
-                                    renderTable();
-                                })
-                                .catch(error => console.error('Error:', error));
-                        });
+                        }
                     });
+
+                    document.getElementById('dateRangeSelect').addEventListener('change', function() {
+                        // Close the trends panel when changing date range
+                        closeTrendsPanel();
+                        
+                        const selectedClient = document.getElementById('clientSelect').value;
+                        const dateRange = this.value;
+                        
+                        // Calculate dates
+                        const end = new Date();
+                        const start = new Date();
+                        start.setDate(end.getDate() - parseInt(dateRange));
+                        
+                        // Always fetch fresh data regardless of client selection
+                        const url = selectedClient === 'all' 
+                            ? `http://localhost:5001/api/largest-imbalances?start=${start.toISOString().split('T')[0]}&end=${end.toISOString().split('T')[0]}`
+                            : `http://localhost:5001/api/partnership-metrics?account=${encodeURIComponent(selectedClient)}&start=${start.toISOString().split('T')[0]}&end=${end.toISOString().split('T')[0]}`;
+                        
+                        fetch(url)
+                            .then(response => response.json())
+                            .then(data => {
+                                // Update table data and maintain sort
+                                tableData = data;
+                                
+                                // Update dashboard metrics including fastest growing/declining
+                                updateDashboardMetrics(data);
+                                
+                                // Render the table with the new data
+                                renderTable();
+                            })
+                            .catch(error => console.error('Error:', error));
+                    });
+                    
                     // Add this before your other fetch calls
                     fetch('avatars/avatar_mapping.json')
                         .then(response => response.json())
@@ -1567,6 +1617,10 @@
                                 <h3>Fastest Growing Partnerships</h3>
                                 <div id="trends-list"></div>
                             </div>
+                            <div class="fastest-declining">
+                                <h3>Fastest Declining Partnerships</h3>
+                                <div id="declining-trends-list"></div>
+                            </div>
                         `;
                         
                         document.querySelector('.container').appendChild(panel);
@@ -1574,10 +1628,33 @@
 
                     // Update the existing loadData function to include trends
                     async function loadData() {
-                        await Promise.all([
-                            fetchImbalances(),
-                            updateDashboardTrends()
-                        ]);
+                        try {
+                            const dateRange = document.getElementById('dateRangeSelect').value;
+                            const end = new Date();
+                            const start = new Date();
+                            start.setDate(end.getDate() - parseInt(dateRange));
+
+                            const response = await fetch(
+                                `http://localhost:5001/api/partnership-metrics?` +
+                                `start=${start.toISOString().split('T')[0]}&` +
+                                `end=${end.toISOString().split('T')[0]}`
+                            );
+
+                            const data = await response.json();
+                            
+                            // Update all dashboard components with the same data
+                            updateTopImbalances(data);
+                            updateFastestGrowingDeclining(data);
+                            updateDashboardMetrics(data);
+                            updateNetworkGraph(data);
+                            
+                            // Update table
+                            tableData = data;
+                            renderTable();
+                            
+                        } catch (error) {
+                            console.error('Error loading dashboard data:', error);
+                        }
                     }
 
                     // Add function to update dashboard trends
@@ -1694,11 +1771,11 @@
                     async function fetchImbalances() {
                         const client = document.getElementById('clientSelect').value;
                         const dateRange = document.getElementById('dateRangeSelect').value;
-                        
+
                         // Calculate dates with proper time components
                         const end = new Date();
                         const start = new Date();
-                        
+
                         if (dateRange === "1" || dateRange === "2") {
                             // For 24/48 hours, subtract hours
                             start.setHours(end.getHours() - (parseInt(dateRange) * 24));
@@ -1706,30 +1783,46 @@
                             // For other ranges, continue using days
                             start.setDate(end.getDate() - parseInt(dateRange));
                         }
-                        
+
                         try {
+                            // Add console.log to debug the request
+                            console.log('Fetching data with params:', {
+                                client,
+                                start: start.toISOString(),
+                                end: end.toISOString()
+                            });
+
                             const response = await fetch(
                                 `http://localhost:5001/api/partnership-metrics?` + 
                                 `account=${encodeURIComponent(client)}&` +
-                                `start=${start.toISOString()}&` +  // Use full ISO string instead of just date
-                                `end=${end.toISOString()}`         // Use full ISO string instead of just date
+                                `start=${start.toISOString()}&` +
+                                `end=${end.toISOString()}`
                             );
-                            
+
                             const data = await response.json();
                             
+                            // Add console.log to debug the response
+                            console.log('Received data:', data);
+
                             // Update dashboard metrics first
                             await updateDashboardMetrics(data);
                             
-                            // Then update table
+                            // Update network graph
+                            updateNetworkGraph(data);
+
+                            // Update fastest growing/declining
+                            updateFastestGrowingDeclining(data);
+
+                            // Sort and update table
                             tableData = data.sort((a, b) => {
                                 const balanceA = a.period_balance || 0;
                                 const balanceB = b.period_balance || 0;
                                 return balanceA - balanceB;
                             });
-                            
                             renderTable();
+
                         } catch (error) {
-                            console.error('Error:', error);
+                            console.error('Error fetching data:', error);
                         }
                     }
 
@@ -1739,8 +1832,6 @@
                         // Calculate Partnership Health
                         const improving = data.filter(p => p.period_balance > 0).length;
                         const declining = data.filter(p => p.period_balance < 0).length;
-                        
-                        console.log('Partnership Health metrics:', { improving, declining });
                         
                         // Update Partnership Health display
                         const improvingElement = document.querySelector('.metric:nth-child(1) .value');
@@ -1752,8 +1843,8 @@
                         } else {
                             console.error('Could not find Partnership Health elements');
                         }
-                        
-                        // Calculate Fastest Growing and Declining
+
+                        // Calculate and update Fastest Growing/Declining
                         const fastestGrowing = [...data]
                             .filter(p => p.period_balance > 0)
                             .sort((a, b) => b.period_balance - a.period_balance)
@@ -1763,55 +1854,37 @@
                             .filter(p => p.period_balance < 0)
                             .sort((a, b) => a.period_balance - b.period_balance)
                             .slice(0, 3);
-                            
-                        console.log('Fastest Growing partners:', fastestGrowing);
-                        console.log('Fastest Declining partners:', fastestDeclining);
-                        
-                        // Get selected date range and format period text
-                        const dateRange = document.getElementById('dateRangeSelect').value;
-                        const periodText = formatPeriodText(dateRange);
                         
                         // Update Fastest Growing section
                         const fastestGrowingContainer = document.querySelector('.fastest-growing');
                         if (fastestGrowingContainer) {
-                            const fastestGrowingHtml = fastestGrowing
+                            fastestGrowingContainer.innerHTML = fastestGrowing
                                 .map(partner => `
                                     <div class="growth-item positive">
                                         <div class="partner-name">${partner.partner}</div>
                                         <div class="growth-value-container">
                                             <span class="growth-value positive">+${partner.period_balance.toLocaleString()}</span>
-                                            <span class="period-label">${periodText}</span>
+                                            <span class="period-label">${formatPeriodText(document.getElementById('dateRangeSelect').value)}</span>
                                         </div>
                                     </div>
                                 `)
                                 .join('');
-                            fastestGrowingContainer.innerHTML = fastestGrowingHtml;
                         }
                         
                         // Update Fastest Declining section
                         const fastestDecliningContainer = document.querySelector('.fastest-declining');
                         if (fastestDecliningContainer) {
-                            const fastestDecliningHtml = fastestDeclining
+                            fastestDecliningContainer.innerHTML = fastestDeclining
                                 .map(partner => `
                                     <div class="growth-item negative">
-                                        <div class="d-flex flex-column">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <div>
-                                                    <h6 class="partner-name mb-0">${partner.partner}</h6>
-                                                    <small class="text-muted d-block">Client: ${partner.account}</small>
-                                                </div>
-                                                <span class="text-muted">
-                                                    All-time: ${partner.all_time_balance.toLocaleString()}
-                                                </span>
-                                            </div>
-                                            <small class="text-muted">
-                                                Last active: ${partner.last_active || 'Unknown'}
-                                            </small>
+                                        <div class="partner-name">${partner.partner}</div>
+                                        <div class="growth-value-container">
+                                            <span class="growth-value negative">${partner.period_balance.toLocaleString()}</span>
+                                            <span class="period-label">${formatPeriodText(document.getElementById('dateRangeSelect').value)}</span>
                                         </div>
                                     </div>
                                 `)
                                 .join('');
-                            fastestDecliningContainer.innerHTML = fastestDecliningHtml;
                         }
                     }
 
@@ -1852,17 +1925,9 @@
                         });
                     }
 
-                    // Update the modal show event to populate partners
-                    document.addEventListener('DOMContentLoaded', function() {
-                        const manualEntryModal = document.getElementById('manualEntryModal');
-                        if (manualEntryModal) {
-                            manualEntryModal.addEventListener('show.bs.modal', function (event) {
-                                populatePartnerDropdown();
-                                // Set today's date as default
-                                document.getElementById('manualDate').valueAsDate = new Date();
-                            });
-                        }
-                    });
+        
+                    
+                    ;
 
                     function submitManualEntry() {
                         const partner = document.getElementById('manualPartner').value;
@@ -2001,24 +2066,7 @@
                         `;
                     }
 
-                    // Add event listener for the show/hide button
-                    document.addEventListener('DOMContentLoaded', function() {
-                        const showMoreButton = document.querySelector('.show-more-button');
-                        const inactiveSection = document.getElementById('inactivePartnersSection');
-                        
-                        if (showMoreButton && inactiveSection) {
-                            inactiveSection.addEventListener('show.bs.collapse', function() {
-                                const buttonText = showMoreButton.querySelector('.button-text');
-                                buttonText.textContent = 'Hide inactive partners';
-                            });
-
-                            inactiveSection.addEventListener('hide.bs.collapse', function() {
-                                const buttonText = showMoreButton.querySelector('.button-text');
-                                const inactiveCount = document.querySelectorAll('#inactivePartnersSection tr').length;
-                                buttonText.textContent = `Show ${inactiveCount} inactive partners`;
-                            });
-                        }
-                    });
+                 ;
 
                     // Function to toggle between master and client views
                     function toggleDashboardView(view) {
@@ -2035,23 +2083,65 @@
                     }
 
                     // Update client selector event listener
-                    document.getElementById('clientSelect').addEventListener('change', function() {
+                    document.getElementById('clientSelect').addEventListener('change', async function() {
                         const selectedClient = this.value;
+                        closeTrendsPanel();
+                        
                         if (selectedClient === 'all') {
                             toggleDashboardView('master');
-                            updateMasterDashboard();
+                            await updateMasterDashboard();
                         } else {
                             toggleDashboardView('client');
-                            // Your existing client-specific update code
+                            // Explicitly get date range and trigger data fetch
+                            const dateRange = document.getElementById('dateRangeSelect').value;
+                            const end = new Date();
+                            const start = new Date();
+                            start.setDate(end.getDate() - parseInt(dateRange));
+                            
+                            try {
+                                const url = new URL('http://localhost:5001/api/partnership-metrics');
+                                url.searchParams.append('account', selectedClient);
+                                url.searchParams.append('start', start.toISOString().split('T')[0]);
+                                url.searchParams.append('end', end.toISOString().split('T')[0]);
+                               
+                                const response = await fetch(url);
+                                const data = await response.json();
+                                
+                                // Update all necessary components
+                                tableData = data;
+                                await updateDashboardMetrics(data);
+                                renderTable();
+                            } catch (error) {
+                                console.error('Error loading client data:', error);
+                            }
+                        }
+                    });
+
+                    // Update the DOMContentLoaded event listener to be simpler
+                    document.addEventListener('DOMContentLoaded', async function() {
+                        try {
+                            // Load avatar mapping
+                            const avatarResponse = await fetch('avatars/avatar_mapping.json');
+                            avatar_mapping = await avatarResponse.json();
+                            
+                            // Initialize master dashboard view
+                            toggleDashboardView('master');
+                            await updateMasterDashboard();
+                            
+                            // Initialize tooltips
+                            const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+                            tooltips.forEach(el => new bootstrap.Tooltip(el));
+                        } catch (error) {
+                            console.error('Error during initialization:', error);
                         }
                     });
 
                     // Function to update the master dashboard
                     async function updateMasterDashboard() {
-                        const dateRange = document.getElementById('dateRangeSelect').value;
-                        const end = new Date();
-                        const start = new Date();
-                        start.setDate(end.getDate() - parseInt(dateRange));
+                            const dateRange = document.getElementById('dateRangeSelect').value;
+                            const end = new Date();
+                            const start = new Date();
+                            start.setDate(end.getDate() - parseInt(dateRange));
                         
                         try {
                             // Changed to use partnership-metrics endpoint
@@ -2063,6 +2153,7 @@
                             updateTopImbalances(data);
                             updateRecentlyInactive(data);
                             updateNetworkGraph(data);
+                            updateFastestGrowingDeclining();
                         } catch (error) {
                             console.error('Error updating master dashboard:', error);
                         }
@@ -2078,12 +2169,15 @@
                     }
 
                     function updateTopImbalances(data) {
-                        const sortedData = data
-                            .filter(p => p.period_received > 0 || p.period_sent > 0)
-                            .sort((a, b) => Math.abs(b.period_balance) - Math.abs(a.period_balance));
+                        const receivingMore = data
+                            .filter(p => p.period_balance > 0)
+                            .sort((a, b) => b.period_balance - a.period_balance)
+                            .slice(0, 3);
                         
-                        const receivingMore = sortedData.filter(p => p.period_balance > 0).slice(0, 3);
-                        const sendingMore = sortedData.filter(p => p.period_balance < 0).slice(0, 3);
+                        const sendingMore = data
+                            .filter(p => p.period_balance < 0)
+                            .sort((a, b) => a.period_balance - b.period_balance)
+                            .slice(0, 3);
                         
                         const dateRange = document.getElementById('dateRangeSelect').value;
                         
@@ -2167,14 +2261,239 @@
                             '<div class="text-muted">No inactive partnerships found</div>';
                     }
 
-                    // Add this to your existing DOMContentLoaded event listener
-                    document.addEventListener('DOMContentLoaded', function() {
-                        // ... your existing code ...
+                
+
+                    // Add this function to your JavaScript
+                    function updateNetworkGraph(data) {
+                        // Clear existing graph
+                        d3.select("#networkGraph").html("");
+
+                        // Process data for network visualization
+                        const nodes = [];
+                        const links = [];
+                        const nodeMap = new Map();
+
+                        // Create nodes for each unique partner and account
+                        data.forEach(d => {
+                            if (!nodeMap.has(d.partner)) {
+                                nodeMap.set(d.partner, {
+                                    id: d.partner,
+                                    group: d.account,
+                                    totalActivity: d.period_received + d.period_sent
+                                });
+                            }
+                            if (!nodeMap.has(d.account)) {
+                                nodeMap.set(d.account, {
+                                    id: d.account,
+                                    group: d.account,
+                                    totalActivity: 0
+                                });
+                            }
+                        });
+
+                        // Create links between partners with active referrals
+                        data.forEach(d => {
+                            if (d.period_received > 0) {
+                                links.push({
+                                    source: d.partner,
+                                    target: d.account,
+                                    value: d.period_received,
+                                    type: "received"
+                                });
+                            }
+                            if (d.period_sent > 0) {
+                                links.push({
+                                    source: d.account,
+                                    target: d.partner,
+                                    value: d.period_sent,
+                                    type: "sent"
+                                });
+                            }
+                        });
+
+                        // Set up the SVG
+                        const width = 800;
+                        const height = 600;
+
+                        const svg = d3.select("#networkGraph")
+                            .append("svg")
+                            .attr("width", width)
+                            .attr("height", height);
+
+                        // Create the force simulation
+                        const simulation = d3.forceSimulation(Array.from(nodeMap.values()))
+                            .force("link", d3.forceLink(links).id(d => d.id))
+                            .force("charge", d3.forceManyBody().strength(-400))
+                            .force("center", d3.forceCenter(width / 2, height / 2));
+
+                        // Add the links
+                        const link = svg.append("g")
+                            .selectAll("line")
+                            .data(links)
+                            .join("line")
+                            .attr("stroke-width", d => Math.sqrt(d.value))
+                            .attr("stroke", d => d.type === "received" ? "#28a745" : "#dc3545");
+
+                        // Add the nodes
+                        const node = svg.append("g")
+                            .selectAll("circle")
+                            .data(Array.from(nodeMap.values()))
+                            .join("circle")
+                            .attr("r", d => Math.sqrt(d.totalActivity) + 5)
+                            .attr("fill", "#fff")
+                            .attr("stroke", "#333")
+                            .attr("stroke-width", 1.5)
+                            .call(drag(simulation));
+
+                        // Add labels
+                        const label = svg.append("g")
+                            .selectAll("text")
+                            .data(Array.from(nodeMap.values()))
+                            .join("text")
+                            .text(d => d.id)
+                            .attr("font-size", 10)
+                            .attr("dx", 12)
+                            .attr("dy", 4);
+
+                        // Update positions on each tick
+                        simulation.on("tick", () => {
+                            link
+                                .attr("x1", d => d.source.x)
+                                .attr("y1", d => d.source.y)
+                                .attr("x2", d => d.target.x)
+                                .attr("y2", d => d.target.y);
+
+                            node
+                                .attr("cx", d => d.x)
+                                .attr("cy", d => d.y);
+
+                            label
+                                .attr("x", d => d.x)
+                                .attr("y", d => d.y);
+                        });
+                    }
+
+                    // Add drag behavior
+                    function drag(simulation) {
+                        function dragstarted(event) {
+                            if (!event.active) simulation.alphaTarget(0.3).restart();
+                            event.subject.fx = event.subject.x;
+                            event.subject.fy = event.subject.y;
+                        }
                         
-                        // Initialize master dashboard
-                        toggleDashboardView('master');
-                        updateMasterDashboard();
-                    });
+                        function dragged(event) {
+                            event.subject.fx = event.x;
+                            event.subject.fy = event.y;
+                        }
+                        
+                        function dragended(event) {
+                            if (!event.active) simulation.alphaTarget(0);
+                            event.subject.fx = null;
+                            event.subject.fy = null;
+                        }
+                        
+                        return d3.drag()
+                            .on("start", dragstarted)
+                            .on("drag", dragged)
+                            .on("end", dragended);
+                    }
+
+                    // Add the fastest growing/declining update
+                    async function updateFastestGrowingDeclining() {
+                        try {
+                            const dateRange = document.getElementById('dateRangeSelect').value;
+                            const end = new Date();
+                            const start = new Date();
+                            start.setDate(end.getDate() - parseInt(dateRange));
+
+                            // Fetch data from partnership-metrics endpoint
+                            const response = await fetch(
+                                `http://localhost:5001/api/partnership-metrics?` +
+                                `start=${start.toISOString().split('T')[0]}&` +
+                                `end=${end.toISOString().split('T')[0]}`
+                            );
+                            
+                            const data = await response.json();
+                            console.log('Received data for fastest growing/declining:', data); // Debug log
+
+                            // Filter and sort for growing partnerships (positive balance)
+                            const fastestGrowing = data
+                                .filter(p => p.period_balance > 0)
+                                .sort((a, b) => b.period_balance - a.period_balance)
+                                .slice(0, 3);
+
+                            // Filter and sort for declining partnerships (negative balance)
+                            const fastestDeclining = data
+                                .filter(p => p.period_balance < 0)
+                                .sort((a, b) => a.period_balance - b.period_balance)
+                                .slice(0, 3);
+
+                            // Update the growing partnerships section
+                            const growingContainer = document.querySelector('.fastest-growing');
+                            if (growingContainer) {
+                                growingContainer.innerHTML = fastestGrowing.length > 0 ?
+                                    fastestGrowing.map(partner => `
+                                        <div class="growth-item">
+                                            <div class="partner-name">${partner.partner}</div>
+                                            <div class="growth-value-container">
+                                                <span class="growth-value positive">+${partner.period_balance.toLocaleString()}</span>
+                                                <span class="period-label">last ${dateRange} days</span>
+                                            </div>
+                                            <small class="text-muted">
+                                                Sent: ${partner.period_sent.toLocaleString()} | 
+                                                Received: ${partner.period_received.toLocaleString()}
+                                            </small>
+                                        </div>
+                                    `).join('') :
+                                    '<p class="text-muted">No growing partnerships found</p>';
+                            }
+
+                            // Update the declining partnerships section
+                            const decliningContainer = document.querySelector('.fastest-declining');
+                            if (decliningContainer) {
+                                decliningContainer.innerHTML = fastestDeclining.length > 0 ?
+                                    fastestDeclining.map(partner => `
+                                        <div class="growth-item">
+                                            <div class="partner-name">${partner.partner}</div>
+                                            <div class="growth-value-container">
+                                                <span class="growth-value negative">${partner.period_balance.toLocaleString()}</span>
+                                                <span class="period-label">last ${dateRange} days</span>
+                                            </div>
+                                            <small class="text-muted">
+                                                Sent: ${partner.period_sent.toLocaleString()} | 
+                                                Received: ${partner.period_received.toLocaleString()}
+                                            </small>
+                                        </div>
+                                    `).join('') :
+                                    '<p class="text-muted">No declining partnerships found</p>';
+                            }
+                        } catch (error) {
+                            console.error('Error updating fastest growing/declining:', error);
+                        }
+                    }
+
+                    async function updateDashboard() {
+                        try {
+                            const end = new Date();
+                            const start = new Date();
+                            start.setDate(end.getDate() - parseInt(dateRange));
+
+                            // Replace multiple largest-imbalances calls with single partnership-metrics call
+                            const response = await fetch(
+                                `http://localhost:5001/api/partnership-metrics?` +
+                                `start=${start.toISOString().split('T')[0]}&` +
+                                `end=${end.toISOString().split('T')[0]}`
+                            );
+
+                                const data = await response.json();
+                            updateTopImbalances(data);
+                                
+                            } catch (error) {
+                            console.error('Error updating dashboard:', error);
+                        }
+                    }
+
+                    // Remove any other functions that call largest-imbalances
                 </script>
 
                 <!-- Add this at the end of the body -->
@@ -2228,6 +2547,7 @@
                         </div>
                     </div>
                 </div>
+
             </body>
             </html>
             

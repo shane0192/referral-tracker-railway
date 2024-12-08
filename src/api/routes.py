@@ -6,10 +6,12 @@ import os
 import pandas as pd
 import random
 from sqlalchemy.sql import func
+import json
 
 # Add the project root to Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from src.data.db_manager import DatabaseManager, ReferralData
+from src.scraper.scheduler import ScraperScheduler
 
 app = Flask(__name__)
 # Configure CORS to allow all origins for development
@@ -33,42 +35,107 @@ def safe_int_convert(value):
     except (ValueError, TypeError):
         return 0
 
+def interpolate_missing_days(data, start_date, end_date):
+    """Fill in missing days with linear interpolation between known points"""
+    if not data:
+        return []
+        
+    filled_data = []
+    current_date = start_date
+    
+    # Ensure we process every single day
+    while current_date <= end_date:
+        # Find the surrounding known data points
+        prev_record = next((r for r in reversed(data) if r.date <= current_date), None)
+        next_record = next((r for r in data if r.date > current_date), None)
+        
+        if current_date in [r.date for r in data]:
+            # Use actual data if we have it
+            record = next(r for r in data if r.date == current_date)
+            filled_data.append(record)
+        elif prev_record and next_record:
+            # Interpolate between known points
+            total_days = (next_record.date - prev_record.date).days
+            days_from_prev = (current_date - prev_record.date).days
+            progress = days_from_prev / total_days
+            
+            interpolated = ReferralData(
+                date=current_date,
+                account_name=prev_record.account_name,
+                recommending_me=[],
+                my_recommendations=[]
+            )
+            
+            # Interpolate recommending_me
+            for rec in prev_record.recommending_me:
+                prev_val = safe_int_convert(rec['subscribers'])
+                next_val = next((safe_int_convert(r['subscribers']) 
+                    for r in next_record.recommending_me if r['creator'] == rec['creator']), prev_val)
+                interpolated_val = int(prev_val + (next_val - prev_val) * progress)
+                
+                interpolated.recommending_me.append({
+                    'creator': rec['creator'],
+                    'subscribers': str(interpolated_val),
+                    'conversion_rate': rec['conversion_rate']
+                })
+            
+            # Interpolate my_recommendations
+            for rec in prev_record.my_recommendations:
+                prev_val = safe_int_convert(rec['subscribers'])
+                next_val = next((safe_int_convert(r['subscribers']) 
+                    for r in next_record.my_recommendations if r['creator'] == rec['creator']), prev_val)
+                interpolated_val = int(prev_val + (next_val - prev_val) * progress)
+                
+                interpolated.my_recommendations.append({
+                    'creator': rec['creator'],
+                    'subscribers': str(interpolated_val),
+                    'conversion_rate': rec['conversion_rate']
+                })
+            
+            filled_data.append(interpolated)
+        elif prev_record:
+            # If we only have previous data, use those values
+            interpolated = ReferralData(
+                date=current_date,
+                account_name=prev_record.account_name,
+                recommending_me=prev_record.recommending_me.copy(),
+                my_recommendations=prev_record.my_recommendations.copy()
+            )
+            filled_data.append(interpolated)
+            
+        current_date += timedelta(days=1)
+    
+    print(f"Interpolated data points: {len(filled_data)}")
+    print(f"Date range: {filled_data[0].date.strftime('%-m/%-d')} to {filled_data[-1].date.strftime('%-m/%-d')}")
+    return filled_data
+
 @app.route('/api/partnership-metrics')
 def get_partnership_metrics():
     account = request.args.get('account')
     start_date_str = request.args.get('start')
     end_date_str = request.args.get('end')
     
-    # Add default date handling
-    if not start_date_str or not end_date_str:
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=30)
-        start_date_str = start_date.strftime('%Y-%m-%d')
-        end_date_str = end_date.strftime('%Y-%m-%d')
-    
-    print(f"\n=== Partnership Metrics Request ===")
-    print(f"Account: {account}")
-    print(f"Date range: {start_date_str} to {end_date_str}")
-    
     try:
         # Convert dates and set time to include all of today
         start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0)
         end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
         
-        # Add logging to debug date ranges
-        print(f"Querying data from {start_date} to {end_date}")
-        
         session = db.Session()
         try:
-            # Remove the account filter when no account specified
+            # Base query
             query = session.query(ReferralData)\
                 .filter(ReferralData.date <= end_date)\
-                .filter(ReferralData.date >= start_date)
-                
-            if account:  # Only filter by account if specified
+                .filter(ReferralData.date >= start_date)\
+                .order_by(ReferralData.date)
+
+            # Add account filter only if specific account requested
+            if account and account != 'all':
                 query = query.filter(ReferralData.account_name == account)
                 
-            records = query.order_by(ReferralData.date).all()
+            records = query.all()
+                
+            if not records:
+                return jsonify([])
             
             # Group records by account
             account_records = {}
@@ -77,46 +144,59 @@ def get_partnership_metrics():
                     account_records[record.account_name] = []
                 account_records[record.account_name].append(record)
             
-            # Process each account's records
+            # Process metrics
             results = []
-            for account_name, account_data in account_records.items():
-                # Use first and last records for each account
-                baseline_record = account_data[0]
-                latest_record = account_data[-1]
+            all_partners = set()
+            partner_metrics = {}
+            
+            # Process each account's records
+            for acc_records in account_records.values():
+                baseline_record = acc_records[0]  # First record for this account
+                latest_record = acc_records[-1]   # Last record for this account
                 
-                # Your existing partner processing code
-                all_partners = set()
+                # Get all unique partners from both records
                 for record in [baseline_record, latest_record]:
                     all_partners.update(rec['creator'] for rec in record.recommending_me)
                     all_partners.update(rec['creator'] for rec in record.my_recommendations)
                 
                 for partner in all_partners:
-                    # Your existing metrics calculation
+                    key = partner if account == 'all' else f"{partner}_{baseline_record.account_name}"
+                    
+                    if key not in partner_metrics:
+                        partner_metrics[key] = {
+                            'partner': partner,
+                            'account': baseline_record.account_name if account != 'all' else 'All Clients',
+                            'period_received': 0,
+                            'period_sent': 0,
+                            'latest_received': 0,
+                            'latest_sent': 0
+                        }
+                    
+                    # Get baseline values
                     baseline_received = next((safe_int_convert(rec['subscribers']) 
                         for rec in baseline_record.recommending_me if rec['creator'] == partner), 0)
                     baseline_sent = next((safe_int_convert(rec['subscribers']) 
                         for rec in baseline_record.my_recommendations if rec['creator'] == partner), 0)
                     
+                    # Get latest values
                     latest_received = next((safe_int_convert(rec['subscribers']) 
                         for rec in latest_record.recommending_me if rec['creator'] == partner), 0)
                     latest_sent = next((safe_int_convert(rec['subscribers']) 
                         for rec in latest_record.my_recommendations if rec['creator'] == partner), 0)
                     
-                    period_received = latest_received - baseline_received
-                    period_sent = latest_sent - baseline_sent
-                    period_balance = period_received - period_sent
-                    all_time_balance = latest_received - latest_sent
-                    
-                    results.append({
-                        'partner': partner,
-                        'account': account_name,  # Include the account name
-                        'period_received': period_received,
-                        'period_sent': period_sent,
-                        'period_balance': period_balance,
-                        'all_time_balance': all_time_balance
-                    })
+                    # Accumulate metrics
+                    partner_metrics[key]['period_received'] += (latest_received - baseline_received)
+                    partner_metrics[key]['period_sent'] += (latest_sent - baseline_sent)
+                    partner_metrics[key]['latest_received'] += latest_received
+                    partner_metrics[key]['latest_sent'] += latest_sent
             
-            # Sort by absolute period balance across all accounts
+            # Convert accumulated metrics to results
+            for metrics in partner_metrics.values():
+                metrics['period_balance'] = metrics['period_received'] - metrics['period_sent']
+                metrics['all_time_balance'] = metrics['latest_received'] - metrics['latest_sent']
+                results.append(metrics)
+            
+            # Sort by absolute period balance
             results.sort(key=lambda x: abs(x['period_balance']), reverse=True)
             return jsonify(results)
             
@@ -136,24 +216,24 @@ def get_earliest_date():
 
 @app.route('/api/largest-imbalances')
 def get_largest_imbalances():
-    start_date = request.args.get('start')
-    end_date = request.args.get('end')
-    
     try:
+        # Get date parameters
+        start_date = request.args.get('start')
+        end_date = request.args.get('end')
+        account = request.args.get('account')  # Add this line to get the account parameter
+        
         session = db.Session()
         try:
-            # Get latest data for all-time stats
-            latest_date = session.query(func.max(ReferralData.date)).scalar()
-            latest_records = session.query(ReferralData)\
-                .filter(ReferralData.date == latest_date)\
-                .all()
-            
             # Initialize stats dictionaries
-            latest_stats = {}
             period_stats = {}
+            latest_stats = {}
             
-            # Process latest data for all accounts
-            for latest_record in latest_records:
+            # Get latest record for all-time stats
+            latest_record = session.query(ReferralData)\
+                .order_by(ReferralData.date.desc())\
+                .first()
+            
+            if latest_record:
                 for rec in latest_record.recommending_me:
                     creator = rec['creator']
                     if creator not in latest_stats:
@@ -171,10 +251,14 @@ def get_largest_imbalances():
                 start = datetime.strptime(start_date, '%Y-%m-%d')
                 end = datetime.strptime(end_date, '%Y-%m-%d')
                 
-                # Get all records in the period
-                period_records = session.query(ReferralData)\
-                    .filter(ReferralData.date.between(start, end))\
-                    .all()
+                # Add account filter if specified
+                query = session.query(ReferralData)\
+                    .filter(ReferralData.date.between(start, end))
+                
+                if account and account != 'all':
+                    query = query.filter(ReferralData.account_name == account)
+                
+                period_records = query.all()
                 
                 # Process all records in period
                 for record in period_records:
@@ -205,7 +289,7 @@ def get_largest_imbalances():
                 
                 results.append({
                     'partner': partner,
-                    'account': account,
+                    'account': account if account and account != 'all' else 'All Clients',
                     'period_received': period_received,
                     'period_sent': period_sent,
                     'period_balance': period_balance,
@@ -409,11 +493,6 @@ def get_partnership_trends():
         start_date = datetime.strptime(request.args.get('start'), '%Y-%m-%d')
         end_date = datetime.strptime(request.args.get('end'), '%Y-%m-%d').replace(hour=23, minute=59, second=59)
         
-        print(f"\n=== Partnership Trends Request ===")
-        print(f"Account: {account}")
-        print(f"Partner: {partner}")
-        print(f"Date range: {start_date} to {end_date}")
-        
         session = db.Session()
         try:
             records = session.query(ReferralData)\
@@ -423,68 +502,40 @@ def get_partnership_trends():
                 .order_by(ReferralData.date)\
                 .all()
             
-            print(f"Found {len(records)} records")
-            for record in records:
-                print(f"Record date: {record.date}")
-            
             if not records:
                 return jsonify({'error': 'No data found'})
             
-            # Get baseline and latest records
+            # Apply interpolation to fill missing days
+            records = interpolate_missing_days(records, start_date, end_date)
+            
+            # Find the baseline record (first snapshot)
             baseline_record = records[0]
-            latest_record = records[-1]
+            trend_records = records[1:]  # All records after baseline
             
             # Get metrics for the specific partner
-            baseline_received = next((safe_int_convert(rec['subscribers']) 
+            baseline_received = next((safe_int_convert(rec['subscribers'])
                 for rec in baseline_record.recommending_me if rec['creator'] == partner), 0)
-            baseline_sent = next((safe_int_convert(rec['subscribers']) 
+            baseline_sent = next((safe_int_convert(rec['subscribers'])
                 for rec in baseline_record.my_recommendations if rec['creator'] == partner), 0)
-            
-            latest_received = next((safe_int_convert(rec['subscribers']) 
-                for rec in latest_record.recommending_me if rec['creator'] == partner), 0)
-            latest_sent = next((safe_int_convert(rec['subscribers']) 
-                for rec in latest_record.my_recommendations if rec['creator'] == partner), 0)
-            
-            # Calculate changes
-            received_change = latest_received - baseline_received
-            sent_change = latest_sent - baseline_sent
-            days_between = max((latest_record.date - baseline_record.date).days, 1)
-            
+
+            # Calculate historical changes relative to baseline
             response_data = {
                 'historical_data': {
-                    'dates': [r.date.strftime('%Y-%m-%d') for r in records],
-                    'received': [next((safe_int_convert(rec['subscribers']) 
-                        for rec in r.recommending_me if rec['creator'] == partner), 0) for r in records],
-                    'sent': [next((safe_int_convert(rec['subscribers']) 
-                        for rec in r.my_recommendations if rec['creator'] == partner), 0) for r in records]
-                },
-                'daily_changes': {
-                    'dates': [r.date.strftime('%Y-%m-%d') for r in records[1:]],  # Skip first date
+                    'dates': [r.date.strftime('%-m/%-d') for r in trend_records],
                     'received': [
-                        curr - prev for curr, prev in zip(
-                            [next((safe_int_convert(rec['subscribers']) 
-                                for rec in r.recommending_me if rec['creator'] == partner), 0) for r in records][1:],
-                            [next((safe_int_convert(rec['subscribers']) 
-                                for rec in r.recommending_me if rec['creator'] == partner), 0) for r in records][:-1]
-                        )
+                        next((safe_int_convert(rec['subscribers']) 
+                            for rec in r.recommending_me if rec['creator'] == partner), 0) - baseline_received
+                        for r in trend_records
                     ],
                     'sent': [
-                        curr - prev for curr, prev in zip(
-                            [next((safe_int_convert(rec['subscribers']) 
-                                for rec in r.my_recommendations if rec['creator'] == partner), 0) for r in records][1:],
-                            [next((safe_int_convert(rec['subscribers']) 
-                                for rec in r.my_recommendations if rec['creator'] == partner), 0) for r in records][:-1]
-                        )
+                        next((safe_int_convert(rec['subscribers']) 
+                            for rec in r.my_recommendations if rec['creator'] == partner), 0) - baseline_sent
+                        for r in trend_records
                     ]
-                },
-                'growth': {
-                    'daily_change': round((received_change + sent_change) / days_between, 1),
-                    'growth_rate': round(((latest_received + latest_sent) / max(baseline_received + baseline_sent, 1) - 1) * 100, 1),
-                    'trend_direction': 'Improving' if received_change > sent_change else 'Declining'
                 }
             }
-            
-            print(f"Sending response: {response_data}")
+
+            print(f"Dates in response: {response_data['historical_data']['dates']}")  # Debug print
             return jsonify(response_data)
             
         finally:
@@ -518,17 +569,85 @@ def database_admin():
             <title>Database Admin</title>
             <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
             <style>
-                .record-row:hover { background-color: #f5f5f5; }
-                .delete-btn { color: red; cursor: pointer; }
+                .action-history {
+                    margin-top: 20px;
+                    padding: 15px;
+                    background: #f8f9fa;
+                    border-radius: 8px;
+                }
+                .btn-primary {
+                    background: #0d6efd;
+                    border: none;
+                }
+                .btn-danger {
+                    background: #dc3545;
+                    border: none;
+                }
+                .btn-success {
+                    background: #198754;
+                    border: none;
+                }
+                .btn-warning {
+                    background: #ffc107;
+                    color: #000;
+                    border: none;
+                }
+                .btn-secondary {
+                    background: #6c757d;
+                    border: none;
+                }
+                .btn-outline {
+                    background: transparent;
+                    border: 1px solid #dee2e6;
+                    color: #6c757d;
+                }
+                .action-buttons {
+                    display: flex;
+                    gap: 10px;
+                    margin-bottom: 20px;
+                }
+                .primary-actions {
+                    display: flex;
+                    gap: 10px;
+                }
+                .secondary-actions {
+                    display: flex;
+                    gap: 10px;
+                    margin-left: auto;
+                }
             </style>
         </head>
         <body>
             <div class="container mt-4">
                 <h1>Database Management</h1>
-                <div class="mb-3">
-                    <button class="btn btn-primary" onclick="reimportCSV()">Reimport from CSV</button>
-                    <button class="btn btn-danger" onclick="clearDatabase()">Clear Database</button>
+                
+                <div class="action-buttons">
+                    <div class="primary-actions">
+                        <!-- Primary action -->
+                        <button class="btn btn-success" onclick="runScraper()">Run Scraper Now</button>
+                    </div>
+                    
+                    <div class="secondary-actions">
+                        <!-- Maintenance actions -->
+                        <button class="btn btn-warning" onclick="cleanupDuplicates()">Clean Duplicates</button>
+                        <button class="btn btn-outline" onclick="reimportCSV()">Reimport from CSV</button>
+                        <button class="btn btn-danger" onclick="clearDatabase()">Clear Database</button>
+                    </div>
                 </div>
+
+                <div class="alert alert-info">
+                    <strong>Last Successful Scrape:</strong> <span id="lastScrapeTime">Loading...</span>
+                </div>
+
+                <!-- Add action history section -->
+                <div class="action-history">
+                    <h5>Recent Actions</h5>
+                    <div id="actionHistory"></div>
+                    <button class="btn btn-outline mt-2" onclick="undoLastAction()" id="undoButton" disabled>
+                        Undo Last Action
+                    </button>
+                </div>
+
                 <table class="table">
                     <thead>
                         <tr>
@@ -554,6 +673,7 @@ def database_admin():
                     </tbody>
                 </table>
             </div>
+            
             <script>
                 function deleteRecord(id) {
                     if (confirm('Are you sure you want to delete this record?')) {
@@ -587,6 +707,126 @@ def database_admin():
                             });
                     }
                 }
+
+                async function runScraper() {
+                    if (confirm('Are you sure you want to run the scraper now?')) {
+                        try {
+                            const response = await fetch('/api/run-scraper', {method: 'POST'});
+                            const data = await response.json();
+                            if (data.success) {
+                                alert('Scraper started successfully!');
+                                updateLastScrapeTime();
+                            } else {
+                                alert('Error: ' + data.error);
+                            }
+                        } catch (error) {
+                            alert('Error starting scraper: ' + error);
+                        }
+                    }
+                }
+
+                async function updateLastScrapeTime() {
+                    try {
+                        const response = await fetch('/api/last-scrape-time');
+                        const data = await response.json();
+                        const element = document.getElementById('lastScrapeTime');
+                        if (data.last_run) {
+                            element.textContent = new Date(data.last_run).toLocaleString();
+                        } else {
+                            element.textContent = 'No successful scrapes yet';
+                        }
+                    } catch (error) {
+                        console.error('Error fetching last scrape time:', error);
+                    }
+                }
+
+                async function cleanupDuplicates() {
+                    if (confirm('This will remove duplicate entries for the same day. Continue?')) {
+                        try {
+                            const response = await fetch('/admin/cleanup-duplicates', {
+                                method: 'POST'
+                            });
+                            const data = await response.json();
+                            if (data.success) {
+                                alert(`Cleaned up ${data.duplicates_removed} duplicate entries`);
+                                location.reload();
+                            } else {
+                                alert('Error: ' + data.error);
+                            }
+                        } catch (error) {
+                            alert('Error cleaning duplicates: ' + error);
+                        }
+                    }
+                }
+
+                // Call this when page loads
+                updateLastScrapeTime();
+
+                let actionHistory = [];
+                
+                function addToHistory(action, details) {
+                    actionHistory.push({ action, details, timestamp: new Date() });
+                    updateHistoryDisplay();
+                }
+                
+                function updateHistoryDisplay() {
+                    const historyDiv = document.getElementById('actionHistory');
+                    const undoButton = document.getElementById('undoButton');
+                    
+                    historyDiv.innerHTML = actionHistory.slice(-5).map(item => `
+                        <div class="mb-2">
+                            <small class="text-muted">${item.timestamp.toLocaleTimeString()}</small>
+                            <br>
+                            ${item.action}: ${item.details}
+                        </div>
+                    `).join('');
+                    
+                    undoButton.disabled = actionHistory.length === 0;
+                }
+                
+                async function undoLastAction() {
+                    if (actionHistory.length === 0) return;
+                    
+                    const lastAction = actionHistory[actionHistory.length - 1];
+                    if (confirm(`Are you sure you want to undo: ${lastAction.action}?`)) {
+                        try {
+                            const response = await fetch('/admin/undo-action', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ action: lastAction })
+                            });
+                            const result = await response.json();
+                            if (result.success) {
+                                actionHistory.pop();
+                                updateHistoryDisplay();
+                                alert('Action undone successfully');
+                                location.reload();
+                            } else {
+                                alert('Error undoing action: ' + result.error);
+                            }
+                        } catch (error) {
+                            alert('Error: ' + error);
+                        }
+                    }
+                }
+                
+                // Update existing action functions to add to history
+                async function cleanupDuplicates() {
+                    if (confirm('This will remove duplicate entries for the same day. Continue?')) {
+                        try {
+                            const response = await fetch('/admin/cleanup-duplicates', { method: 'POST' });
+                            const data = await response.json();
+                            if (data.success) {
+                                addToHistory('Cleanup Duplicates', `Removed ${data.duplicates_removed} entries`);
+                                location.reload();
+                            }
+                        } catch (error) {
+                            alert('Error: ' + error);
+                        }
+                    }
+                }
+                
+                // Similar updates for other action functions...
             </script>
         </body>
         </html>
@@ -640,6 +880,59 @@ def debug_database():
     finally:
         session.close()
 
+@app.route('/api/run-scraper', methods=['POST'])
+def run_scraper():
+    try:
+        scheduler = ScraperScheduler()
+        scheduler.run_scraper()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/last-scrape-time')
+def get_last_scrape_time():
+    try:
+        with open('last_run.json', 'r') as f:
+            data = json.load(f)
+            return jsonify({'last_run': data.get('last_run')})
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+@app.route('/admin/cleanup-duplicates', methods=['POST'])
+def cleanup_duplicates():
+    session = db.Session()
+    try:
+        # Get all records ordered by date and account
+        records = session.query(ReferralData)\
+            .order_by(ReferralData.date.desc(), ReferralData.account_name)\
+            .all()
+        
+        # Group by date and account
+        seen = set()
+        duplicates = []
+        for record in records:
+            # Create a key for each day (strip time) and account
+            key = (record.date.strftime('%Y-%m-%d'), record.account_name)
+            if key in seen:
+                duplicates.append(record)
+            else:
+                seen.add(key)
+        
+        # Delete duplicates (keep the latest entry for each day)
+        for record in duplicates:
+            session.delete(record)
+        
+        session.commit()
+        return jsonify({
+            'success': True,
+            'duplicates_removed': len(duplicates)
+        })
+    except Exception as e:
+        session.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        session.close()
+
 if __name__ == '__main__':
     print("Starting Flask server...")
     print("API endpoints:")
@@ -655,4 +948,7 @@ if __name__ == '__main__':
     print("  - GET /admin/database")
     print("  - DELETE /admin/delete-record/<int:record_id>")
     print("  - POST /admin/clear-database")
+    print("  - POST /api/run-scraper")
+    print("  - GET /api/last-scrape-time")
+    print("  - POST /admin/cleanup-duplicates")
     app.run(host='0.0.0.0', port=5001, debug=True)

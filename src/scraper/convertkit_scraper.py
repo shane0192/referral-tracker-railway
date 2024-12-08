@@ -35,7 +35,7 @@ ALLOWED_ACCOUNTS = [
 
 class ConvertKitScraper:
     def __init__(self, chrome_profile_path=None):
-        """Initialize the scraper with login credentials"""
+        """Initialize the scraper with login credentials from config"""
         self.email = CONVERTKIT_EMAIL
         self.password = CONVERTKIT_PASSWORD
         
@@ -63,6 +63,8 @@ class ConvertKitScraper:
             raise
 
         self.current_account = None  # Add this to track current account
+        self.max_retries = 3
+        self.retry_delay = 5  # seconds
 
     def setup_driver(self):
         """Initialize the Chrome WebDriver"""
@@ -188,114 +190,181 @@ class ConvertKitScraper:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    def scrape_referral_data(self):
-        """Scrape referral data for current account"""
-        if not self.current_account:
-            print("No account selected!")
-            return
-        
-        try:
-            # First ensure we're on the creator network page
-            print("\nEnsuring we're on the Creator Network page...")
-            self.driver.get("https://app.kit.com/creator-network")
-            time.sleep(5)  # Wait for navigation
-            
-            # Verify we're on the correct page
-            current_url = self.driver.current_url
-            print(f"Current URL: {current_url}")
-            if "creator-network" not in current_url:
-                print("⚠️ Not on Creator Network page! Attempting to navigate...")
-                self.navigate_to_creator_network()
-                time.sleep(5)  # Additional wait after navigation
-            
-            print("Starting data collection...")
-            data = {
-                'date': datetime.now().strftime('%Y-%m-%d'),
-                'recommending_me': [],
-                'my_recommendations': []
-            }
-            
-            # First get data from the default "Recommending me" tab
-            print("\nScraping data from default 'Recommending me' tab...")
-            data['recommending_me'] = self.get_table_data(tab_type="recommending_me")
-            print(f"Found {len(data['recommending_me'])} entries in first tab")
-            
-            # Take screenshot to debug
-            self.driver.save_screenshot("before_tab_switch.png")
-            
-            # Now find and click the "My Recommendations" tab
-            print("\nLooking for 'My Recommendations' tab...")
+    def create_driver(self):
+        """Create and return a new WebDriver instance with retries"""
+        for attempt in range(self.max_retries):
             try:
-                # Try different possible selectors for the My Recommendations tab
-                selectors = [
-                    "//a[contains(text(), 'My Recommendations')]",
-                    "//button[contains(text(), 'My Recommendations')]",
-                    "//div[contains(text(), 'My Recommendations')]",
-                    "//span[contains(text(), 'My Recommendations')]"
-                ]
+                # Setup Chrome options
+                chrome_options = Options()
+                chrome_options.add_argument(f'user-data-dir={self.profile_dir}')
+                chrome_options.add_argument('--profile-directory=Default')
+                chrome_options.add_argument('--no-sandbox')
+                chrome_options.add_argument('--disable-dev-shm-usage')
+                chrome_options.add_argument('--window-size=1920,1080')
                 
-                tab_found = False
-                for selector in selectors:
-                    try:
-                        print(f"Trying selector: {selector}")
-                        my_recommendations_tab = WebDriverWait(self.driver, 5).until(
-                            EC.element_to_be_clickable((By.XPATH, selector))
-                        )
-                        print("Found tab! Clicking...")
-                        my_recommendations_tab.click()
-                        tab_found = True
-                        break
-                    except Exception as e:
-                        print(f"Selector failed: {str(e)}")
-                        continue
-                
-                if not tab_found:
-                    raise Exception("Could not find 'My Recommendations' tab")
-                
-                # Wait for table to update
-                time.sleep(3)
-                
-                print("Waiting for table data to load...")
-                time.sleep(5)  # Add explicit wait after tab switch
-                
-                print("Scraping data from 'My Recommendations' tab...")
-                data['my_recommendations'] = self.get_table_data(tab_type="my_recommendations")
-                print(f"Found {len(data['my_recommendations'])} entries in second tab")
+                print(f"\nInitializing Chrome driver (attempt {attempt + 1}/{self.max_retries})...")
+                driver = webdriver.Chrome(options=chrome_options)
+                print("Chrome driver initialized successfully")
+                return driver
                 
             except Exception as e:
-                print(f"Error with second tab: {str(e)}")
-                self.driver.save_screenshot("second_tab_error.png")
+                if attempt == self.max_retries - 1:
+                    raise
+                print(f"Failed to create driver (attempt {attempt + 1}/{self.max_retries}): {str(e)}")
+                time.sleep(self.retry_delay)
+                
+    def restart_session(self):
+        """Restart the browser session with proper cleanup"""
+        try:
+            if self.driver:
+                print("Closing existing browser session...")
+                try:
+                    self.driver.quit()
+                except:
+                    pass  # Ignore cleanup errors
+                
+            print("Creating new browser session...")
+            self.driver = self.create_driver()
             
-            # Print data clearly
-            print("\n=== Scraped Data ===")
-            print(f"\nDate: {data['date']}")
-            print("\nRecommending Me Tab:")
-            for row in data['recommending_me']:
-                print(f"  {row['creator']} - Subscribers: {row['subscribers']}, Conversion: {row['conversion_rate']}")
-            print("\nMy Recommendations Tab:")
-            for row in data['my_recommendations']:
-                print(f"  {row['creator']} - Subscribers: {row['subscribers']}, Conversion: {row['conversion_rate']}")
-            
-            # Save to CSV
-            self.save_referral_data(
-                account_name=self.current_account,
-                recommending_me_data=data['recommending_me'],
-                my_recommendations_data=data['my_recommendations']
-            )
-            
-            db = DatabaseManager()
-            db.save_data(
-                account_name=self.current_account,
-                recommending_me=data['recommending_me'],
-                my_recommendations=data['my_recommendations']
-            )
-            
-            return data
+            if not self.driver:
+                print("Failed to create new driver")
+                return False
+                
+            print("Attempting to log in...")
+            if not self.login():
+                print("Failed to log in after restart")
+                return False
+                
+            print("Session successfully restarted")
+            return True
             
         except Exception as e:
-            print(f"Failed to scrape referral data: {str(e)}")
-            self.driver.save_screenshot("scraping_error.png")
-            raise
+            print(f"Failed to restart session: {str(e)}")
+            return False
+
+    def scrape_referral_data(self):
+        """Scrape referral data with automatic recovery"""
+        for attempt in range(self.max_retries):
+            try:
+                """Scrape referral data for current account"""
+                if not self.current_account:
+                    print("No account selected!")
+                    return
+                
+                try:
+                    # First ensure we're on the creator network page
+                    print("\nEnsuring we're on the Creator Network page...")
+                    self.driver.get("https://app.kit.com/creator-network")
+                    time.sleep(5)  # Wait for navigation
+                    
+                    # Verify we're on the correct page
+                    current_url = self.driver.current_url
+                    print(f"Current URL: {current_url}")
+                    if "creator-network" not in current_url:
+                        print("⚠️ Not on Creator Network page! Attempting to navigate...")
+                        self.navigate_to_creator_network()
+                        time.sleep(5)  # Additional wait after navigation
+                    
+                    print("Starting data collection...")
+                    data = {
+                        'date': datetime.now().strftime('%Y-%m-%d'),
+                        'recommending_me': [],
+                        'my_recommendations': []
+                    }
+                    
+                    # First get data from the default "Recommending me" tab
+                    print("\nScraping data from default 'Recommending me' tab...")
+                    data['recommending_me'] = self.get_table_data(tab_type="recommending_me")
+                    print(f"Found {len(data['recommending_me'])} entries in first tab")
+                    
+                    # Take screenshot to debug
+                    self.driver.save_screenshot("before_tab_switch.png")
+                    
+                    # Now find and click the "My Recommendations" tab
+                    print("\nLooking for 'My Recommendations' tab...")
+                    try:
+                        # Try different possible selectors for the My Recommendations tab
+                        selectors = [
+                            "//a[contains(text(), 'My Recommendations')]",
+                            "//button[contains(text(), 'My Recommendations')]",
+                            "//div[contains(text(), 'My Recommendations')]",
+                            "//span[contains(text(), 'My Recommendations')]"
+                        ]
+                        
+                        tab_found = False
+                        for selector in selectors:
+                            try:
+                                print(f"Trying selector: {selector}")
+                                my_recommendations_tab = WebDriverWait(self.driver, 5).until(
+                                    EC.element_to_be_clickable((By.XPATH, selector))
+                                )
+                                print("Found tab! Clicking...")
+                                my_recommendations_tab.click()
+                                tab_found = True
+                                break
+                            except Exception as e:
+                                print(f"Selector failed: {str(e)}")
+                                continue
+                        
+                        if not tab_found:
+                            raise Exception("Could not find 'My Recommendations' tab")
+                        
+                        # Wait for table to update
+                        time.sleep(3)
+                        
+                        print("Waiting for table data to load...")
+                        time.sleep(5)  # Add explicit wait after tab switch
+                        
+                        print("Scraping data from 'My Recommendations' tab...")
+                        data['my_recommendations'] = self.get_table_data(tab_type="my_recommendations")
+                        print(f"Found {len(data['my_recommendations'])} entries in second tab")
+                        
+                    except Exception as e:
+                        print(f"Error with second tab: {str(e)}")
+                        self.driver.save_screenshot("second_tab_error.png")
+                    
+                    # Print data clearly
+                    print("\n=== Scraped Data ===")
+                    print(f"\nDate: {data['date']}")
+                    print("\nRecommending Me Tab:")
+                    for row in data['recommending_me']:
+                        print(f"  {row['creator']} - Subscribers: {row['subscribers']}, Conversion: {row['conversion_rate']}")
+                    print("\nMy Recommendations Tab:")
+                    for row in data['my_recommendations']:
+                        print(f"  {row['creator']} - Subscribers: {row['subscribers']}, Conversion: {row['conversion_rate']}")
+                    
+                    # Save to CSV
+                    self.save_referral_data(
+                        account_name=self.current_account,
+                        recommending_me_data=data['recommending_me'],
+                        my_recommendations_data=data['my_recommendations']
+                    )
+                    
+                    db = DatabaseManager()
+                    db.save_data(
+                        account_name=self.current_account,
+                        recommending_me=data['recommending_me'],
+                        my_recommendations=data['my_recommendations']
+                    )
+                    
+                    return data
+                    
+                except Exception as e:
+                    print(f"Failed to scrape referral data: {str(e)}")
+                    self.driver.save_screenshot("scraping_error.png")
+                    raise
+            except Exception as e:
+                self.safe_screenshot(f"scraping_error_{attempt}.png")
+                print(f"Scraping attempt {attempt + 1}/{self.max_retries} failed: {str(e)}")
+                
+                if attempt == self.max_retries - 1:
+                    raise
+                
+                print("Attempting to restart session...")
+                if not self.restart_session():
+                    print("Failed to restart session")
+                    raise
+                time.sleep(self.retry_delay)
 
     def get_table_data(self, tab_type="my_recommendations", max_retries=3):
         """Helper method to get specific columns from the table"""

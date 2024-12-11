@@ -214,12 +214,19 @@ class ScraperScheduler:
 
     def get_next_run_time(self):
         """Get the next scheduled run time"""
-        jobs = self.scheduler.get_jobs()
-        if jobs:
-            next_run = jobs[0].next_run_time
-            logger.info(f"Next scheduled run: {next_run.strftime('%Y-%m-%d %H:%M:%S')}")
-            return next_run
-        return None
+        try:
+            jobs = self.scheduler.get_jobs()
+            if jobs:
+                # Use _get_run_times() instead of next_run_time
+                next_runs = jobs[0]._get_run_times(datetime.now())
+                if next_runs:
+                    next_run = next_runs[0]
+                    logger.info(f"Next scheduled run: {next_run.strftime('%Y-%m-%d %H:%M:%S')}")
+                    return next_run
+            return None
+        except Exception as e:
+            logger.error(f"Error getting next run time: {str(e)}")
+            return None
 
 if __name__ == "__main__":
     scheduler = ScraperScheduler()

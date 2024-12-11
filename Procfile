@@ -1,2 +1,2 @@
-web: gunicorn "src.app:create_app()"
+web: gunicorn src.api:app
 clock: python src/clock.py

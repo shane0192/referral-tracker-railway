@@ -1209,7 +1209,8 @@ def cleanup_initial_data():
 
 @app.route('/data/<path:filename>')
 def serve_static(filename):
-    return send_from_directory('data', filename)
+    data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data')
+    return send_from_directory(data_dir, filename)
 
 if __name__ == '__main__':
     print("Starting Flask server...")

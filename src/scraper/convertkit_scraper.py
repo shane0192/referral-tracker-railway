@@ -1,3 +1,5 @@
+import sys
+import os
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -7,18 +9,13 @@ from datetime import datetime
 import logging
 import time
 import pickle
-import os
-import sys
-import json
-import csv
-import sys
-import os
+
+# Keep your existing path setup
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-from src.data.db_manager import DatabaseManager
-import pandas as pd
-from ..utils.config import CONVERTKIT_EMAIL, CONVERTKIT_PASSWORD
-import requests
-import hashlib
+
+# Update these imports to match your actual file structure
+from src.data.db_manager import DatabaseManager, ReferralData
+from src.utils.config import CONVERTKIT_EMAIL, CONVERTKIT_PASSWORD
 
 # Add this constant
 ALLOWED_ACCOUNTS = [
@@ -52,6 +49,13 @@ class ConvertKitScraper:
         chrome_options = Options()
         chrome_options.add_argument(f'user-data-dir={self.profile_dir}')
         chrome_options.add_argument('--profile-directory=Default')
+        
+        # Add headless mode options
+        chrome_options.add_argument('--headless')  # Run in headless mode
+        chrome_options.add_argument('--disable-gpu')  # Required for some systems
+        chrome_options.add_argument('--no-sandbox')
+        chrome_options.add_argument('--disable-dev-shm-usage')
+        chrome_options.add_argument('--window-size=1920,1080')  # Set a standard window size
         
         try:
             print("\nInitializing Chrome driver...")
@@ -242,10 +246,93 @@ class ConvertKitScraper:
             print(f"Failed to restart session: {str(e)}")
             return False
 
+    def validate_scrape_data(self, data, account_name):
+        """Validate scraped data for completeness and compare with historical data"""
+        if not data:
+            message = f"❌ No data retrieved for {account_name}"
+            print(message)
+            return False, message
+        
+        recommending_count = len(data.get('recommending_me', []))
+        recommendations_count = len(data.get('my_recommendations', []))
+        
+        print(f"\n=== Data Validation for {account_name} ===")
+        print(f"Current recommending me entries: {recommending_count}")
+        print(f"Current recommendations entries: {recommendations_count}")
+        
+        # Get previous day's data
+        db = DatabaseManager()
+        session = db.Session()
+        try:
+            previous_record = session.query(ReferralData)\
+                .filter(ReferralData.account_name == account_name)\
+                .order_by(ReferralData.date.desc())\
+                .first()
+            
+            if previous_record:
+                prev_recommending = len(previous_record.recommending_me)
+                prev_recommendations = len(previous_record.my_recommendations)
+                
+                # Check for significant drops (more than 3 entries)
+                MAX_ALLOWED_DROP = 3
+                
+                if (prev_recommending - recommending_count) > MAX_ALLOWED_DROP:
+                    message = (f"⚠️ Suspicious drop in recommending_me for {account_name}:\n"
+                              f"  Previous: {prev_recommending}\n"
+                              f"  Current: {recommending_count}\n"
+                              f"  Drop: {prev_recommending - recommending_count}")
+                    print(message)
+                    return False, message
+                    
+                if (prev_recommendations - recommendations_count) > MAX_ALLOWED_DROP:
+                    message = (f"⚠️ Suspicious drop in recommendations for {account_name}:\n"
+                              f"  Previous: {prev_recommendations}\n"
+                              f"  Current: {recommendations_count}\n"
+                              f"  Drop: {prev_recommendations - recommendations_count}")
+                    print(message)
+                    return False, message
+                    
+                print(f"Historical comparison for {account_name}:")
+                print(f"  Previous recommending: {prev_recommending}")
+                print(f"  Previous recommendations: {prev_recommendations}")
+                
+        finally:
+            session.close()
+        
+        # Continue with minimum threshold validation
+        if account_name == "Chris Donnelly":
+            MIN_RECOMMENDING_ME = 10
+            MIN_RECOMMENDATIONS = 10
+        else:
+            MIN_RECOMMENDING_ME = 5
+            MIN_RECOMMENDATIONS = 5
+        
+        is_complete = (
+            recommending_count >= MIN_RECOMMENDING_ME or 
+            recommendations_count >= MIN_RECOMMENDATIONS
+        )
+        
+        if not is_complete:
+            message = (f"❌ Incomplete data for {account_name}:\n"
+                      f"  Expected min {MIN_RECOMMENDING_ME} recommending, got {recommending_count}\n"
+                      f"  Expected min {MIN_RECOMMENDATIONS} recommendations, got {recommendations_count}")
+            print(message)
+            return False, message
+        
+        message = f"✅ Data validation passed for {account_name}"
+        print(message)
+        return True, message
+
     def scrape_referral_data(self):
-        """Scrape referral data with automatic recovery"""
+        """Scrape referral data with validation"""
         for attempt in range(self.max_retries):
             try:
+                data = {
+                    'date': datetime.now(),
+                    'recommending_me': [],
+                    'my_recommendations': []
+                }
+                
                 """Scrape referral data for current account"""
                 if not self.current_account:
                     print("No account selected!")
@@ -333,7 +420,11 @@ class ConvertKitScraper:
                     for row in data['my_recommendations']:
                         print(f"  {row['creator']} - Subscribers: {row['subscribers']}, Conversion: {row['conversion_rate']}")
                     
-                    # Save to CSV
+                    # Add validation before saving
+                    if not self.validate_scrape_data(data, self.current_account):
+                        raise Exception(f"Data validation failed for {self.current_account}")
+                    
+                    # Save data only if validation passes
                     self.save_referral_data(
                         account_name=self.current_account,
                         recommending_me_data=data['recommending_me'],
@@ -354,7 +445,7 @@ class ConvertKitScraper:
                     self.driver.save_screenshot("scraping_error.png")
                     raise
             except Exception as e:
-                self.safe_screenshot(f"scraping_error_{attempt}.png")
+                self.save_screenshot(f"scraping_error_{attempt}.png")
                 print(f"Scraping attempt {attempt + 1}/{self.max_retries} failed: {str(e)}")
                 
                 if attempt == self.max_retries - 1:
@@ -757,3 +848,13 @@ class ConvertKitScraper:
             print(f"Failed to scrape avatars: {str(e)}")
             self.driver.save_screenshot("avatar_scraping_error.png")
             raise
+
+    def save_screenshot(self, name):
+        """Save a screenshot with error context"""
+        try:
+            timestamp = time.strftime("%Y%m%d-%H%M%S")
+            filename = f"error_{name}_{timestamp}.png"
+            self.driver.save_screenshot(filename)
+            print(f"Screenshot saved as {filename}")
+        except Exception as e:
+            print(f"Failed to save screenshot: {str(e)}")

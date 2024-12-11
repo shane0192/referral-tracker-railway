@@ -54,38 +54,40 @@ class ScraperScheduler:
         with open(self.last_run_file, 'w') as f:
             json.dump({'last_run': datetime.now().isoformat()}, f)
             
-    def should_run(self):
-        """Check if we should run the scraper"""
-        last_run = self.get_last_run()
-        if last_run:
-            now = datetime.now()
-            
-            # If it's a new day and after 6 AM, we should run
-            if (last_run.date() < now.date() and 
-                now.hour >= 6):
-                logger.info("New day detected and after 6 AM - running scraper")
-                return True
-            
-            # If it's the same day and we've already run, skip
-            if last_run.date() == now.date():
-                logger.info(f"Already scraped data for today ({now.date()})")
-                next_run = (now.replace(hour=6, minute=0, second=0) + 
-                           timedelta(days=1))
-                logger.info(f"Next scheduled run: {next_run}")
-                return False
+    def should_run(self, force=False):
+        """Check if scraper should run"""
+        if force:
+            logger.info("Force run requested - ignoring last run time")
+            return True
         
-        logger.info("No successful scrape yet today - will run")
-        return True
+        try:
+            with open('last_successful_run.txt', 'r') as f:
+                last_run = datetime.fromisoformat(f.read().strip())
+                next_run = last_run.replace(hour=6, minute=0, second=0, microsecond=0)
+                if last_run.hour >= 6:
+                    next_run += timedelta(days=1)
+                
+                logger.info(f"Last successful run: {last_run}")
+                logger.info(f"Next scheduled run: {next_run}")
+                
+                if datetime.now() < next_run:
+                    logger.info("Skipping run - too soon since last successful run")
+                    return False
+                
+            return True
+        except FileNotFoundError:
+            logger.info("No previous run found")
+            return True
 
-    def run_scraper(self):
-        """Run the scraper with better error handling"""
+    def run_scraper(self, force=False):
+        """Run the scraper"""
         logger.info("Running scraper...")
-        if not self.should_run():
-            logger.info("Skipping run - too soon since last successful run")
+        if not self.should_run(force=force):
             return
-
+        
         scraper = None
         retry_count = 0
+        validation_messages = []
         
         while retry_count < self.max_retries:
             try:
@@ -95,9 +97,14 @@ class ScraperScheduler:
                     except:
                         pass
                 
-                scraper = ConvertKitScraper()
+                # Start with headless mode
+                scraper = ConvertKitScraper(headless=True)
                 
+                # If login fails, restart with visible browser
                 if not scraper.login():
+                    logger.info("Login failed - restarting with visible browser for manual login")
+                    scraper.driver.quit()
+                    scraper = ConvertKitScraper(headless=False)
                     self.send_notification("🚨 ConvertKit login needed - please log in manually")
                     return
 
@@ -108,7 +115,18 @@ class ScraperScheduler:
                 for account in accounts:
                     try:
                         scraper.switch_to_account(account)
-                        scraper.scrape_referral_data()
+                        
+                        # First scrape the data
+                        data = scraper.scrape_referral_data()
+                        
+                        # Then validate it
+                        is_valid, message = scraper.validate_scrape_data(data, account['name'])
+                        validation_messages.append(message)
+                        
+                        if not is_valid:
+                            failed_accounts.append(account['name'])
+                            success = False
+                            
                     except Exception as e:
                         logger.error(f"Failed to scrape {account['name']}: {str(e)}")
                         failed_accounts.append(account['name'])
@@ -120,20 +138,28 @@ class ScraperScheduler:
                                 raise Exception("Failed to restart session")
                         except Exception as recovery_error:
                             logger.error(f"Session recovery failed: {str(recovery_error)}")
-                            break  # Stop processing if we can't recover
+                            break
 
                 if success:
                     self.save_last_run()
                     self.send_notification("✅ ConvertKit data successfully collected for today")
-                    return  # Exit successfully
                 else:
+                    # Send detailed validation report
+                    validation_report = "\n".join(validation_messages)
                     failed_list = ", ".join(failed_accounts)
-                    self.send_notification(f"⚠️ ConvertKit data collection partially failed. Problem accounts: {failed_list}")
+                    self.send_notification(
+                        f"⚠️ ConvertKit data collection issues:\n"
+                        f"Failed accounts: {failed_list}\n\n"
+                        f"Validation Report:\n{validation_report}"
+                    )
+                    
                     retry_count += 1
                     if retry_count < self.max_retries:
                         logger.info(f"Retrying entire scrape (attempt {retry_count + 1}/{self.max_retries})")
                         time.sleep(self.retry_delay)
                     continue
+
+                return  # Exit successfully if everything worked
 
             except Exception as e:
                 logger.error(f"Scraper error (attempt {retry_count + 1}/{self.max_retries}): {str(e)}", exc_info=True)
@@ -153,11 +179,8 @@ class ScraperScheduler:
                         pass  # Ignore cleanup errors
 
     def start(self):
-        """Start the scheduler with better error handling"""
+        """Start the scheduler"""
         try:
-            # Run once immediately
-            self.run_scraper()
-            
             # Schedule daily run at 6 AM
             self.scheduler.add_job(
                 self.run_scraper,
@@ -176,11 +199,14 @@ class ScraperScheduler:
             )
             
             logger.info("Scheduler started successfully")
+            
+            # Start the scheduler first
+            self.scheduler.start()
+            
+            # Then get the next run times
             logger.info(f"Next scheduled runs:")
             for job in self.scheduler.get_jobs():
                 logger.info(f"- {job.id}: {job.next_run_time}")
-            
-            self.scheduler.start()
             
         except Exception as e:
             logger.error(f"Failed to start scheduler: {str(e)}")

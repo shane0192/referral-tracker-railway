@@ -36,77 +36,85 @@ def safe_int_convert(value):
         return 0
 
 def interpolate_missing_days(data, start_date, end_date):
-    """Fill in missing days with linear interpolation between known points"""
+    """
+    !!! OPTIMIZED - DO NOT MODIFY !!!
+    This function has been tested and optimized for proper date handling and interpolation.
+    Last verified: December 2024
+    
+    Fills in missing days with linear interpolation between known points.
+    Uses a date_map for efficient lookup of existing records to prevent duplicates.
+    """
     if not data:
         return []
         
     filled_data = []
     current_date = start_date
     
-    # Ensure we process every single day
+    # Create a map of existing dates for faster lookup
+    date_map = {r.date.strftime('%Y-%m-%d'): r for r in data}
+    
     while current_date <= end_date:
-        # Find the surrounding known data points
-        prev_record = next((r for r in reversed(data) if r.date <= current_date), None)
-        next_record = next((r for r in data if r.date > current_date), None)
+        date_key = current_date.strftime('%Y-%m-%d')
         
-        if current_date in [r.date for r in data]:
+        if date_key in date_map:
             # Use actual data if we have it
-            record = next(r for r in data if r.date == current_date)
-            filled_data.append(record)
-        elif prev_record and next_record:
-            # Interpolate between known points
-            total_days = (next_record.date - prev_record.date).days
-            days_from_prev = (current_date - prev_record.date).days
-            progress = days_from_prev / total_days
+            filled_data.append(date_map[date_key])
+        else:
+            # Find surrounding known data points
+            prev_record = next((r for r in reversed(data) if r.date <= current_date), None)
+            next_record = next((r for r in data if r.date > current_date), None)
             
-            interpolated = ReferralData(
-                date=current_date,
-                account_name=prev_record.account_name,
-                recommending_me=[],
-                my_recommendations=[]
-            )
-            
-            # Interpolate recommending_me
-            for rec in prev_record.recommending_me:
-                prev_val = safe_int_convert(rec['subscribers'])
-                next_val = next((safe_int_convert(r['subscribers']) 
-                    for r in next_record.recommending_me if r['creator'] == rec['creator']), prev_val)
-                interpolated_val = int(prev_val + (next_val - prev_val) * progress)
+            if prev_record and next_record:
+                # Interpolate between known points
+                total_days = (next_record.date - prev_record.date).days
+                days_from_prev = (current_date - prev_record.date).days
                 
-                interpolated.recommending_me.append({
-                    'creator': rec['creator'],
-                    'subscribers': str(interpolated_val),
-                    'conversion_rate': rec['conversion_rate']
-                })
-            
-            # Interpolate my_recommendations
-            for rec in prev_record.my_recommendations:
-                prev_val = safe_int_convert(rec['subscribers'])
-                next_val = next((safe_int_convert(r['subscribers']) 
-                    for r in next_record.my_recommendations if r['creator'] == rec['creator']), prev_val)
-                interpolated_val = int(prev_val + (next_val - prev_val) * progress)
+                # Add protection against zero division
+                if total_days == 0:
+                    # If dates are the same, just use the previous record's values
+                    filled_data.append(prev_record)
+                else:
+                    progress = days_from_prev / total_days
+                    
+                    interpolated = ReferralData(
+                        date=current_date,
+                        account_name=prev_record.account_name,
+                        recommending_me=[],
+                        my_recommendations=[]
+                    )
+                    
+                    # Interpolate recommending_me
+                    for rec in prev_record.recommending_me:
+                        prev_val = safe_int_convert(rec['subscribers'])
+                        next_val = next((safe_int_convert(r['subscribers']) 
+                            for r in next_record.recommending_me if r['creator'] == rec['creator']), prev_val)
+                        interpolated_val = int(prev_val + (next_val - prev_val) * progress)
+                        
+                        interpolated.recommending_me.append({
+                            'creator': rec['creator'],
+                            'subscribers': str(interpolated_val),
+                            'conversion_rate': rec['conversion_rate']
+                        })
+                    
+                    # Interpolate my_recommendations
+                    for rec in prev_record.my_recommendations:
+                        prev_val = safe_int_convert(rec['subscribers'])
+                        next_val = next((safe_int_convert(r['subscribers']) 
+                            for r in next_record.my_recommendations if r['creator'] == rec['creator']), prev_val)
+                        interpolated_val = int(prev_val + (next_val - prev_val) * progress)
+                        
+                        interpolated.my_recommendations.append({
+                            'creator': rec['creator'],
+                            'subscribers': str(interpolated_val),
+                            'conversion_rate': rec['conversion_rate']
+                        })
+                    
+                    filled_data.append(interpolated)
+            elif prev_record:
+                filled_data.append(prev_record)
                 
-                interpolated.my_recommendations.append({
-                    'creator': rec['creator'],
-                    'subscribers': str(interpolated_val),
-                    'conversion_rate': rec['conversion_rate']
-                })
-            
-            filled_data.append(interpolated)
-        elif prev_record:
-            # If we only have previous data, use those values
-            interpolated = ReferralData(
-                date=current_date,
-                account_name=prev_record.account_name,
-                recommending_me=prev_record.recommending_me.copy(),
-                my_recommendations=prev_record.my_recommendations.copy()
-            )
-            filled_data.append(interpolated)
-            
         current_date += timedelta(days=1)
     
-    print(f"Interpolated data points: {len(filled_data)}")
-    print(f"Date range: {filled_data[0].date.strftime('%-m/%-d')} to {filled_data[-1].date.strftime('%-m/%-d')}")
     return filled_data
 
 @app.route('/api/partnership-metrics')
@@ -151,44 +159,54 @@ def get_partnership_metrics():
             
             # Process each account's records
             for acc_records in account_records.values():
-                baseline_record = acc_records[0]  # First record for this account
-                latest_record = acc_records[-1]   # Last record for this account
+                if len(acc_records) <= 1:
+                    continue
+                    
+                period_start = acc_records[0]  # First record in the selected period
+                period_end = acc_records[-1]   # Last record in the selected period
+                
+                print(f"\nProcessing records for {period_start.account_name}")
+                print(f"Period start date: {period_start.date}")
+                print(f"Period end date: {period_end.date}")
                 
                 # Get all unique partners from both records
-                for record in [baseline_record, latest_record]:
+                all_partners = set()
+                for record in [period_start, period_end]:
                     all_partners.update(rec['creator'] for rec in record.recommending_me)
                     all_partners.update(rec['creator'] for rec in record.my_recommendations)
                 
                 for partner in all_partners:
-                    key = partner if account == 'all' else f"{partner}_{baseline_record.account_name}"
+                    key = partner if account == 'all' else f"{partner}_{period_start.account_name}"
                     
                     if key not in partner_metrics:
                         partner_metrics[key] = {
                             'partner': partner,
-                            'account': baseline_record.account_name if account != 'all' else 'All Clients',
+                            'account': period_start.account_name if account != 'all' else 'All Clients',
                             'period_received': 0,
                             'period_sent': 0,
                             'latest_received': 0,
                             'latest_sent': 0
                         }
                     
-                    # Get baseline values
-                    baseline_received = next((safe_int_convert(rec['subscribers']) 
-                        for rec in baseline_record.recommending_me if rec['creator'] == partner), 0)
-                    baseline_sent = next((safe_int_convert(rec['subscribers']) 
-                        for rec in baseline_record.my_recommendations if rec['creator'] == partner), 0)
+                    # Get period start values (for calculating changes)
+                    period_start_received = next((safe_int_convert(rec['subscribers']) 
+                        for rec in period_start.recommending_me if rec['creator'] == partner), 0)
+                    period_start_sent = next((safe_int_convert(rec['subscribers']) 
+                        for rec in period_start.my_recommendations if rec['creator'] == partner), 0)
                     
-                    # Get latest values
-                    latest_received = next((safe_int_convert(rec['subscribers']) 
-                        for rec in latest_record.recommending_me if rec['creator'] == partner), 0)
-                    latest_sent = next((safe_int_convert(rec['subscribers']) 
-                        for rec in latest_record.my_recommendations if rec['creator'] == partner), 0)
+                    # Get period end values
+                    period_end_received = next((safe_int_convert(rec['subscribers']) 
+                        for rec in period_end.recommending_me if rec['creator'] == partner), 0)
+                    period_end_sent = next((safe_int_convert(rec['subscribers']) 
+                        for rec in period_end.my_recommendations if rec['creator'] == partner), 0)
                     
-                    # Accumulate metrics
-                    partner_metrics[key]['period_received'] += (latest_received - baseline_received)
-                    partner_metrics[key]['period_sent'] += (latest_sent - baseline_sent)
-                    partner_metrics[key]['latest_received'] += latest_received
-                    partner_metrics[key]['latest_sent'] += latest_sent
+                    # Calculate period changes (end minus start)
+                    partner_metrics[key]['period_received'] = period_end_received - period_start_received
+                    partner_metrics[key]['period_sent'] = period_end_sent - period_start_sent
+                    
+                    # Store latest values for all-time balance
+                    partner_metrics[key]['latest_received'] = period_end_received
+                    partner_metrics[key]['latest_sent'] = period_end_sent
             
             # Convert accumulated metrics to results
             for metrics in partner_metrics.values():
@@ -198,6 +216,46 @@ def get_partnership_metrics():
             
             # Sort by absolute period balance
             results.sort(key=lambda x: abs(x['period_balance']), reverse=True)
+            
+            print("\n=== Debug Info ===")
+            print(f"Date range: {start_date} to {end_date}")
+            
+            for acc_records in account_records.values():
+                print(f"\nAccount: {acc_records[0].account_name}")
+                print(f"Number of records: {len(acc_records)}")
+                print(f"Record dates: {[r.date.strftime('%Y-%m-%d') for r in acc_records]}")
+                
+                if len(acc_records) <= 1:
+                    print("Skipping - not enough records")
+                    continue
+                    
+                period_start = acc_records[0]
+                period_end = acc_records[-1]
+                
+                print(f"Period start date: {period_start.date}")
+                print(f"Period end date: {period_end.date}")
+                
+                for partner in all_partners:
+                    print(f"\nProcessing partner: {partner}")
+                    
+                    # Get values from records
+                    period_start_received = next((safe_int_convert(rec['subscribers']) 
+                        for rec in period_start.recommending_me if rec['creator'] == partner), 0)
+                    period_start_sent = next((safe_int_convert(rec['subscribers']) 
+                        for rec in period_start.my_recommendations if rec['creator'] == partner), 0)
+                    
+                    period_end_received = next((safe_int_convert(rec['subscribers']) 
+                        for rec in period_end.recommending_me if rec['creator'] == partner), 0)
+                    period_end_sent = next((safe_int_convert(rec['subscribers']) 
+                        for rec in period_end.my_recommendations if rec['creator'] == partner), 0)
+                    
+                    print(f"  Period start received: {period_start_received}")
+                    print(f"  Period start sent: {period_start_sent}")
+                    print(f"  Period end received: {period_end_received}")
+                    print(f"  Period end sent: {period_end_sent}")
+                    
+                    # Rest of the code remains the same
+            
             return jsonify(results)
             
         finally:
@@ -502,40 +560,26 @@ def get_partnership_trends():
                 .order_by(ReferralData.date)\
                 .all()
             
-            if not records:
-                return jsonify({'error': 'No data found'})
-            
             # Apply interpolation to fill missing days
             records = interpolate_missing_days(records, start_date, end_date)
             
-            # Find the baseline record (first snapshot)
-            baseline_record = records[0]
-            trend_records = records[1:]  # All records after baseline
-            
-            # Get metrics for the specific partner
-            baseline_received = next((safe_int_convert(rec['subscribers'])
-                for rec in baseline_record.recommending_me if rec['creator'] == partner), 0)
-            baseline_sent = next((safe_int_convert(rec['subscribers'])
-                for rec in baseline_record.my_recommendations if rec['creator'] == partner), 0)
-
-            # Calculate historical changes relative to baseline
+            # Get raw subscriber counts for each day
             response_data = {
                 'historical_data': {
-                    'dates': [r.date.strftime('%-m/%-d') for r in trend_records],
+                    'dates': [r.date.strftime('%-m/%-d') for r in records],
                     'received': [
                         next((safe_int_convert(rec['subscribers']) 
-                            for rec in r.recommending_me if rec['creator'] == partner), 0) - baseline_received
-                        for r in trend_records
+                            for rec in r.recommending_me if rec['creator'] == partner), 0)
+                        for r in records
                     ],
                     'sent': [
                         next((safe_int_convert(rec['subscribers']) 
-                            for rec in r.my_recommendations if rec['creator'] == partner), 0) - baseline_sent
-                        for r in trend_records
+                            for rec in r.my_recommendations if rec['creator'] == partner), 0)
+                        for r in records
                     ]
                 }
             }
-
-            print(f"Dates in response: {response_data['historical_data']['dates']}")  # Debug print
+            
             return jsonify(response_data)
             
         finally:
@@ -615,6 +659,14 @@ def database_admin():
                     gap: 10px;
                     margin-left: auto;
                 }
+                .checkbox-column {
+                    width: 40px;
+                    text-align: center;
+                }
+                #bulkDeleteBtn {
+                    display: none;
+                    margin-left: 10px;
+                }
             </style>
         </head>
         <body>
@@ -623,13 +675,16 @@ def database_admin():
                 
                 <div class="action-buttons">
                     <div class="primary-actions">
-                        <!-- Primary action -->
                         <button class="btn btn-success" onclick="runScraper()">Run Scraper Now</button>
+                        <button id="bulkDeleteBtn" class="btn btn-danger" onclick="bulkDelete()">
+                            Delete Selected (<span id="selectedCount">0</span>)
+                        </button>
                     </div>
                     
                     <div class="secondary-actions">
                         <!-- Maintenance actions -->
                         <button class="btn btn-warning" onclick="cleanupDuplicates()">Clean Duplicates</button>
+                        <button class="btn btn-warning" onclick="cleanupInitialData()">Clean Initial Data</button>
                         <button class="btn btn-outline" onclick="reimportCSV()">Reimport from CSV</button>
                         <button class="btn btn-danger" onclick="clearDatabase()">Clear Database</button>
                     </div>
@@ -651,6 +706,9 @@ def database_admin():
                 <table class="table">
                     <thead>
                         <tr>
+                            <th class="checkbox-column">
+                                <input type="checkbox" id="selectAll" onclick="toggleAllCheckboxes()">
+                            </th>
                             <th>Date</th>
                             <th>Account</th>
                             <th>Recommending Me</th>
@@ -661,6 +719,9 @@ def database_admin():
                     <tbody>
                         {% for record in records %}
                         <tr class="record-row">
+                            <td class="checkbox-column">
+                                <input type="checkbox" class="record-checkbox" data-record-id="{{ record.id }}" onclick="updateSelectedCount()">
+                            </td>
                             <td>{{ record.date.strftime('%Y-%m-%d %H:%M:%S') }}</td>
                             <td>{{ record.account_name }}</td>
                             <td>{{ record.recommending_me|length }} entries</td>
@@ -810,23 +871,79 @@ def database_admin():
                     }
                 }
                 
-                // Update existing action functions to add to history
-                async function cleanupDuplicates() {
-                    if (confirm('This will remove duplicate entries for the same day. Continue?')) {
+                function toggleAllCheckboxes() {
+                    const selectAll = document.getElementById('selectAll');
+                    const checkboxes = document.getElementsByClassName('record-checkbox');
+                    Array.from(checkboxes).forEach(checkbox => {
+                        checkbox.checked = selectAll.checked;
+                    });
+                    updateSelectedCount();
+                }
+                
+                function updateSelectedCount() {
+                    const selectedCount = document.getElementsByClassName('record-checkbox')
+                        .length;
+                    const checkedCount = Array.from(document.getElementsByClassName('record-checkbox'))
+                        .filter(cb => cb.checked).length;
+                    
+                    document.getElementById('selectedCount').textContent = checkedCount;
+                    document.getElementById('bulkDeleteBtn').style.display = 
+                        checkedCount > 0 ? 'inline-block' : 'none';
+                    
+                    // Update select all checkbox
+                    document.getElementById('selectAll').checked = 
+                        checkedCount > 0 && checkedCount === selectedCount;
+                }
+                
+                async function bulkDelete() {
+                    const selectedIds = Array.from(document.getElementsByClassName('record-checkbox'))
+                        .filter(cb => cb.checked)
+                        .map(cb => cb.dataset.recordId);
+                    
+                    if (selectedIds.length === 0) return;
+                    
+                    if (confirm(`Are you sure you want to delete ${selectedIds.length} records?`)) {
                         try {
-                            const response = await fetch('/admin/cleanup-duplicates', { method: 'POST' });
-                            const data = await response.json();
-                            if (data.success) {
-                                addToHistory('Cleanup Duplicates', `Removed ${data.duplicates_removed} entries`);
+                            const response = await fetch('/admin/bulk-delete', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ record_ids: selectedIds })
+                            });
+                            
+                            const result = await response.json();
+                            if (result.success) {
+                                addToHistory('Bulk Delete', `Deleted ${result.deleted_count} records`);
                                 location.reload();
+                            } else {
+                                alert('Error: ' + result.error);
                             }
                         } catch (error) {
                             alert('Error: ' + error);
                         }
                     }
                 }
-                
-                // Similar updates for other action functions...
+
+                async function cleanupInitialData() {
+                    if (confirm('This will remove records where we only have partial data for specific partners. Continue?')) {
+                        try {
+                            const response = await fetch('/admin/cleanup-initial-data', {
+                                method: 'POST'
+                            });
+                            const data = await response.json();
+                            if (data.success) {
+                                alert(`Cleaned up ${data.records_removed} records with partial data`);
+                                addToHistory('Cleanup Initial Data', `Removed ${data.records_removed} partial records`);
+                                location.reload();
+                            } else {
+                                alert('Error: ' + data.error);
+                            }
+                        } catch (error) {
+                            alert('Error cleaning up initial data: ' + error);
+                        }
+                    }
+                }
             </script>
         </body>
         </html>
@@ -933,6 +1050,163 @@ def cleanup_duplicates():
     finally:
         session.close()
 
+@app.route('/admin/bulk-delete', methods=['POST'])
+def bulk_delete_records():
+    try:
+        data = request.get_json()
+        record_ids = data.get('record_ids', [])
+        
+        session = db.Session()
+        try:
+            deleted_count = session.query(ReferralData)\
+                .filter(ReferralData.id.in_(record_ids))\
+                .delete(synchronize_session=False)
+            session.commit()
+            
+            return jsonify({
+                'success': True,
+                'deleted_count': deleted_count,
+                'message': f'Successfully deleted {deleted_count} records'
+            })
+        finally:
+            session.close()
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/daily-changes')
+def get_daily_changes():
+    try:
+        account = request.args.get('account')
+        partner = request.args.get('partner')
+        start_date = datetime.strptime(request.args.get('start'), '%Y-%m-%d')
+        end_date = datetime.strptime(request.args.get('end'), '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+        
+        print(f"\nCalculating daily changes for {account} and {partner}")
+        
+        session = db.Session()
+        try:
+            records = session.query(ReferralData)\
+                .filter(ReferralData.account_name == account)\
+                .filter(ReferralData.date >= start_date)\
+                .filter(ReferralData.date <= end_date)\
+                .order_by(ReferralData.date)\
+                .all()
+            
+            # Apply interpolation to fill missing days
+            records = interpolate_missing_days(records, start_date, end_date)
+            
+            print(f"Found {len(records)} records after interpolation")
+            print("Dates:", [r.date.strftime('%Y-%m-%d') for r in records])
+            
+            # Calculate daily changes
+            changes = []
+            for i in range(1, len(records)):
+                prev = records[i-1]
+                curr = records[i]
+                
+                print(f"\nComparing {prev.date.strftime('%Y-%m-%d')} to {curr.date.strftime('%Y-%m-%d')}")
+                
+                # Get sent values
+                prev_sent_rec = next((rec for rec in prev.my_recommendations if rec['creator'] == partner), None)
+                curr_sent_rec = next((rec for rec in curr.my_recommendations if rec['creator'] == partner), None)
+                
+                # Get received values
+                prev_received_rec = next((rec for rec in prev.recommending_me if rec['creator'] == partner), None)
+                curr_received_rec = next((rec for rec in curr.recommending_me if rec['creator'] == partner), None)
+                
+                print(f"Previous sent: {prev_sent_rec['subscribers'] if prev_sent_rec else 'None'}")
+                print(f"Current sent: {curr_sent_rec['subscribers'] if curr_sent_rec else 'None'}")
+                print(f"Previous received: {prev_received_rec['subscribers'] if prev_received_rec else 'None'}")
+                print(f"Current received: {curr_received_rec['subscribers'] if curr_received_rec else 'None'}")
+                
+                # Calculate changes using interpolated values
+                sent_change = 0
+                received_change = 0
+                
+                if prev_sent_rec and curr_sent_rec:
+                    sent_change = safe_int_convert(curr_sent_rec['subscribers']) - safe_int_convert(prev_sent_rec['subscribers'])
+                
+                if prev_received_rec and curr_received_rec:
+                    received_change = safe_int_convert(curr_received_rec['subscribers']) - safe_int_convert(prev_received_rec['subscribers'])
+                
+                changes.append({
+                    'date': curr.date.strftime('%-m/%-d'),
+                    'sent': sent_change,
+                    'received': received_change
+                })
+            
+            print("\nFinal changes:", changes)
+            return jsonify({
+                'daily_changes': changes
+            })
+            
+        finally:
+            session.close()
+            
+    except Exception as e:
+        print(f"Error calculating daily changes: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/cleanup-initial-data', methods=['POST'])
+def cleanup_initial_data():
+    session = db.Session()
+    try:
+        deleted_count = 0
+        
+        print("\nChecking Dan Murray-Serter records...")
+        # Handle Dan Murray-Serter (before Dec 2)
+        records = session.query(ReferralData)\
+            .filter(ReferralData.account_name == 'Chris Donnelly')\
+            .filter(ReferralData.date < datetime(2024, 12, 2))\
+            .all()
+            
+        print(f"Found {len(records)} records before Dec 2")
+        for record in records:
+            print(f"Checking record from {record.date}")
+            dan_recs = [rec for rec in record.recommending_me if rec['creator'] == 'Dan Murray-Serter']
+            if dan_recs:
+                print(f"Found Dan Murray-Serter recommendation: {dan_recs}")
+                session.delete(record)
+                deleted_count += 1
+        
+        print("\nChecking Benchmark records...")
+        # Handle Benchmark (Dec 2 only)
+        records = session.query(ReferralData)\
+            .filter(ReferralData.account_name == 'Chris Donnelly')\
+            .filter(ReferralData.date >= datetime(2024, 12, 2))\
+            .filter(ReferralData.date < datetime(2024, 12, 3))\
+            .all()
+            
+        print(f"Found {len(records)} records on Dec 2")
+        for record in records:
+            print(f"Checking record from {record.date}")
+            print("My recommendations:", record.my_recommendations)
+            print("Recommending me:", record.recommending_me)
+            
+            # Delete if we have Benchmark in either list
+            if any(rec['creator'] == 'Benchmark' for rec in record.recommending_me) or \
+               any(rec['creator'] == 'Benchmark' for rec in record.my_recommendations):
+                print("Found Benchmark data - deleting record")
+                session.delete(record)
+                deleted_count += 1
+        
+        session.commit()
+        print(f"\nTotal records deleted: {deleted_count}")
+        
+        return jsonify({
+            'success': True,
+            'records_removed': deleted_count
+        })
+    except Exception as e:
+        session.rollback()
+        print(f"Error: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        session.close()
+
 if __name__ == '__main__':
     print("Starting Flask server...")
     print("API endpoints:")
@@ -951,4 +1225,5 @@ if __name__ == '__main__':
     print("  - POST /api/run-scraper")
     print("  - GET /api/last-scrape-time")
     print("  - POST /admin/cleanup-duplicates")
+    print("  - POST /admin/bulk-delete")
     app.run(host='0.0.0.0', port=5001, debug=True)

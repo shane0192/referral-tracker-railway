@@ -119,14 +119,20 @@ def interpolate_missing_days(data, start_date, end_date):
 
 @app.route('/api/partnership-metrics')
 def get_partnership_metrics():
-    account = request.args.get('account')
-    start_date_str = request.args.get('start')
-    end_date_str = request.args.get('end')
-    
     try:
-        # Convert dates and set time to include all of today
-        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0)
-        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+        # Use default date range if not provided
+        start_date_str = request.args.get('start')
+        end_date_str = request.args.get('end')
+
+        if not start_date_str:
+            start_date_str = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        if not end_date_str:
+            end_date_str = datetime.now().strftime('%Y-%m-%d')
+
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+
+        account = request.args.get('account')
         
         session = db.Session()
         try:
@@ -262,9 +268,7 @@ def get_partnership_metrics():
             session.close()
             
     except Exception as e:
-        print(f"Error processing request: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        print(f"Error in partnership metrics: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/earliest-date')

@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template_string
+from flask import Flask, request, jsonify, render_template_string, send_from_directory
 from flask_cors import CORS
 from datetime import datetime, timedelta
 import sys
@@ -1206,6 +1206,10 @@ def cleanup_initial_data():
         return jsonify({'error': str(e)}), 500
     finally:
         session.close()
+
+@app.route('/data/<path:filename>')
+def serve_static(filename):
+    return send_from_directory('data', filename)
 
 if __name__ == '__main__':
     print("Starting Flask server...")

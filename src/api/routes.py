@@ -1487,43 +1487,69 @@ def import_data():
             account_name = request.form.get('account_name')
             date = request.form.get('date')
             
-            # Parse CSV data
             import pandas as pd
             from io import StringIO
             
-            # Read CSV into DataFrame, explicitly specify column names
-            df = pd.read_csv(StringIO(csv_data), names=[
-                'date', 
-                'account_name', 
-                'tab', 
-                'creator', 
-                'subscribers', 
-                'conversion_rate'
-            ] if ',' in csv_data.splitlines()[0] else None)  # Only set names if first line doesn't have headers
+            # Read CSV into DataFrame
+            df = pd.read_csv(StringIO(csv_data))
             
-            # Apply filters
+            # Filter by account and date
             if account_name:
                 df = df[df['account_name'].str.strip() == account_name.strip()]
             if date:
-                df['date'] = pd.to_datetime(df['date']).dt.date
-                filter_date = pd.to_datetime(date).date()
+                df['date'] = pd.to_datetime(df['date']).dt.strftime('%Y-%m-%d')
+                filter_date = pd.to_datetime(date).strftime('%Y-%m-%d')
                 df = df[df['date'] == filter_date]
             
             if len(df) == 0:
                 return 'No matching data found to import'
+                
+            # Group by date and account_name to create JSON structure
+            grouped = df.groupby(['date', 'account_name', 'tab'])
             
-            # Save filtered data to temporary CSV
-            temp_csv = 'temp_import.csv'
-            df.to_csv(temp_csv, index=False)
+            records = []
+            for (date, account, tab), group in grouped:
+                data = {
+                    'date': date,
+                    'account_name': account,
+                    'recommending_me': [],
+                    'my_recommendations': []
+                }
+                
+                # Convert rows to JSON format
+                rows = group.to_dict('records')
+                if tab == 'recommending_me':
+                    data['recommending_me'] = [{
+                        'creator': row['creator'],
+                        'subscribers': row['subscribers'],
+                        'conversion_rate': row['conversion_rate'].rstrip('%')  # Remove % sign
+                    } for row in rows]
+                else:
+                    data['my_recommendations'] = [{
+                        'creator': row['creator'],
+                        'subscribers': row['subscribers'],
+                        'conversion_rate': row['conversion_rate'].rstrip('%')  # Remove % sign
+                    } for row in rows]
+                
+                records.append(data)
             
-            # Import using existing method
+            # Save to database
             db = DatabaseManager()
-            db.import_csv(temp_csv)
+            session = db.Session()
             
-            # Cleanup
-            os.remove(temp_csv)
+            for record in records:
+                data = ReferralData(
+                    date=pd.to_datetime(record['date']),
+                    account_name=record['account_name'],
+                    recommending_me=record['recommending_me'],
+                    my_recommendations=record['my_recommendations']
+                )
+                session.add(data)
             
-            return f'Successfully imported {len(df)} rows of data!'
+            session.commit()
+            session.close()
+            
+            return f'Successfully imported {len(records)} records!'
             
         except Exception as e:
             return f'Error importing data: {str(e)}'

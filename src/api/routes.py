@@ -575,6 +575,11 @@ def get_partnership_trends():
             # Apply interpolation to fill missing days
             records = interpolate_missing_days(records, start_date, end_date)
             
+            # Initialize conversion_rate to 0 if it doesn't exist
+            for record in records:
+                if 'conversion_rate' not in record:
+                    record['conversion_rate'] = 0
+                
             # Get raw subscriber counts for each day
             response_data = {
                 'historical_data': {

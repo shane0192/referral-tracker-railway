@@ -58,3 +58,10 @@ scraper.log
 
 # Additional Chrome files
 **/BrowserMetrics-spare.pma
+
+# Ignore data directory
+data/*
+# But keep avatar files
+!data/avatars/
+!data/avatars/*.png
+!data/avatars/avatar_mapping.json

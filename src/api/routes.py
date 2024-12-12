@@ -571,6 +571,17 @@ def get_partnership_trends():
                 .filter(ReferralData.date <= end_date)\
                 .order_by(ReferralData.date)\
                 .all()
+                
+            # Add debug logging here
+            print(f"\nFetched records for {account} and {partner}")
+            print(f"Date range: {start_date} to {end_date}")
+            print(f"Number of records before interpolation: {len(records)}")
+            for record in records:
+                print(f"\nDate: {record.date}")
+                sent = next((rec['subscribers'] for rec in record.my_recommendations if rec['creator'] == partner), 'None')
+                received = next((rec['subscribers'] for rec in record.recommending_me if rec['creator'] == partner), 'None')
+                print(f"Sent: {sent}")
+                print(f"Received: {received}")
             
             # Apply interpolation to fill missing days
             records = interpolate_missing_days(records, start_date, end_date)
@@ -1221,6 +1232,12 @@ def cleanup_initial_data():
 
 @app.route('/data/<path:filename>')
 def serve_static(filename):
+    # Handle avatar files specifically
+    if filename.startswith('avatars/'):
+        data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data')
+        return send_from_directory(data_dir, filename)
+    
+    # Handle other static files
     data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data')
     return send_from_directory(data_dir, filename)
 

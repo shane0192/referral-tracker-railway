@@ -1241,6 +1241,27 @@ def serve_static(filename):
     data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data')
     return send_from_directory(data_dir, filename)
 
+@app.route('/api/debug/record/<date>')
+def debug_record(date):
+    session = db.Session()
+    try:
+        date_obj = datetime.strptime(date, '%Y-%m-%d')
+        start = date_obj.replace(hour=0, minute=0, second=0)
+        end = date_obj.replace(hour=23, minute=59, second=59)
+        
+        records = session.query(ReferralData)\
+            .filter(ReferralData.date.between(start, end))\
+            .all()
+            
+        return jsonify([{
+            'date': r.date.isoformat(),
+            'account': r.account_name,
+            'recommending_me': r.recommending_me,
+            'my_recommendations': r.my_recommendations
+        } for r in records])
+    finally:
+        session.close()
+
 if __name__ == '__main__':
     print("Starting Flask server...")
     print("API endpoints:")

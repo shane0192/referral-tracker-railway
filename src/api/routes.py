@@ -690,6 +690,18 @@ def database_admin():
                     display: none;
                     margin-left: 10px;
                 }
+                .record-row {
+                    cursor: pointer;
+                }
+                .record-row:hover {
+                    background-color: #f8f9fa;
+                }
+                .checkbox-column {
+                    cursor: default;
+                }
+                .checkbox-column:hover {
+                    background-color: inherit !important;
+                }
             </style>
         </head>
         <body>
@@ -741,7 +753,7 @@ def database_admin():
                     </thead>
                     <tbody>
                         {% for record in records %}
-                        <tr class="record-row">
+                        <tr class="record-row" data-record-id="{{ record.id }}">
                             <td class="checkbox-column">
                                 <input type="checkbox" class="record-checkbox" data-record-id="{{ record.id }}" onclick="updateSelectedCount()">
                             </td>
@@ -967,6 +979,13 @@ def database_admin():
                         }
                     }
                 }
+
+                document.querySelectorAll('.record-row').forEach(row => {
+                    row.addEventListener('click', () => {
+                        const recordId = row.dataset.recordId;
+                        window.location.href = `/admin/record/${recordId}`;
+                    });
+                });
             </script>
         </body>
         </html>
@@ -1259,6 +1278,117 @@ def debug_record(date):
             'recommending_me': r.recommending_me,
             'my_recommendations': r.my_recommendations
         } for r in records])
+    finally:
+        session.close()
+
+@app.route('/admin/record/<int:record_id>')
+def record_detail(record_id):
+    session = db.Session()
+    try:
+        record = session.query(ReferralData).get(record_id)
+        if not record:
+            return "Record not found", 404
+
+        html = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Record Detail</title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+            <style>
+                .data-section { margin-bottom: 2rem; }
+                .data-table { width: 100%; margin-top: 1rem; }
+                .back-button { margin-bottom: 1rem; }
+                .metrics { display: flex; gap: 2rem; margin-bottom: 1rem; }
+                .metric-card {
+                    background: #f8f9fa;
+                    padding: 1rem;
+                    border-radius: 8px;
+                    flex: 1;
+                }
+                .record-row {
+                    cursor: pointer;
+                }
+                .record-row:hover {
+                    background-color: #f8f9fa;
+                }
+                .checkbox-column {
+                    cursor: default;
+                }
+                .checkbox-column:hover {
+                    background-color: inherit !important;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container mt-4">
+                <a href="/admin/database" class="btn btn-outline-primary back-button">← Back to Database</a>
+                
+                <h1>Record Detail</h1>
+                
+                <div class="metrics">
+                    <div class="metric-card">
+                        <h5>Account</h5>
+                        <p class="mb-0">{{ record.account_name }}</p>
+                    </div>
+                    <div class="metric-card">
+                        <h5>Date</h5>
+                        <p class="mb-0">{{ record.date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                    </div>
+                    <div class="metric-card">
+                        <h5>Total Recommendations</h5>
+                        <p class="mb-0">{{ len(record.recommending_me) + len(record.my_recommendations) }}</p>
+                    </div>
+                </div>
+
+                <div class="data-section">
+                    <h3>Recommending Me ({{ len(record.recommending_me) }})</h3>
+                    <table class="table data-table">
+                        <thead>
+                            <tr>
+                                <th>Creator</th>
+                                <th>Subscribers</th>
+                                <th>Conversion Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for rec in record.recommending_me %}
+                            <tr>
+                                <td>{{ rec['creator'] }}</td>
+                                <td>{{ rec['subscribers'] }}</td>
+                                <td>{{ rec.get('conversion_rate', 'N/A') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="data-section">
+                    <h3>My Recommendations ({{ len(record.my_recommendations) }})</h3>
+                    <table class="table data-table">
+                        <thead>
+                            <tr>
+                                <th>Creator</th>
+                                <th>Subscribers</th>
+                                <th>Conversion Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for rec in record.my_recommendations %}
+                            <tr>
+                                <td>{{ rec['creator'] }}</td>
+                                <td>{{ rec['subscribers'] }}</td>
+                                <td>{{ rec.get('conversion_rate', 'N/A') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        return render_template_string(html, record=record)
     finally:
         session.close()
 

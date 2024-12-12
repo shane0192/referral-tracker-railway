@@ -915,6 +915,11 @@
                 </div>
 
                 <script>
+                    // Add this at the very top of your JavaScript section
+                    const API_BASE_URL = window.location.hostname === 'localhost' 
+                        ? 'http://localhost:5001'
+                        : 'https://referral-tracker-8dea3f9d92b7.herokuapp.com';
+
                     // 1. Global variables (declare only once)
                     let exchangeChart = null;
                     let currentSort = { column: 'balance', direction: 'desc' };
@@ -965,7 +970,7 @@
                         const start = new Date();
                         start.setDate(end.getDate() - parseInt(dateRange));
                         
-                        const url = `http://localhost:5001/api/partnership-trends?account=${encodeURIComponent(client)}&partner=${encodeURIComponent(partner)}&start=${start.toISOString().split('T')[0]}&end=${end.toISOString().split('T')[0]}&t=${Date.now()}`;
+                        const url = `${API_BASE_URL}/api/partnership-trends?account=${encodeURIComponent(client)}&partner=${encodeURIComponent(partner)}&start=${start.toISOString().split('T')[0]}&end=${end.toISOString().split('T')[0]}&t=${Date.now()}`;
                         console.log('Fetching from URL:', url);
                         
                         fetch(url)
@@ -1205,7 +1210,7 @@
                         const startStr = formatDate(start);
                         const endStr = formatDate(end);
                         
-                        const url = `http://localhost:5001/api/largest-imbalances?start=${startStr}&end=${endStr}`;
+                        const url = `${API_BASE_URL}/api/largest-imbalances?start=${startStr}&end=${endStr}`;
                         
                         fetch(url)
                             .then(response => {
@@ -1460,7 +1465,7 @@
                             start.setDate(end.getDate() - parseInt(dateRange));
                             
                             try {
-                                const url = new URL('http://localhost:5001/api/partnership-metrics');
+                                const url = new URL(`${API_BASE_URL}/api/partnership-metrics`);
                                 url.searchParams.append('account', selectedClient);
                                 url.searchParams.append('start', start.toISOString().split('T')[0]);
                                 url.searchParams.append('end', end.toISOString().split('T')[0]);
@@ -1492,8 +1497,8 @@
                         
                         // Always fetch fresh data regardless of client selection
                         const url = selectedClient === 'all' 
-                            ? `http://localhost:5001/api/largest-imbalances?start=${start.toISOString().split('T')[0]}&end=${end.toISOString().split('T')[0]}`
-                            : `http://localhost:5001/api/partnership-metrics?account=${encodeURIComponent(selectedClient)}&start=${start.toISOString().split('T')[0]}&end=${end.toISOString().split('T')[0]}`;
+                            ? `${API_BASE_URL}/api/largest-imbalances?start=${start.toISOString().split('T')[0]}&end=${end.toISOString().split('T')[0]}`
+                            : `${API_BASE_URL}/api/partnership-metrics?account=${encodeURIComponent(selectedClient)}&start=${start.toISOString().split('T')[0]}&end=${end.toISOString().split('T')[0]}`;
                         
                         fetch(url)
                             .then(response => response.json())
@@ -1533,7 +1538,7 @@
                         const endStr = end.toISOString().split('T')[0];
                         
                         try {
-                            const response = await fetch(`http://localhost:5001/api/partnership-trends?account=${client}&start=${startStr}&end=${endStr}`);
+                            const response = await fetch(`${API_BASE_URL}/api/partnership-trends?account=${client}&start=${startStr}&end=${endStr}`);
                             const trends = await response.json();
                             
                             // Update the trends panel
@@ -1636,7 +1641,7 @@
                             start.setDate(end.getDate() - parseInt(dateRange));
 
                             const response = await fetch(
-                                `http://localhost:5001/api/partnership-metrics?` +
+                                `${API_BASE_URL}/api/partnership-metrics?` +
                                 `start=${start.toISOString().split('T')[0]}&` +
                                 `end=${end.toISOString().split('T')[0]}`
                             );
@@ -1668,7 +1673,7 @@
                         const start = new Date();
                         start.setDate(end.getDate() - parseInt(dateRange));
                         
-                        fetch(`http://localhost:5001/api/overall-trends?account=${encodeURIComponent(client)}&start=${start.toISOString().split('T')[0]}&end=${end.toISOString().split('T')[0]}`)
+                        fetch(`${API_BASE_URL}/api/overall-trends?account=${encodeURIComponent(client)}&start=${start.toISOString().split('T')[0]}&end=${end.toISOString().split('T')[0]}`)
                             .then(response => response.json())
                             .then(data => {
                                 // Update improving/declining counts
@@ -1794,7 +1799,7 @@
                             });
 
                             const response = await fetch(
-                                `http://localhost:5001/api/partnership-metrics?` + 
+                                `${API_BASE_URL}/api/partnership-metrics?` + 
                                 `account=${encodeURIComponent(client)}&` +
                                 `start=${start.toISOString()}&` +
                                 `end=${end.toISOString()}`
@@ -1951,7 +1956,7 @@
                             notes: notes
                         };
 
-                        fetch('http://localhost:5001/api/manual-referrals', {
+                        fetch(`${API_BASE_URL}/api/manual-referrals`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -2100,7 +2105,7 @@
                             start.setDate(end.getDate() - parseInt(dateRange));
                             
                             try {
-                                const url = new URL('http://localhost:5001/api/partnership-metrics');
+                                const url = new URL(`${API_BASE_URL}/api/partnership-metrics`);
                                 url.searchParams.append('account', selectedClient);
                                 url.searchParams.append('start', start.toISOString().split('T')[0]);
                                 url.searchParams.append('end', end.toISOString().split('T')[0]);
@@ -2146,7 +2151,7 @@
                         
                         try {
                             // Changed to use partnership-metrics endpoint
-                            const response = await fetch(`http://localhost:5001/api/partnership-metrics?start=${start.toISOString().split('T')[0]}&end=${end.toISOString().split('T')[0]}`);
+                            const response = await fetch(`${API_BASE_URL}/api/partnership-metrics?start=${start.toISOString().split('T')[0]}&end=${end.toISOString().split('T')[0]}`);
                             const data = await response.json();
                             
                             // Process data for master view
@@ -2409,7 +2414,7 @@
 
                             // Fetch data from partnership-metrics endpoint
                             const response = await fetch(
-                                `http://localhost:5001/api/partnership-metrics?` +
+                                `${API_BASE_URL}/api/partnership-metrics?` +
                                 `start=${start.toISOString().split('T')[0]}&` +
                                 `end=${end.toISOString().split('T')[0]}`
                             );
@@ -2481,7 +2486,7 @@
 
                             // Replace multiple largest-imbalances calls with single partnership-metrics call
                             const response = await fetch(
-                                `http://localhost:5001/api/partnership-metrics?` +
+                                `${API_BASE_URL}/api/partnership-metrics?` +
                                 `start=${start.toISOString().split('T')[0]}&` +
                                 `end=${end.toISOString().split('T')[0]}`
                             );
@@ -2558,7 +2563,7 @@
                             start.setDate(end.getDate() - parseInt(dateRange));
 
                             const response = await fetch(
-                                `http://localhost:5001/api/partnership-trends?` +
+                                `${API_BASE_URL}/api/partnership-trends?` +
                                 `partner=${encodeURIComponent(partner)}&` +
                                 `account=${encodeURIComponent(account)}&` +
                                 `start=${start.toISOString().split('T')[0]}&` +

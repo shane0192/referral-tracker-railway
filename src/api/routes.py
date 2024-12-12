@@ -14,10 +14,18 @@ from src.data.db_manager import DatabaseManager, ReferralData
 from src.scraper.scheduler import ScraperScheduler
 
 app = Flask(__name__)
-# Configure CORS to allow all origins for development
+# Get environment variables with defaults
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:8000')
+ALLOWED_ORIGINS = [
+    'http://localhost:8000',  # Local development
+    'https://your-heroku-app.herokuapp.com',  # Production URL
+    FRONTEND_URL  # Dynamic URL from environment
+]
+
+# Configure CORS with multiple origins
 CORS(app, resources={
     r"/api/*": {
-        "origins": ["http://localhost:8000"],
+        "origins": ALLOWED_ORIGINS,
         "methods": ["GET", "POST", "OPTIONS"],
         "allow_headers": ["Content-Type"],
         "supports_credentials": True

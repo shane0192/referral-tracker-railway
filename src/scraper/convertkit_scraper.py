@@ -9,6 +9,7 @@ from datetime import datetime
 import logging
 import time
 import pickle
+import pandas as pd
 
 # Keep your existing path setup
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
@@ -31,7 +32,7 @@ ALLOWED_ACCOUNTS = [
 ]
 
 class ConvertKitScraper:
-    def __init__(self, chrome_profile_path=None):
+    def __init__(self, headless=True):
         """Initialize the scraper with login credentials from config"""
         self.email = CONVERTKIT_EMAIL
         self.password = CONVERTKIT_PASSWORD
@@ -42,6 +43,7 @@ class ConvertKitScraper:
             os.makedirs(self.profile_dir)
             print("\n⚠️ First time setup: You'll need to log in manually once and verify 2FA")
             print("After this, the session should persist for about a month")
+            headless = False  # Force visible mode for first-time setup
         
         print(f"Using Chrome profile at: {self.profile_dir}")
         
@@ -50,15 +52,18 @@ class ConvertKitScraper:
         chrome_options.add_argument(f'user-data-dir={self.profile_dir}')
         chrome_options.add_argument('--profile-directory=Default')
         
-        # Add headless mode options
-        chrome_options.add_argument('--headless')  # Run in headless mode
-        chrome_options.add_argument('--disable-gpu')  # Required for some systems
-        chrome_options.add_argument('--no-sandbox')
-        chrome_options.add_argument('--disable-dev-shm-usage')
-        chrome_options.add_argument('--window-size=1920,1080')  # Set a standard window size
+        # Add headless mode options if requested
+        if headless:
+            chrome_options.add_argument('--headless')
+            chrome_options.add_argument('--disable-gpu')
+            chrome_options.add_argument('--no-sandbox')
+            chrome_options.add_argument('--disable-dev-shm-usage')
+        
+        chrome_options.add_argument('--window-size=1920,1080')
         
         try:
             print("\nInitializing Chrome driver...")
+            print(f"Headless mode: {'enabled' if headless else 'disabled'}")
             self.driver = webdriver.Chrome(options=chrome_options)
             print("Chrome driver initialized successfully")
             
@@ -858,3 +863,25 @@ class ConvertKitScraper:
             print(f"Screenshot saved as {filename}")
         except Exception as e:
             print(f"Failed to save screenshot: {str(e)}")
+
+    def save_data(self, account_name, data):
+        """Save scraped data to CSV"""
+        try:
+            # Create DataFrame from scraped data
+            df = pd.DataFrame(data)
+            
+            # Add timestamp and account columns
+            df['timestamp'] = pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')
+            df['account'] = account_name
+            
+            # Define CSV path
+            csv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'referral_data.csv')
+            print(f"Using absolute path: {csv_path}")
+            
+            # Append to CSV (create if doesn't exist)
+            df.to_csv(csv_path, mode='a', header=not os.path.exists(csv_path), index=False)
+            print(f"Data saved for account: {account_name}")
+            
+        except Exception as e:
+            print(f"Error saving data for {account_name}: {str(e)}")
+            print(f"Current working directory: {os.getcwd()}")

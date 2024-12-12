@@ -101,7 +101,7 @@ def interpolate_missing_days(data, start_date, end_date):
                         interpolated.recommending_me.append({
                             'creator': rec['creator'],
                             'subscribers': str(interpolated_val),
-                            'conversion_rate': rec['conversion_rate']
+                            'conversion_rate': rec.get('conversion_rate', 0)
                         })
                     
                     # Interpolate my_recommendations
@@ -114,7 +114,7 @@ def interpolate_missing_days(data, start_date, end_date):
                         interpolated.my_recommendations.append({
                             'creator': rec['creator'],
                             'subscribers': str(interpolated_val),
-                            'conversion_rate': rec['conversion_rate']
+                            'conversion_rate': rec.get('conversion_rate', 0)
                         })
                     
                     filled_data.append(interpolated)
@@ -575,11 +575,6 @@ def get_partnership_trends():
             # Apply interpolation to fill missing days
             records = interpolate_missing_days(records, start_date, end_date)
             
-            # Initialize conversion_rate to 0 if it doesn't exist
-            for record in records:
-                if 'conversion_rate' not in record:
-                    record['conversion_rate'] = 0
-                
             # Get raw subscriber counts for each day
             response_data = {
                 'historical_data': {

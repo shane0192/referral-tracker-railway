@@ -1392,6 +1392,114 @@ def record_detail(record_id):
     finally:
         session.close()
 
+@app.route('/admin/import-data', methods=['GET', 'POST'])
+def import_data():
+    if request.method == 'GET':
+        return '''
+        <html>
+        <head>
+            <style>
+                body { padding: 20px; font-family: Arial; }
+                .container { max-width: 1200px; margin: 0 auto; }
+                textarea { width: 100%; margin: 10px 0; font-family: monospace; }
+                .filters { margin: 20px 0; }
+                .filters input { margin: 0 10px; }
+                button { padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer; }
+                .preview { margin-top: 20px; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h2>Import Referral Data</h2>
+                <form method="POST">
+                    <div class="filters">
+                        <label>Account Name:</label>
+                        <input type="text" name="account_name" placeholder="e.g., Chris Donnelly">
+                        
+                        <label>Date:</label>
+                        <input type="text" name="date" placeholder="YYYY-MM-DD">
+                    </div>
+                    
+                    <h3>Paste CSV Data</h3>
+                    <textarea name="csv_data" rows="20" placeholder="date,account_name,tab,creator,subscribers,conversion_rate"></textarea>
+                    
+                    <button type="button" onclick="previewData()">Preview Data</button>
+                    <button type="submit">Import Selected Data</button>
+                    
+                    <div class="preview" id="preview"></div>
+                </form>
+            </div>
+            
+            <script>
+            function previewData() {
+                const csvData = document.querySelector('textarea[name="csv_data"]').value;
+                const account = document.querySelector('input[name="account_name"]').value;
+                const date = document.querySelector('input[name="date"]').value;
+                
+                // Parse CSV and filter data
+                const lines = csvData.trim().split('\\n');
+                const headers = lines[0].split(',');
+                
+                const filteredLines = lines.filter(line => {
+                    const values = line.split(',');
+                    const lineDate = values[0].split(' ')[0];
+                    const lineAccount = values[1];
+                    
+                    return (!account || lineAccount === account) && 
+                           (!date || lineDate === date);
+                });
+                
+                // Show preview
+                document.getElementById('preview').innerHTML = `
+                    <h3>Preview (${filteredLines.length} rows):</h3>
+                    <pre>${filteredLines.join('\\n')}</pre>
+                `;
+            }
+            </script>
+        </body>
+        </html>
+        '''
+    
+    if request.method == 'POST':
+        try:
+            csv_data = request.form['csv_data']
+            account_name = request.form['account_name']
+            date = request.form['date']
+            
+            # Parse CSV data
+            import pandas as pd
+            from io import StringIO
+            
+            # Read CSV into DataFrame
+            df = pd.read_csv(StringIO(csv_data))
+            
+            # Apply filters
+            if account_name:
+                df = df[df['account_name'] == account_name]
+            if date:
+                df['date'] = pd.to_datetime(df['date']).dt.date
+                filter_date = pd.to_datetime(date).date()
+                df = df[df['date'] == filter_date]
+            
+            if len(df) == 0:
+                return 'No matching data found to import'
+            
+            # Save filtered data to temporary CSV
+            temp_csv = 'temp_import.csv'
+            df.to_csv(temp_csv, index=False)
+            
+            # Import using existing method
+            db = DatabaseManager()
+            db.import_csv(temp_csv)
+            
+            # Cleanup
+            os.remove(temp_csv)
+            
+            return f'Successfully imported {len(df)} rows of data!'
+            
+        except Exception as e:
+            return f'Error importing data: {str(e)}'
+
 if __name__ == '__main__':
     print("Starting Flask server...")
     print("API endpoints:")

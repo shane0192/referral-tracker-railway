@@ -1487,11 +1487,18 @@ def import_data():
             account_name = request.form.get('account_name')
             date = request.form.get('date')
             
+            print("1. Received data:")
+            print(f"Account: {account_name}")
+            print(f"Date: {date}")
+            print("CSV sample:", csv_data[:200])
+            
             import pandas as pd
             from io import StringIO
             
             # Read CSV into DataFrame
             df = pd.read_csv(StringIO(csv_data))
+            print("\n2. DataFrame head:")
+            print(df.head())
             
             # Filter by account and date
             if account_name:
@@ -1501,6 +1508,10 @@ def import_data():
                 filter_date = pd.to_datetime(date).strftime('%Y-%m-%d')
                 df = df[df['date'] == filter_date]
             
+            print("\n3. After filtering:")
+            print(df.head())
+            print(f"Filtered rows: {len(df)}")
+            
             if len(df) == 0:
                 return 'No matching data found to import'
                 
@@ -1509,6 +1520,7 @@ def import_data():
             
             records = []
             for (date, account, tab), group in grouped:
+                print(f"\n4. Processing group: {date}, {account}, {tab}")
                 data = {
                     'date': date,
                     'account_name': account,
@@ -1518,20 +1530,24 @@ def import_data():
                 
                 # Convert rows to JSON format
                 rows = group.to_dict('records')
+                print("5. Group rows:", rows[:2])
+                
                 if tab == 'recommending_me':
                     data['recommending_me'] = [{
                         'creator': row['creator'],
-                        'subscribers': row['subscribers'],
-                        'conversion_rate': row['conversion_rate'].rstrip('%')  # Remove % sign
+                        'subscribers': str(row['subscribers']),  # Convert to string
+                        'conversion_rate': str(row['conversion_rate']).rstrip('%')  # Convert to string
                     } for row in rows]
                 else:
                     data['my_recommendations'] = [{
                         'creator': row['creator'],
-                        'subscribers': row['subscribers'],
-                        'conversion_rate': row['conversion_rate'].rstrip('%')  # Remove % sign
+                        'subscribers': str(row['subscribers']),
+                        'conversion_rate': str(row['conversion_rate']).rstrip('%')
                     } for row in rows]
                 
                 records.append(data)
+            
+            print("\n6. Final records:", records)
             
             # Save to database
             db = DatabaseManager()
@@ -1552,6 +1568,7 @@ def import_data():
             return f'Successfully imported {len(records)} records!'
             
         except Exception as e:
+            print(f"Error occurred: {str(e)}")
             return f'Error importing data: {str(e)}'
 
 if __name__ == '__main__':

@@ -1388,7 +1388,7 @@ def record_detail(record_id):
         </body>
         </html>
         """
-        return render_template_string(html, record=record)
+        return render_template_string(html, record=record, len=len)
     finally:
         session.close()
 

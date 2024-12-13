@@ -270,6 +270,15 @@ def get_partnership_metrics():
                     
                     # Rest of the code remains the same
             
+            # Add debug logging
+            print("\nDEBUG: Processing records for Adam Graham")
+            for record in records:
+                if 'Adam Graham' in [r['creator'] for r in record.recommending_me]:
+                    print(f"Date: {record.date}")
+                    print("Recommending me:", [r for r in record.recommending_me if r['creator'] == 'Adam Graham'])
+                    print("My recommendations:", [r for r in record.my_recommendations if r['creator'] == 'Adam Graham'])
+                    print("---")
+            
             return jsonify(results)
             
         finally:

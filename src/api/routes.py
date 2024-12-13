@@ -1147,13 +1147,13 @@ def get_daily_changes():
         
         session = db.Session()
         try:
-        records = session.query(ReferralData)\
-            .filter(ReferralData.account_name == account)\
-            .filter(ReferralData.date >= start_date)\
-            .filter(ReferralData.date <= end_date)\
-            .order_by(ReferralData.date)\
-            .all()
-        
+            records = session.query(ReferralData)\
+                .filter(ReferralData.account_name == account)\
+                .filter(ReferralData.date >= start_date)\
+                .filter(ReferralData.date <= end_date)\
+                .order_by(ReferralData.date)\
+                .all()
+            
             # Apply interpolation to fill missing days
             records = interpolate_missing_days(records, start_date, end_date)
             

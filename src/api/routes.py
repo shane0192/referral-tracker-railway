@@ -1495,10 +1495,22 @@ def import_data():
             import pandas as pd
             from io import StringIO
             
-            # Read CSV into DataFrame
-            df = pd.read_csv(StringIO(csv_data))
+            # Read CSV with explicit column names
+            df = pd.read_csv(StringIO(csv_data), names=[
+                'date',
+                'account_name',
+                'tab',
+                'creator',
+                'subscribers',
+                'conversion_rate'
+            ])
+            
             print("\n2. DataFrame head:")
             print(df.head())
+            
+            # Clean up the data
+            df['subscribers'] = df['subscribers'].str.replace(',', '')
+            df['conversion_rate'] = df['conversion_rate'].str.rstrip('%')
             
             # Filter by account and date
             if account_name:
@@ -1514,40 +1526,33 @@ def import_data():
             
             if len(df) == 0:
                 return 'No matching data found to import'
-                
-            # Group by date and account_name to create JSON structure
-            grouped = df.groupby(['date', 'account_name', 'tab'])
             
+            # Group and format for database
             records = []
-            for (date, account, tab), group in grouped:
-                print(f"\n4. Processing group: {date}, {account}, {tab}")
-                data = {
+            for (date, account), group in df.groupby(['date', 'account_name']):
+                recommending_me = []
+                my_recommendations = []
+                
+                for _, row in group.iterrows():
+                    entry = {
+                        'creator': row['creator'],
+                        'subscribers': int(float(row['subscribers'])),
+                        'conversion_rate': float(row['conversion_rate'])
+                    }
+                    if row['tab'] == 'recommending_me':
+                        recommending_me.append(entry)
+                    else:
+                        my_recommendations.append(entry)
+                
+                records.append({
                     'date': date,
                     'account_name': account,
-                    'recommending_me': [],
-                    'my_recommendations': []
-                }
-                
-                # Convert rows to JSON format
-                rows = group.to_dict('records')
-                print("5. Group rows:", rows[:2])
-                
-                if tab == 'recommending_me':
-                    data['recommending_me'] = [{
-                        'creator': row['creator'],
-                        'subscribers': str(row['subscribers']),  # Convert to string
-                        'conversion_rate': str(row['conversion_rate']).rstrip('%')  # Convert to string
-                    } for row in rows]
-                else:
-                    data['my_recommendations'] = [{
-                        'creator': row['creator'],
-                        'subscribers': str(row['subscribers']),
-                        'conversion_rate': str(row['conversion_rate']).rstrip('%')
-                    } for row in rows]
-                
-                records.append(data)
+                    'recommending_me': recommending_me,
+                    'my_recommendations': my_recommendations
+                })
             
-            print("\n6. Final records:", records)
+            print("\n4. Final records:")
+            print(records)
             
             # Save to database
             db = DatabaseManager()
@@ -1569,6 +1574,8 @@ def import_data():
             
         except Exception as e:
             print(f"Error occurred: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
             return f'Error importing data: {str(e)}'
 
 if __name__ == '__main__':

@@ -1143,7 +1143,10 @@ def get_daily_changes():
         start_date = datetime.strptime(request.args.get('start'), '%Y-%m-%d')
         end_date = datetime.strptime(request.args.get('end'), '%Y-%m-%d').replace(hour=23, minute=59, second=59)
         
-        print(f"\nCalculating daily changes for {account} and {partner}")
+        print(f"\nDEBUG: Fetching daily changes")
+        print(f"Account: {account}")
+        print(f"Partner: {partner}")
+        print(f"Date range: {start_date} to {end_date}")
         
         session = db.Session()
         try:
@@ -1153,7 +1156,15 @@ def get_daily_changes():
                 .filter(ReferralData.date <= end_date)\
                 .order_by(ReferralData.date)\
                 .all()
-                
+            
+            print(f"\nDEBUG: Found {len(records)} records")
+            for record in records:
+                print(f"\nDate: {record.date}")
+                print("My recommendations:", [r for r in record.my_recommendations if r['creator'] == partner])
+                print("Recommending me:", [r for r in record.recommending_me if r['creator'] == partner])
+            
+            # Rest of the existing code...
+
             # Apply interpolation to fill missing days
             records = interpolate_missing_days(records, start_date, end_date)
             

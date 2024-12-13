@@ -637,7 +637,7 @@ def get_partnership_trends():
 @app.route('/api/partnership-metrics', methods=['OPTIONS'])
 def handle_options():
     response = jsonify({'status': 'ok'})
-        return response
+    return response
 
 @app.route('/admin/database')
 def database_admin():

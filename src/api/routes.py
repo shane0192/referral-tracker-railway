@@ -1153,7 +1153,7 @@ def get_daily_changes():
                 .filter(ReferralData.date <= end_date)\
                 .order_by(ReferralData.date)\
                 .all()
-            
+                
             # Apply interpolation to fill missing days
             records = interpolate_missing_days(records, start_date, end_date)
             
@@ -1202,8 +1202,8 @@ def get_daily_changes():
                 'daily_changes': changes
             })
             
-    finally:
-        session.close()
+        finally:
+            session.close()
             
     except Exception as e:
         print(f"Error calculating daily changes: {str(e)}")

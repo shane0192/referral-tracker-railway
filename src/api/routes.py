@@ -128,6 +128,9 @@ def interpolate_missing_days(data, start_date, end_date):
 @app.route('/api/partnership-metrics')
 def get_partnership_metrics():
     try:
+        print("\n\n=== PARTNERSHIP METRICS DEBUG ===")
+        print("Checking for Adam Graham data...")
+        
         # Use default date range if not provided
         start_date_str = request.args.get('start')
         end_date_str = request.args.get('end')
@@ -173,15 +176,29 @@ def get_partnership_metrics():
             
             # Process each account's records
             for acc_records in account_records.values():
+                print(f"\n=== Processing Account: {acc_records[0].account_name} ===")
+                print(f"Number of records: {len(acc_records)}")
+                
                 if len(acc_records) <= 1:
+                    print("Skipping - not enough records")
                     continue
                     
-                period_start = acc_records[0]  # First record in the selected period
-                period_end = acc_records[-1]   # Last record in the selected period
+                period_start = acc_records[0]
+                period_end = acc_records[-1]
                 
-                print(f"\nProcessing records for {period_start.account_name}")
-                print(f"Period start date: {period_start.date}")
-                print(f"Period end date: {period_end.date}")
+                print(f"Start date: {period_start.date}")
+                print(f"End date: {period_end.date}")
+                
+                # Add specific Adam Graham debug
+                for record in [period_start, period_end]:
+                    adam_received = next((rec for rec in record.recommending_me 
+                        if rec['creator'] == 'Adam Graham'), None)
+                    adam_sent = next((rec for rec in record.my_recommendations 
+                        if rec['creator'] == 'Adam Graham'), None)
+                        
+                    print(f"\nDate {record.date}:")
+                    print(f"Adam Graham received: {adam_received}")
+                    print(f"Adam Graham sent: {adam_sent}")
                 
                 # Get all unique partners from both records
                 all_partners = set()

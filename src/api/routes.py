@@ -637,7 +637,7 @@ def get_partnership_trends():
 @app.route('/api/partnership-metrics', methods=['OPTIONS'])
 def handle_options():
     response = jsonify({'status': 'ok'})
-    return response
+        return response
 
 @app.route('/admin/database')
 def database_admin():
@@ -1147,13 +1147,13 @@ def get_daily_changes():
         
         session = db.Session()
         try:
-            records = session.query(ReferralData)\
-                .filter(ReferralData.account_name == account)\
-                .filter(ReferralData.date >= start_date)\
-                .filter(ReferralData.date <= end_date)\
-                .order_by(ReferralData.date)\
-                .all()
-            
+        records = session.query(ReferralData)\
+            .filter(ReferralData.account_name == account)\
+            .filter(ReferralData.date >= start_date)\
+            .filter(ReferralData.date <= end_date)\
+            .order_by(ReferralData.date)\
+            .all()
+        
             # Apply interpolation to fill missing days
             records = interpolate_missing_days(records, start_date, end_date)
             
@@ -1202,8 +1202,8 @@ def get_daily_changes():
                 'daily_changes': changes
             })
             
-        finally:
-            session.close()
+    finally:
+        session.close()
             
     except Exception as e:
         print(f"Error calculating daily changes: {str(e)}")
@@ -1597,6 +1597,58 @@ def import_data():
             import traceback
             print(traceback.format_exc())
             return f'Error importing data: {str(e)}'
+
+def process_partnership_records(records, partner):
+    # Ensure we have valid records
+    if not records:
+        return {
+            'historical_data': {
+                'dates': [],
+                'received': [],
+                'sent': []
+            }
+        }
+    
+    # Track changes between consecutive days
+    daily_changes = []
+    for i in range(1, len(records)):
+        prev = records[i-1]
+        curr = records[i]
+        
+        prev_received = next((safe_int_convert(rec['subscribers']) 
+            for rec in prev.recommending_me if rec['creator'] == partner), 0)
+        curr_received = next((safe_int_convert(rec['subscribers']) 
+            for rec in curr.recommending_me if rec['creator'] == partner), 0)
+            
+        prev_sent = next((safe_int_convert(rec['subscribers']) 
+            for rec in prev.my_recommendations if rec['creator'] == partner), 0)
+        curr_sent = next((safe_int_convert(rec['subscribers']) 
+            for rec in curr.my_recommendations if rec['creator'] == partner), 0)
+        
+        daily_changes.append({
+            'date': curr.date,
+            'received_change': curr_received - prev_received,
+            'sent_change': curr_sent - prev_sent
+        })
+        
+        print(f"Daily change for {curr.date}: Received: {curr_received - prev_received}, Sent: {curr_sent - prev_sent}")
+    
+    return {
+        'historical_data': {
+            'dates': [r.date.strftime('%-m/%-d') for r in records],
+            'received': [
+                next((safe_int_convert(rec['subscribers']) 
+                    for rec in r.recommending_me if rec['creator'] == partner), 0)
+                for r in records
+            ],
+            'sent': [
+                next((safe_int_convert(rec['subscribers']) 
+                    for rec in r.my_recommendations if rec['creator'] == partner), 0)
+                for r in records
+            ]
+        },
+        'daily_changes': daily_changes
+    }
 
 if __name__ == '__main__':
     print("Starting Flask server...")

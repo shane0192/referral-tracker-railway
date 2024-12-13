@@ -176,8 +176,7 @@ def get_partnership_metrics():
             
             # Process each account's records
             for acc_records in account_records.values():
-                print(f"\n=== Processing Account: {acc_records[0].account_name} ===")
-                print(f"Number of records: {len(acc_records)}")
+                print(f"\nProcessing Account: {acc_records[0].account_name}")
                 
                 if len(acc_records) <= 1:
                     print("Skipping - not enough records")
@@ -186,19 +185,14 @@ def get_partnership_metrics():
                 period_start = acc_records[0]
                 period_end = acc_records[-1]
                 
-                print(f"Start date: {period_start.date}")
-                print(f"End date: {period_end.date}")
-                
-                # Add specific Adam Graham debug
-                for record in [period_start, period_end]:
-                    adam_received = next((rec for rec in record.recommending_me 
-                        if rec['creator'] == 'Adam Graham'), None)
-                    adam_sent = next((rec for rec in record.my_recommendations 
-                        if rec['creator'] == 'Adam Graham'), None)
-                        
-                    print(f"\nDate {record.date}:")
-                    print(f"Adam Graham received: {adam_received}")
-                    print(f"Adam Graham sent: {adam_sent}")
+                # Debug only Adam Graham data
+                print(f"\nDEBUG: {period_start.date} to {period_end.date}")
+                print("=== START RECORD ===")
+                print(f"recommending_me: {[r for r in period_start.recommending_me if r['creator'] == 'Adam Graham']}")
+                print(f"my_recommendations: {[r for r in period_start.my_recommendations if r['creator'] == 'Adam Graham']}")
+                print("=== END RECORD ===")
+                print(f"recommending_me: {[r for r in period_end.recommending_me if r['creator'] == 'Adam Graham']}")
+                print(f"my_recommendations: {[r for r in period_end.my_recommendations if r['creator'] == 'Adam Graham']}")
                 
                 # Get all unique partners from both records
                 all_partners = set()

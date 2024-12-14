@@ -1182,53 +1182,34 @@ def get_daily_changes():
                 prev = records[i-1]
                 curr = records[i]
                 
-                print(f"\nComparing days:")
-                print(f"Previous ({prev.date}):")
                 prev_sent_rec = next((rec for rec in prev.my_recommendations if rec['creator'] == partner), None)
                 curr_sent_rec = next((rec for rec in curr.my_recommendations if rec['creator'] == partner), None)
                 
                 prev_received_rec = next((rec for rec in prev.recommending_me if rec['creator'] == partner), None)
                 curr_received_rec = next((rec for rec in curr.recommending_me if rec['creator'] == partner), None)
                 
-                print(f"  Sent: {prev_sent_rec['subscribers'] if prev_sent_rec else 'None'}")
-                print(f"  Received: {prev_received_rec['subscribers'] if prev_received_rec else 'None'}")
-                print(f"Current ({curr.date}):")
-                print(f"  Sent: {curr_sent_rec['subscribers'] if curr_sent_rec else 'None'}")
-                print(f"  Received: {curr_received_rec['subscribers'] if curr_received_rec else 'None'}")
-                
-                # Skip change calculation for first appearance of sent/received data
                 sent_change = 0
                 received_change = 0
                 
-                # For sent data, if this is not the first appearance
+                # Only calculate changes if we have data in both records
+                # AND this isn't the first appearance of data
                 if prev_sent_rec and curr_sent_rec:
-                    # Check if this is the first day we have sent data
-                    earlier_sent = session.query(ReferralData)\
-                        .filter(ReferralData.date < prev.date)\
-                        .filter(ReferralData.account_name == account)\
-                        .join(ReferralData.my_recommendations)\
-                        .filter(ReferralData.my_recommendations.any(creator=partner))\
-                        .first()
+                    # Get the first record with sent data
+                    first_sent = next((r for r in records if any(
+                        rec['creator'] == partner for rec in r.my_recommendations)), None)
                     
-                    print(f"Earlier sent data exists: {earlier_sent is not None}")
-                    if earlier_sent:  # Only calculate change if we have earlier data
+                    # Only calculate change if this isn't the first record with data
+                    if first_sent and first_sent.date < prev.date:
                         sent_change = safe_int_convert(curr_sent_rec['subscribers']) - safe_int_convert(prev_sent_rec['subscribers'])
                 
-                # For received data, if this is not the first appearance
                 if prev_received_rec and curr_received_rec:
-                    # Check if this is the first day we have received data
-                    earlier_received = session.query(ReferralData)\
-                        .filter(ReferralData.date < prev.date)\
-                        .filter(ReferralData.account_name == account)\
-                        .join(ReferralData.recommending_me)\
-                        .filter(ReferralData.recommending_me.any(creator=partner))\
-                        .first()
+                    # Get the first record with received data
+                    first_received = next((r for r in records if any(
+                        rec['creator'] == partner for rec in r.recommending_me)), None)
                     
-                    print(f"Earlier received data exists: {earlier_received is not None}")
-                    if earlier_received:  # Only calculate change if we have earlier data
+                    # Only calculate change if this isn't the first record with data
+                    if first_received and first_received.date < prev.date:
                         received_change = safe_int_convert(curr_received_rec['subscribers']) - safe_int_convert(prev_received_rec['subscribers'])
-                
-                print(f"Changes calculated - Sent: {sent_change}, Received: {received_change}")
                 
                 changes.append({
                     'date': curr.date.strftime('%-m/%-d'),

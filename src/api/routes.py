@@ -585,41 +585,46 @@ def get_partnership_trends():
         
         session = db.Session()
         try:
+            # Get records for all accounts that interact with this partner
             records = session.query(ReferralData)\
-                .filter(ReferralData.account_name == account)\
                 .filter(ReferralData.date >= start_date)\
                 .filter(ReferralData.date <= end_date)\
                 .order_by(ReferralData.date)\
                 .all()
-                
-            # Add debug logging here
-            print(f"\nFetched records for {account} and {partner}")
-            print(f"Date range: {start_date} to {end_date}")
-            print(f"Number of records before interpolation: {len(records)}")
+            
+            # Filter to records that have data for this partner
+            filtered_records = []
             for record in records:
-                print(f"\nDate: {record.date}")
-                sent = next((rec['subscribers'] for rec in record.my_recommendations if rec['creator'] == partner), 'None')
-                received = next((rec['subscribers'] for rec in record.recommending_me if rec['creator'] == partner), 'None')
-                print(f"Sent: {sent}")
-                print(f"Received: {received}")
+                has_sent = any(r['creator'] == partner for r in record.my_recommendations)
+                has_received = any(r['creator'] == partner for r in record.recommending_me)
+                if has_sent or has_received:
+                    filtered_records.append(record)
             
-            # Apply interpolation to fill missing days
-            records = interpolate_missing_days(records, start_date, end_date)
+            # Track last known values to maintain historical trend
+            last_known_received = 0
+            last_known_sent = 0
+            historical_received = []
+            historical_sent = []
             
-            # Get raw subscriber counts for each day
+            # Process records in order
+            for record in filtered_records:
+                # Get received value, use last known if none found
+                received = next((safe_int_convert(rec['subscribers']) 
+                    for rec in record.recommending_me if rec['creator'] == partner), last_known_received)
+                last_known_received = received  # Update last known
+                historical_received.append(received)
+                
+                # Get sent value, use last known if none found
+                sent = next((safe_int_convert(rec['subscribers']) 
+                    for rec in record.my_recommendations if rec['creator'] == partner), last_known_sent)
+                last_known_sent = sent  # Update last known
+                historical_sent.append(sent)
+            
             response_data = {
                 'historical_data': {
-                    'dates': [r.date.strftime('%-m/%-d') for r in records],
-                    'received': [
-                        next((safe_int_convert(rec['subscribers']) 
-                            for rec in r.recommending_me if rec['creator'] == partner), 0)
-                        for r in records
-                    ],
-                    'sent': [
-                        next((safe_int_convert(rec['subscribers']) 
-                            for rec in r.my_recommendations if rec['creator'] == partner), 0)
-                        for r in records
-                    ]
+                    'dates': [r.date.strftime('%-m/%-d') for r in filtered_records],
+                    'received': historical_received,
+                    'sent': historical_sent
                 }
             }
             
@@ -734,6 +739,7 @@ def database_admin():
                         <button id="bulkDeleteBtn" class="btn btn-danger" onclick="bulkDelete()">
                             Delete Selected (<span id="selectedCount">0</span>)
                         </button>
+                        <a href="/admin/import-data" class="btn btn-primary">Import Data</a>
                     </div>
                     
                     <div class="secondary-actions">
@@ -1697,6 +1703,39 @@ def debug_creator_science():
             
     except Exception as e:
         print(f"Error debugging Creator Science data: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/fix-nathan-barry-dec6', methods=['POST'])
+def fix_nathan_barry_dec6():
+    try:
+        session = db.Session()
+        try:
+            # Find and delete the problematic record
+            dec6_date = datetime(2024, 12, 6)
+            record = session.query(ReferralData)\
+                .filter(ReferralData.account_name == 'Nathan Barry')\
+                .filter(ReferralData.date >= dec6_date.replace(hour=0, minute=0, second=0))\
+                .filter(ReferralData.date <= dec6_date.replace(hour=23, minute=59, second=59))\
+                .first()
+            
+            if record:
+                session.delete(record)
+                session.commit()
+                return jsonify({
+                    'success': True,
+                    'message': 'Successfully deleted incorrect Dec 6 record'
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'message': 'Record not found'
+                })
+            
+        finally:
+            session.close()
+            
+    except Exception as e:
+        print(f"Error fixing Dec 6 data: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':

@@ -1661,6 +1661,44 @@ def process_partnership_records(records, partner):
         'daily_changes': daily_changes
     }
 
+# Add the new debug endpoint
+@app.route('/api/debug/creator-science')
+def debug_creator_science():
+    try:
+        session = db.Session()
+        try:
+            # Get all records with Creator Science data
+            records = session.query(ReferralData)\
+                .order_by(ReferralData.date)\
+                .all()
+            
+            creator_science_data = []
+            for record in records:
+                sent = next((rec for rec in record.my_recommendations 
+                    if rec['creator'] == 'Creator Science'), None)
+                received = next((rec for rec in record.recommending_me 
+                    if rec['creator'] == 'Creator Science'), None)
+                
+                if sent or received:
+                    creator_science_data.append({
+                        'date': record.date.strftime('%Y-%m-%d'),
+                        'account': record.account_name,
+                        'sent': sent['subscribers'] if sent else None,
+                        'received': received['subscribers'] if received else None
+                    })
+            
+            return jsonify({
+                'total_records': len(creator_science_data),
+                'data': creator_science_data
+            })
+            
+        finally:
+            session.close()
+            
+    except Exception as e:
+        print(f"Error debugging Creator Science data: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     print("Starting Flask server...")
     print("API endpoints:")

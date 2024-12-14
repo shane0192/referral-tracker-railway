@@ -1149,11 +1149,6 @@ def get_daily_changes():
         start_date = datetime.strptime(request.args.get('start'), '%Y-%m-%d')
         end_date = datetime.strptime(request.args.get('end'), '%Y-%m-%d').replace(hour=23, minute=59, second=59)
         
-        print("\n=== DEBUG: Daily Changes Request ===")
-        print(f"Account: {account}")
-        print(f"Partner: {partner}")
-        print(f"Date Range: {start_date} to {end_date}")
-        
         session = db.Session()
         try:
             records = session.query(ReferralData)\
@@ -1163,18 +1158,24 @@ def get_daily_changes():
                 .order_by(ReferralData.date)\
                 .all()
             
-            print(f"\nFound {len(records)} records")
+            # Get the baseline values (first non-zero values)
+            baseline_sent = None
+            baseline_received = None
+            baseline_sent_date = None
+            baseline_received_date = None
+            
             for record in records:
-                print(f"\nDate: {record.date}")
-                sent = next((rec for rec in record.my_recommendations if rec['creator'] == partner), None)
-                received = next((rec for rec in record.recommending_me if rec['creator'] == partner), None)
-                print(f"Sent: {sent['subscribers'] if sent else 'None'}")
-                print(f"Received: {received['subscribers'] if received else 'None'}")
-            
-            # Apply interpolation to fill missing days
-            records = interpolate_missing_days(records, start_date, end_date)
-            
-            print(f"\nAfter interpolation: {len(records)} records")
+                sent = next((safe_int_convert(rec['subscribers']) 
+                    for rec in record.my_recommendations if rec['creator'] == partner), 0)
+                received = next((safe_int_convert(rec['subscribers']) 
+                    for rec in record.recommending_me if rec['creator'] == partner), 0)
+                
+                if sent > 0 and baseline_sent is None:
+                    baseline_sent = sent
+                    baseline_sent_date = record.date
+                if received > 0 and baseline_received is None:
+                    baseline_received = received
+                    baseline_received_date = record.date
             
             # Calculate daily changes
             changes = []
@@ -1182,43 +1183,32 @@ def get_daily_changes():
                 prev = records[i-1]
                 curr = records[i]
                 
-                prev_sent_rec = next((rec for rec in prev.my_recommendations if rec['creator'] == partner), None)
-                curr_sent_rec = next((rec for rec in curr.my_recommendations if rec['creator'] == partner), None)
+                prev_sent = next((safe_int_convert(rec['subscribers']) 
+                    for rec in prev.my_recommendations if rec['creator'] == partner), 0)
+                curr_sent = next((safe_int_convert(rec['subscribers']) 
+                    for rec in curr.my_recommendations if rec['creator'] == partner), 0)
                 
-                prev_received_rec = next((rec for rec in prev.recommending_me if rec['creator'] == partner), None)
-                curr_received_rec = next((rec for rec in curr.recommending_me if rec['creator'] == partner), None)
+                prev_received = next((safe_int_convert(rec['subscribers']) 
+                    for rec in prev.recommending_me if rec['creator'] == partner), 0)
+                curr_received = next((safe_int_convert(rec['subscribers']) 
+                    for rec in curr.recommending_me if rec['creator'] == partner), 0)
                 
                 sent_change = 0
                 received_change = 0
                 
-                # Only calculate changes if we have data in both records
-                # AND this isn't the first appearance of data
-                if prev_sent_rec and curr_sent_rec:
-                    # Get the first record with sent data
-                    first_sent = next((r for r in records if any(
-                        rec['creator'] == partner for rec in r.my_recommendations)), None)
-                    
-                    # Only calculate change if this isn't the first record with data
-                    if first_sent and first_sent.date < prev.date:
-                        sent_change = safe_int_convert(curr_sent_rec['subscribers']) - safe_int_convert(prev_sent_rec['subscribers'])
+                # Calculate sent change only if we're past the baseline date
+                if curr.date > baseline_sent_date:
+                    sent_change = curr_sent - prev_sent
                 
-                if prev_received_rec and curr_received_rec:
-                    # Get the first record with received data
-                    first_received = next((r for r in records if any(
-                        rec['creator'] == partner for rec in r.recommending_me)), None)
-                    
-                    # Only calculate change if this isn't the first record with data
-                    if first_received and first_received.date < prev.date:
-                        received_change = safe_int_convert(curr_received_rec['subscribers']) - safe_int_convert(prev_received_rec['subscribers'])
+                # Calculate received change only if we're past the baseline date
+                if curr.date > baseline_received_date:
+                    received_change = curr_received - prev_received
                 
                 changes.append({
                     'date': curr.date.strftime('%-m/%-d'),
                     'sent': sent_change,
                     'received': received_change
                 })
-            
-            print("\nFinal changes array:")
-            print(json.dumps(changes, indent=2))
             
             return jsonify({
                 'daily_changes': changes

@@ -1183,25 +1183,25 @@ def get_daily_changes():
                 prev = records[i-1]
                 curr = records[i]
                 
-                prev_sent = next((safe_int_convert(rec['subscribers']) 
-                    for rec in prev.my_recommendations if rec['creator'] == partner), 0)
-                curr_sent = next((safe_int_convert(rec['subscribers']) 
-                    for rec in curr.my_recommendations if rec['creator'] == partner), 0)
-                
-                prev_received = next((safe_int_convert(rec['subscribers']) 
-                    for rec in prev.recommending_me if rec['creator'] == partner), 0)
-                curr_received = next((safe_int_convert(rec['subscribers']) 
-                    for rec in curr.recommending_me if rec['creator'] == partner), 0)
-                
                 sent_change = 0
                 received_change = 0
                 
-                # Calculate sent change only if we're past the baseline date
-                if curr.date > baseline_sent_date:
-                    sent_change = curr_sent - prev_sent
+                # Get current and previous values
+                curr_sent = next((safe_int_convert(rec['subscribers']) 
+                    for rec in curr.my_recommendations if rec['creator'] == partner), 0)
+                prev_sent = next((safe_int_convert(rec['subscribers']) 
+                    for rec in prev.my_recommendations if rec['creator'] == partner), 0)
+                    
+                curr_received = next((safe_int_convert(rec['subscribers']) 
+                    for rec in curr.recommending_me if rec['creator'] == partner), 0)
+                prev_received = next((safe_int_convert(rec['subscribers']) 
+                    for rec in prev.recommending_me if rec['creator'] == partner), 0)
                 
-                # Calculate received change only if we're past the baseline date
-                if curr.date > baseline_received_date:
+                # Only calculate change if previous value was non-zero
+                # This skips the first appearance of data
+                if prev_sent > 0:
+                    sent_change = curr_sent - prev_sent
+                if prev_received > 0:
                     received_change = curr_received - prev_received
                 
                 changes.append({

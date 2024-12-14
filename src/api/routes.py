@@ -1198,6 +1198,36 @@ def get_daily_changes():
                 print(f"Previous received: {prev_received_rec['subscribers'] if prev_received_rec else 'None'}")
                 print(f"Current received: {curr_received_rec['subscribers'] if curr_received_rec else 'None'}")
                 
+                # Skip change calculation for first appearance of sent/received data
+                sent_change = 0
+                received_change = 0
+                
+                # For sent data, if this is not the first appearance
+                if prev_sent_rec and curr_sent_rec:
+                    # Check if this is the first day we have sent data
+                    earlier_sent = session.query(ReferralData)\
+                        .filter(ReferralData.date < prev.date)\
+                        .filter(ReferralData.account_name == account)\
+                        .join(ReferralData.my_recommendations)\
+                        .filter(ReferralData.my_recommendations.any(creator=partner))\
+                        .first()
+                    
+                    if earlier_sent:  # Only calculate change if we have earlier data
+                        sent_change = safe_int_convert(curr_sent_rec['subscribers']) - safe_int_convert(prev_sent_rec['subscribers'])
+                
+                # For received data, if this is not the first appearance
+                if prev_received_rec and curr_received_rec:
+                    # Check if this is the first day we have received data
+                    earlier_received = session.query(ReferralData)\
+                        .filter(ReferralData.date < prev.date)\
+                        .filter(ReferralData.account_name == account)\
+                        .join(ReferralData.recommending_me)\
+                        .filter(ReferralData.recommending_me.any(creator=partner))\
+                        .first()
+                    
+                    if earlier_received:  # Only calculate change if we have earlier data
+                        received_change = safe_int_convert(curr_received_rec['subscribers']) - safe_int_convert(prev_received_rec['subscribers'])
+                
                 # Calculate changes using interpolated values
                 sent_change = 0
                 received_change = 0

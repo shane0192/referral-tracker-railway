@@ -2716,6 +2716,54 @@
                     }
                 </script>
 
+                <script>
+                    async function loadPartnershipData(partner) {
+                        try {
+                            const client = document.getElementById('clientSelect').value;
+                            const days = document.getElementById('dateRangeSelect').value;
+                            
+                            const end = new Date();
+                            const start = new Date(end);
+                            start.setDate(start.getDate() - days);
+                            
+                            // Load historical trend data
+                            const trendResponse = await fetch(
+                                `${API_BASE_URL}/api/partnership-trends?` +
+                                `account=${client}&` +
+                                `partner=${partner}&` +
+                                `start=${start.toISOString().split('T')[0]}&` +
+                                `end=${end.toISOString().split('T')[0]}`
+                            );
+                            const trendData = await trendResponse.json();
+                            
+                            // Load daily changes data
+                            const changesResponse = await fetch(
+                                `${API_BASE_URL}/api/daily-changes?` +
+                                `account=${client}&` +
+                                `partner=${partner}&` +
+                                `start=${start.toISOString().split('T')[0]}&` +
+                                `end=${end.toISOString().split('T')[0]}`
+                            );
+                            const changesData = await changesResponse.json();
+                            
+                            // Skip the first day's changes as it's the baseline
+                            const filteredChanges = changesData.daily_changes.filter((change, index) => {
+                                // Skip the first appearance of data for each type (sent/received)
+                                const isFirstSentDay = changesData.daily_changes.findIndex(c => c.sent !== 0) === index;
+                                const isFirstReceivedDay = changesData.daily_changes.findIndex(c => c.received !== 0) === index;
+                                return !isFirstSentDay && !isFirstReceivedDay;
+                            });
+                            
+                            // Update charts
+                            updateTrendChart(trendData.historical_data);
+                            updateDailyChart(filteredChanges);
+                            
+                        } catch (error) {
+                            console.error('Error loading partnership data:', error);
+                        }
+                    }
+                </script>
+
             </body>
             </html>
             

@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template_string, send_from_directory
+from flask import Flask, request, jsonify, render_template_string, send_from_directory, make_response
 from flask_cors import CORS
 from datetime import datetime, timedelta
 import sys
@@ -1144,6 +1144,12 @@ def bulk_delete_records():
 @app.route('/api/daily-changes')
 def get_daily_changes():
     try:
+        # Add cache control headers
+        response = make_response()
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        
         account = request.args.get('account')
         partner = request.args.get('partner')
         start_date = datetime.strptime(request.args.get('start'), '%Y-%m-%d')

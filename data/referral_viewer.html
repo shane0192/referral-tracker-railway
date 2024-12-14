@@ -2742,7 +2742,8 @@
                                 `account=${client}&` +
                                 `partner=${partner}&` +
                                 `start=${start.toISOString().split('T')[0]}&` +
-                                `end=${end.toISOString().split('T')[0]}`
+                                `end=${end.toISOString().split('T')[0]}&` +
+                                `t=${Date.now()}`  // Add timestamp to bust cache
                             );
                             const changesData = await changesResponse.json();
                             

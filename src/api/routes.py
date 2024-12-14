@@ -1228,16 +1228,6 @@ def get_daily_changes():
                     if earlier_received:  # Only calculate change if we have earlier data
                         received_change = safe_int_convert(curr_received_rec['subscribers']) - safe_int_convert(prev_received_rec['subscribers'])
                 
-                # Calculate changes using interpolated values
-                sent_change = 0
-                received_change = 0
-                
-                if prev_sent_rec and curr_sent_rec:
-                    sent_change = safe_int_convert(curr_sent_rec['subscribers']) - safe_int_convert(prev_sent_rec['subscribers'])
-                
-                if prev_received_rec and curr_received_rec:
-                    received_change = safe_int_convert(curr_received_rec['subscribers']) - safe_int_convert(prev_received_rec['subscribers'])
-                
                 changes.append({
                     'date': curr.date.strftime('%-m/%-d'),
                     'sent': sent_change,

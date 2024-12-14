@@ -1149,10 +1149,10 @@ def get_daily_changes():
         start_date = datetime.strptime(request.args.get('start'), '%Y-%m-%d')
         end_date = datetime.strptime(request.args.get('end'), '%Y-%m-%d').replace(hour=23, minute=59, second=59)
         
-        print(f"\nDEBUG: Fetching daily changes")
+        print("\n=== DEBUG: Daily Changes Request ===")
         print(f"Account: {account}")
         print(f"Partner: {partner}")
-        print(f"Date range: {start_date} to {end_date}")
+        print(f"Date Range: {start_date} to {end_date}")
         
         session = db.Session()
         try:
@@ -1163,19 +1163,18 @@ def get_daily_changes():
                 .order_by(ReferralData.date)\
                 .all()
             
-            print(f"\nDEBUG: Found {len(records)} records")
+            print(f"\nFound {len(records)} records")
             for record in records:
                 print(f"\nDate: {record.date}")
-                print("My recommendations:", [r for r in record.my_recommendations if r['creator'] == partner])
-                print("Recommending me:", [r for r in record.recommending_me if r['creator'] == partner])
+                sent = next((rec for rec in record.my_recommendations if rec['creator'] == partner), None)
+                received = next((rec for rec in record.recommending_me if rec['creator'] == partner), None)
+                print(f"Sent: {sent['subscribers'] if sent else 'None'}")
+                print(f"Received: {received['subscribers'] if received else 'None'}")
             
-            # Rest of the existing code...
-
             # Apply interpolation to fill missing days
             records = interpolate_missing_days(records, start_date, end_date)
             
-            print(f"Found {len(records)} records after interpolation")
-            print("Dates:", [r.date.strftime('%Y-%m-%d') for r in records])
+            print(f"\nAfter interpolation: {len(records)} records")
             
             # Calculate daily changes
             changes = []
@@ -1183,20 +1182,19 @@ def get_daily_changes():
                 prev = records[i-1]
                 curr = records[i]
                 
-                print(f"\nComparing {prev.date.strftime('%Y-%m-%d')} to {curr.date.strftime('%Y-%m-%d')}")
-                
-                # Get sent values
+                print(f"\nComparing days:")
+                print(f"Previous ({prev.date}):")
                 prev_sent_rec = next((rec for rec in prev.my_recommendations if rec['creator'] == partner), None)
                 curr_sent_rec = next((rec for rec in curr.my_recommendations if rec['creator'] == partner), None)
                 
-                # Get received values
                 prev_received_rec = next((rec for rec in prev.recommending_me if rec['creator'] == partner), None)
                 curr_received_rec = next((rec for rec in curr.recommending_me if rec['creator'] == partner), None)
                 
-                print(f"Previous sent: {prev_sent_rec['subscribers'] if prev_sent_rec else 'None'}")
-                print(f"Current sent: {curr_sent_rec['subscribers'] if curr_sent_rec else 'None'}")
-                print(f"Previous received: {prev_received_rec['subscribers'] if prev_received_rec else 'None'}")
-                print(f"Current received: {curr_received_rec['subscribers'] if curr_received_rec else 'None'}")
+                print(f"  Sent: {prev_sent_rec['subscribers'] if prev_sent_rec else 'None'}")
+                print(f"  Received: {prev_received_rec['subscribers'] if prev_received_rec else 'None'}")
+                print(f"Current ({curr.date}):")
+                print(f"  Sent: {curr_sent_rec['subscribers'] if curr_sent_rec else 'None'}")
+                print(f"  Received: {curr_received_rec['subscribers'] if curr_received_rec else 'None'}")
                 
                 # Skip change calculation for first appearance of sent/received data
                 sent_change = 0
@@ -1212,6 +1210,7 @@ def get_daily_changes():
                         .filter(ReferralData.my_recommendations.any(creator=partner))\
                         .first()
                     
+                    print(f"Earlier sent data exists: {earlier_sent is not None}")
                     if earlier_sent:  # Only calculate change if we have earlier data
                         sent_change = safe_int_convert(curr_sent_rec['subscribers']) - safe_int_convert(prev_sent_rec['subscribers'])
                 
@@ -1225,8 +1224,11 @@ def get_daily_changes():
                         .filter(ReferralData.recommending_me.any(creator=partner))\
                         .first()
                     
+                    print(f"Earlier received data exists: {earlier_received is not None}")
                     if earlier_received:  # Only calculate change if we have earlier data
                         received_change = safe_int_convert(curr_received_rec['subscribers']) - safe_int_convert(prev_received_rec['subscribers'])
+                
+                print(f"Changes calculated - Sent: {sent_change}, Received: {received_change}")
                 
                 changes.append({
                     'date': curr.date.strftime('%-m/%-d'),
@@ -1234,7 +1236,9 @@ def get_daily_changes():
                     'received': received_change
                 })
             
-            print("\nFinal changes:", changes)
+            print("\nFinal changes array:")
+            print(json.dumps(changes, indent=2))
+            
             return jsonify({
                 'daily_changes': changes
             })

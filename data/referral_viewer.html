@@ -2852,94 +2852,18 @@
                             item.partner.toLowerCase().includes(searchTerm)
                         );
                         
-                        // Re-render table with filtered data
+                        // Split into active and inactive partners
                         const activePartners = filteredData.filter(item => 
-                            (item.period_received > 0 || item.period_sent > 0 || item.all_time_balance !== 0)
+                            item.period_received > 0 || item.period_sent > 0 || item.all_time_balance !== 0
                         );
                         
                         const inactivePartners = filteredData.filter(item => 
-                            (item.period_received === 0 && item.period_sent === 0 && item.all_time_balance === 0)
+                            item.period_received === 0 && item.period_sent === 0 && item.all_time_balance === 0
                         );
                         
-                        // Update active partners
-                        const tbody = document.querySelector('#activePartners');
-                        tbody.innerHTML = activePartners.map(item => {
-                            const avatarFile = avatar_mapping[item.partner] || 'default.png';
-                            return `
-                                <tr class="table-row-clickable" onclick="showTrendsPanel('${item.partner}', '${item.account}')">
-                                    <td class="px-4 py-4 text-sm">
-                                        <div class="d-flex align-items-center gap-3">
-                                            <div 
-                                                class="rounded-circle"
-                                                style="
-                                                    width: 40px; 
-                                                    height: 40px; 
-                                                    background-color: var(--color-background-darker);
-                                                    display: flex;
-                                                    align-items: center;
-                                                    justify-content: center;
-                                                "
-                                            >
-                                                <img 
-                                                    src="${API_BASE_URL}/data/avatars/${avatarFile}" 
-                                                    alt="${item.partner}"
-                                                    class="rounded-circle"
-                                                    style="width: 40px; height: 40px; object-fit: cover;"
-                                                    onerror="this.style.display='none'"
-                                                >
-                                            </div>
-                                            <div class="fw-semibold">${item.partner}</div>
-                                        </div>
-                                    </td>
-                                    <td class="table-number">${(item.period_received || 0).toLocaleString()}</td>
-                                    <td class="table-number">${(item.period_sent || 0).toLocaleString()}</td>
-                                    <td class="table-number ${item.period_balance > 0 ? 'text-success' : 'text-danger'}">
-                                        ${formatBalanceValue(item.period_balance || 0)}
-                                    </td>
-                                    <td class="table-number ${item.all_time_balance > 0 ? 'text-success' : 'text-danger'}">
-                                        ${formatBalanceValue(item.all_time_balance || 0)}
-                                    </td>
-                                </tr>
-                            `;
-                        }).join('');
-                        
-                        // Update inactive partners
-                        const inactiveTbody = document.querySelector('#inactivePartnersSection');
-                        inactiveTbody.innerHTML = inactivePartners.map(item => {
-                            const avatarFile = avatar_mapping[item.partner] || 'default.png';
-                            return `
-                                <tr class="table-row-clickable" onclick="showTrendsPanel('${item.partner}', '${item.account}')">
-                                    <td class="px-4 py-4 text-sm">
-                                        <div class="d-flex align-items-center gap-3">
-                                            <div 
-                                                class="rounded-circle"
-                                                style="
-                                                    width: 40px; 
-                                                    height: 40px; 
-                                                    background-color: var(--color-background-darker);
-                                                    display: flex;
-                                                    align-items: center;
-                                                    justify-content: center;
-                                                "
-                                            >
-                                                <img 
-                                                    src="${API_BASE_URL}/data/avatars/${avatarFile}" 
-                                                    alt="${item.partner}"
-                                                    class="rounded-circle"
-                                                    style="width: 40px; height: 40px; object-fit: cover;"
-                                                    onerror="this.style.display='none'"
-                                                >
-                                            </div>
-                                            <div class="fw-semibold">${item.partner}</div>
-                                        </div>
-                                    </td>
-                                    <td class="table-number">0</td>
-                                    <td class="table-number">0</td>
-                                    <td class="table-number">0</td>
-                                    <td class="table-number">0</td>
-                                </tr>
-                            `;
-                        }).join('');
+                        // Update both tables
+                        renderPartnerTable(activePartners, '#activePartners');
+                        renderPartnerTable(inactivePartners, '#inactivePartners');
                         
                         // Update the "Show more" button text
                         const buttonText = document.querySelector('.show-more-button .button-text');
@@ -2947,6 +2871,41 @@
                             buttonText.textContent = `Show ${inactivePartners.length} inactive partners`;
                         }
                     });
+
+                    // Helper function to render partner tables
+                    function renderPartnerTable(partners, tableSelector) {
+                        const tbody = document.querySelector(tableSelector);
+                        if (!tbody) return;
+                        
+                        tbody.innerHTML = partners.map(item => {
+                            const avatarFile = avatar_mapping[item.partner] || 'default.png';
+                            return `
+                                <tr class="table-row-clickable" onclick="showTrendsPanel('${item.partner}', '${item.account}')">
+                                    <td class="px-4 py-4 text-sm">
+                                        <div class="d-flex align-items-center gap-3">
+                                            <div class="avatar-container">
+                                                <img src="/data/avatars/${avatarFile}" 
+                                                     alt="${item.partner}" 
+                                                     class="partner-avatar">
+                                            </div>
+                                            <div class="partner-info">
+                                                <p class="partner-name">${item.partner}</p>
+                                                <p class="account-name">${item.account}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>${formatNumber(item.period_received)}</td>
+                                    <td>${formatNumber(item.period_sent)}</td>
+                                    <td class="${item.period_balance >= 0 ? 'positive' : 'negative'}">
+                                        ${formatNumber(Math.abs(item.period_balance))}
+                                    </td>
+                                    <td class="${item.all_time_balance >= 0 ? 'positive' : 'negative'}">
+                                        ${formatNumber(Math.abs(item.all_time_balance))}
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('');
+                    }
                 </script>
             </body>
             </html>

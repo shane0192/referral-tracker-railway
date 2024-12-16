@@ -585,46 +585,38 @@ def get_partnership_trends():
         
         session = db.Session()
         try:
-            # Get records for all accounts that interact with this partner
+            # Get records for the specified account and date range
             records = session.query(ReferralData)\
                 .filter(ReferralData.date >= start_date)\
                 .filter(ReferralData.date <= end_date)\
+                .filter(ReferralData.account_name == account)\
                 .order_by(ReferralData.date)\
                 .all()
             
-            # Filter to records that have data for this partner
-            filtered_records = []
+            # Initialize arrays for chart data
+            dates = []
+            received_values = []
+            sent_values = []
+            
+            # Process each record
             for record in records:
-                has_sent = any(r['creator'] == partner for r in record.my_recommendations)
-                has_received = any(r['creator'] == partner for r in record.recommending_me)
-                if has_sent or has_received:
-                    filtered_records.append(record)
-            
-            # Track last known values to maintain historical trend
-            last_known_received = 0
-            last_known_sent = 0
-            historical_received = []
-            historical_sent = []
-            
-            # Process records in order
-            for record in filtered_records:
-                # Get received value, use last known if none found
+                # Only include points where we have data for this partner
                 received = next((safe_int_convert(rec['subscribers']) 
-                    for rec in record.recommending_me if rec['creator'] == partner), last_known_received)
-                last_known_received = received  # Update last known
-                historical_received.append(received)
-                
-                # Get sent value, use last known if none found
+                    for rec in record.recommending_me if rec['creator'] == partner), None)
                 sent = next((safe_int_convert(rec['subscribers']) 
-                    for rec in record.my_recommendations if rec['creator'] == partner), last_known_sent)
-                last_known_sent = sent  # Update last known
-                historical_sent.append(sent)
+                    for rec in record.my_recommendations if rec['creator'] == partner), None)
+                
+                # Only add data points if we have either received or sent data
+                if received is not None or sent is not None:
+                    dates.append(record.date.strftime('%-m/%-d'))
+                    received_values.append(received if received is not None else 'null')
+                    sent_values.append(sent if sent is not None else 'null')
             
             response_data = {
                 'historical_data': {
-                    'dates': [r.date.strftime('%-m/%-d') for r in filtered_records],
-                    'received': historical_received,
-                    'sent': historical_sent
+                    'dates': dates,
+                    'received': received_values,
+                    'sent': sent_values
                 }
             }
             
@@ -635,8 +627,6 @@ def get_partnership_trends():
             
     except Exception as e:
         print(f"Error in partnership trends: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/partnership-metrics', methods=['OPTIONS'])

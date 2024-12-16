@@ -34,13 +34,12 @@ CORS(app, resources={
 db = DatabaseManager()
 
 def safe_int_convert(value):
-    """Safely convert a value to integer, handling empty strings, commas and percentage signs"""
+    """Safely convert a value to integer, handling empty strings and commas"""
     if not value:  # Handle empty strings
         return 0
     try:
-        # Remove commas and % signs, then convert to int
-        cleaned = str(value).replace(',', '').replace('%', '')
-        return int(float(cleaned))
+        # Remove commas and convert to int
+        return int(str(value).replace(',', ''))
     except (ValueError, TypeError):
         return 0
 
@@ -581,84 +580,58 @@ def get_partnership_trends():
     try:
         account = request.args.get('account')
         partner = request.args.get('partner')
-        start = request.args.get('start')
-        end = request.args.get('end')
-        
-        print(f"Processing partnership trends for {partner} with {account}")
-        print(f"Date range: {start} to {end}")
-        
-        if not all([account, partner, start, end]):
-            return jsonify({'error': 'Missing required parameters'}), 400
-            
-        # Convert string dates to datetime objects
-        start_date = datetime.strptime(start, '%Y-%m-%d')
-        end_date = datetime.strptime(end, '%Y-%m-%d')
+        start_date = datetime.strptime(request.args.get('start'), '%Y-%m-%d')
+        end_date = datetime.strptime(request.args.get('end'), '%Y-%m-%d').replace(hour=23, minute=59, second=59)
         
         session = db.Session()
         try:
-            # Get all records for the period
             records = session.query(ReferralData)\
+                .filter(ReferralData.date >= start_date)\
+                .filter(ReferralData.date <= end_date)\
                 .filter(ReferralData.account_name == account)\
-                .filter(ReferralData.date.between(start_date, end_date))\
                 .order_by(ReferralData.date)\
                 .all()
-
-            # Group records by date and take the latest record for each day
-            daily_records = {}
-            for record in records:
-                date_key = record.date.strftime('%Y-%m-%d')
-                daily_records[date_key] = record
-
-            # Sort records by date
-            sorted_records = [daily_records[date] for date in sorted(daily_records.keys())]
-            
-            print(f"Processing {len(sorted_records)} records for partner {partner}")
             
             dates = []
             received_values = []
             sent_values = []
-
-            for record in sorted_records:
-                date_str = record.date.strftime('%m/%d')
-                print(f"Date: {date_str}", end=", ")
+            
+            last_received = None
+            last_sent = None
+            
+            for record in records:
+                # Get values for this record
+                received = next((safe_int_convert(rec['subscribers']) 
+                    for rec in record.recommending_me if rec['creator'] == partner), None)
+                sent = next((safe_int_convert(rec['subscribers']) 
+                    for rec in record.my_recommendations if rec['creator'] == partner), None)
                 
-                # Handle recommending_me data
-                received = 0
-                for rec in record.recommending_me:
-                    if rec['creator'] == partner:
-                        received = safe_int_convert(rec.get('subscribers', 0))
-                        break
-                print(f"Received: {received}", end=", ")
+                # Only update last known values if we have actual data
+                if received is not None:
+                    last_received = received
+                if sent is not None:
+                    last_sent = sent
                 
-                # Handle my_recommendations data
-                sent = 0
-                for rec in record.my_recommendations:
-                    if rec['creator'] == partner:
-                        sent = safe_int_convert(rec.get('subscribers', 0))
-                        break
-                print(f"Sent: {sent}")
-                
-                dates.append(date_str)
-                received_values.append(received)
-                sent_values.append(sent)
-
-            result = {
+                # Add data point using last known values
+                dates.append(record.date.strftime('%-m/%-d'))
+                received_values.append(last_received if last_received is not None else None)
+                sent_values.append(last_sent if last_sent is not None else None)
+            
+            response_data = {
                 'historical_data': {
                     'dates': dates,
                     'received': received_values,
                     'sent': sent_values
                 }
             }
-            print("Returning data:", result)
-            return jsonify(result)
+            
+            return jsonify(response_data)
             
         finally:
             session.close()
             
     except Exception as e:
-        print(f"Error processing partnership trends: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        print(f"Error in partnership trends: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/partnership-metrics', methods=['OPTIONS'])
@@ -1649,47 +1622,59 @@ def process_partnership_records(records, partner):
             'daily_changes': []
         }
     
-    # Add debug logging
-    print(f"Processing {len(records)} records for partner {partner}")
-    
-    # Standardize data format
-    dates = []
-    received_values = []
-    sent_values = []
-    
-    for record in records:
-        dates.append(record.date.strftime('%-m/%-d'))
-        
-        # Handle received values
-        received = next((r['subscribers'] for r in record.recommending_me 
-                       if r['creator'] == partner), 0)
-        received_values.append(received)
-        
-        # Handle sent values
-        sent = next((r['subscribers'] for r in record.my_recommendations 
-                       if r['creator'] == partner), 0)
-        sent_values.append(sent)
-        
-        # Debug log each data point
-        print(f"Date: {dates[-1]}, Received: {received}, Sent: {sent}")
-    
-    # Calculate daily changes
+    # Track changes between consecutive days with actual data
     daily_changes = []
+    dates = []
+    received_changes = []
+    sent_changes = []
+    
     for i in range(1, len(records)):
-        change = {
-            'date': dates[i],
-            'received': received_values[i] - received_values[i-1],
-            'sent': sent_values[i] - sent_values[i-1]
-        }
-        daily_changes.append(change)
+        prev = records[i-1]
+        curr = records[i]
+        
+        # Get values for both records
+        prev_received = next((safe_int_convert(rec['subscribers']) 
+            for rec in prev.recommending_me if rec['creator'] == partner), None)
+        curr_received = next((safe_int_convert(rec['subscribers']) 
+            for rec in curr.recommending_me if rec['creator'] == partner), None)
+            
+        prev_sent = next((safe_int_convert(rec['subscribers']) 
+            for rec in prev.my_recommendations if rec['creator'] == partner), None)
+        curr_sent = next((safe_int_convert(rec['subscribers']) 
+            for rec in curr.my_recommendations if rec['creator'] == partner), None)
+        
+        # Only calculate changes if we have both previous and current values
+        dates.append(curr.date.strftime('%-m/%-d'))
+        
+        received_change = None
+        if prev_received is not None and curr_received is not None:
+            received_change = curr_received - prev_received
+        received_changes.append(received_change)
+        
+        sent_change = None
+        if prev_sent is not None and curr_sent is not None:
+            sent_change = curr_sent - prev_sent
+        sent_changes.append(sent_change)
     
     return {
         'historical_data': {
-            'dates': dates,
-            'received': received_values,
-            'sent': sent_values
+            'dates': [r.date.strftime('%-m/%-d') for r in records],
+            'received': [
+                next((safe_int_convert(rec['subscribers']) 
+                    for rec in r.recommending_me if rec['creator'] == partner), None)
+                for r in records
+            ],
+            'sent': [
+                next((safe_int_convert(rec['subscribers']) 
+                    for rec in r.my_recommendations if rec['creator'] == partner), None)
+                for r in records
+            ]
         },
-        'daily_changes': daily_changes
+        'daily_changes': {
+            'dates': dates,
+            'received': received_changes,
+            'sent': sent_changes
+        }
     }
 
 # Add the new debug endpoint

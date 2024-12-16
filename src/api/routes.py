@@ -585,7 +585,6 @@ def get_partnership_trends():
         
         session = db.Session()
         try:
-            # Get records for the specified account and date range
             records = session.query(ReferralData)\
                 .filter(ReferralData.date >= start_date)\
                 .filter(ReferralData.date <= end_date)\
@@ -593,24 +592,30 @@ def get_partnership_trends():
                 .order_by(ReferralData.date)\
                 .all()
             
-            # Initialize arrays for chart data
             dates = []
             received_values = []
             sent_values = []
             
-            # Process each record
+            last_received = None
+            last_sent = None
+            
             for record in records:
-                # Only include points where we have data for this partner
+                # Get values for this record
                 received = next((safe_int_convert(rec['subscribers']) 
                     for rec in record.recommending_me if rec['creator'] == partner), None)
                 sent = next((safe_int_convert(rec['subscribers']) 
                     for rec in record.my_recommendations if rec['creator'] == partner), None)
                 
-                # Only add data points if we have either received or sent data
-                if received is not None or sent is not None:
-                    dates.append(record.date.strftime('%-m/%-d'))
-                    received_values.append(received if received is not None else 'null')
-                    sent_values.append(sent if sent is not None else 'null')
+                # Only update last known values if we have actual data
+                if received is not None:
+                    last_received = received
+                if sent is not None:
+                    last_sent = sent
+                
+                # Add data point using last known values
+                dates.append(record.date.strftime('%-m/%-d'))
+                received_values.append(last_received if last_received is not None else None)
+                sent_values.append(last_sent if last_sent is not None else None)
             
             response_data = {
                 'historical_data': {

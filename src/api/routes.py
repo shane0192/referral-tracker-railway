@@ -1612,55 +1612,69 @@ def import_data():
             return f'Error importing data: {str(e)}'
 
 def process_partnership_records(records, partner):
-    # Ensure we have valid records
     if not records:
         return {
             'historical_data': {
                 'dates': [],
                 'received': [],
                 'sent': []
-            }
+            },
+            'daily_changes': []
         }
     
-    # Track changes between consecutive days
+    # Track changes between consecutive days with actual data
     daily_changes = []
+    dates = []
+    received_changes = []
+    sent_changes = []
+    
     for i in range(1, len(records)):
         prev = records[i-1]
         curr = records[i]
         
+        # Get values for both records
         prev_received = next((safe_int_convert(rec['subscribers']) 
-            for rec in prev.recommending_me if rec['creator'] == partner), 0)
+            for rec in prev.recommending_me if rec['creator'] == partner), None)
         curr_received = next((safe_int_convert(rec['subscribers']) 
-            for rec in curr.recommending_me if rec['creator'] == partner), 0)
+            for rec in curr.recommending_me if rec['creator'] == partner), None)
             
         prev_sent = next((safe_int_convert(rec['subscribers']) 
-            for rec in prev.my_recommendations if rec['creator'] == partner), 0)
+            for rec in prev.my_recommendations if rec['creator'] == partner), None)
         curr_sent = next((safe_int_convert(rec['subscribers']) 
-            for rec in curr.my_recommendations if rec['creator'] == partner), 0)
+            for rec in curr.my_recommendations if rec['creator'] == partner), None)
         
-        daily_changes.append({
-            'date': curr.date,
-            'received_change': curr_received - prev_received,
-            'sent_change': curr_sent - prev_sent
-        })
+        # Only calculate changes if we have both previous and current values
+        dates.append(curr.date.strftime('%-m/%-d'))
         
-        print(f"Daily change for {curr.date}: Received: {curr_received - prev_received}, Sent: {curr_sent - prev_sent}")
+        received_change = None
+        if prev_received is not None and curr_received is not None:
+            received_change = curr_received - prev_received
+        received_changes.append(received_change)
+        
+        sent_change = None
+        if prev_sent is not None and curr_sent is not None:
+            sent_change = curr_sent - prev_sent
+        sent_changes.append(sent_change)
     
     return {
         'historical_data': {
             'dates': [r.date.strftime('%-m/%-d') for r in records],
             'received': [
                 next((safe_int_convert(rec['subscribers']) 
-                    for rec in r.recommending_me if rec['creator'] == partner), 0)
+                    for rec in r.recommending_me if rec['creator'] == partner), None)
                 for r in records
             ],
             'sent': [
                 next((safe_int_convert(rec['subscribers']) 
-                    for rec in r.my_recommendations if rec['creator'] == partner), 0)
+                    for rec in r.my_recommendations if rec['creator'] == partner), None)
                 for r in records
             ]
         },
-        'daily_changes': daily_changes
+        'daily_changes': {
+            'dates': dates,
+            'received': received_changes,
+            'sent': sent_changes
+        }
     }
 
 # Add the new debug endpoint

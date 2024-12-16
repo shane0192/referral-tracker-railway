@@ -1093,6 +1093,26 @@
                     function updateTrendChart(historicalData) {
                         console.log('Updating charts with data:', historicalData);
                         
+                        // Filter out days where data is null/undefined (missing from database)
+                        const filteredData = {
+                            dates: [],
+                            received: [],
+                            sent: []
+                        };
+                        
+                        historicalData.dates.forEach((date, index) => {
+                            // Only filter out if both values are null/undefined
+                            if (historicalData.received[index] !== null && 
+                                historicalData.received[index] !== undefined && 
+                                historicalData.sent[index] !== null && 
+                                historicalData.sent[index] !== undefined) {
+                                filteredData.dates.push(date);
+                                filteredData.received.push(historicalData.received[index]);
+                                filteredData.sent.push(historicalData.sent[index]);
+                            }
+                        });
+
+                        // Historical Trend Chart
                         const ctx = document.getElementById('trendChart');
                         if (!ctx) {
                             console.error('Trend chart canvas not found');
@@ -1109,21 +1129,19 @@
                         new Chart(ctx, {
                             type: 'line',
                             data: {
-                                labels: historicalData.dates,
+                                labels: filteredData.dates,
                                 datasets: [{
                                     label: 'Received',
-                                    data: historicalData.received,
+                                    data: filteredData.received,
                                     borderColor: 'rgb(75, 192, 192)',
                                     tension: 0.1,
-                                    spanGaps: true,  // This will create gaps for null values
-                                    pointRadius: 3
+                                    spanGaps: true // Enable spanning gaps
                                 }, {
                                     label: 'Sent',
-                                    data: historicalData.sent,
+                                    data: filteredData.sent,
                                     borderColor: 'rgb(255, 99, 132)',
                                     tension: 0.1,
-                                    spanGaps: true,  // This will create gaps for null values
-                                    pointRadius: 3
+                                    spanGaps: true // Enable spanning gaps
                                 }]
                             },
                             options: {
@@ -1131,7 +1149,114 @@
                                 maintainAspectRatio: false,
                                 scales: {
                                     y: {
-                                        beginAtZero: true
+                                        beginAtZero: true,
+                                        max: Math.max(...filteredData.received, ...filteredData.sent) * 1.1,
+                                        grid: {
+                                            drawBorder: false
+                                        }
+                                    },
+                                    x: {
+                                        grid: {
+                                            drawBorder: false,
+                                            display: true,
+                                            drawOnChartArea: true,
+                                            drawTicks: true,
+                                        },
+                                        ticks: {
+                                            callback: function(val, index) {
+                                                // Add visual indicator for skipped days
+                                                const currentDate = new Date(filteredData.dates[val]);
+                                                const prevDate = val > 0 ? new Date(filteredData.dates[val - 1]) : null;
+                                                
+                                                if (prevDate) {
+                                                    const daysDiff = (currentDate - prevDate) / (1000 * 60 * 60 * 24);
+                                                    if (daysDiff > 1) {
+                                                        return '⋯ ' + filteredData.dates[val]; // Add dots to indicate gap
+                                                    }
+                                                }
+                                                return filteredData.dates[val];
+                                            }
+                                        }
+                                    }
+                                },
+                                plugins: {
+                                    legend: {
+                                        position: 'top'
+                                    },
+                                    tooltip: {
+                                        callbacks: {
+                                            title: function(context) {
+                                                const index = context[0].dataIndex;
+                                                const currentDate = new Date(filteredData.dates[index]);
+                                                const prevDate = index > 0 ? new Date(filteredData.dates[index - 1]) : null;
+                                                
+                                                if (prevDate) {
+                                                    const daysDiff = (currentDate - prevDate) / (1000 * 60 * 60 * 24);
+                                                    if (daysDiff > 1) {
+                                                        return `${filteredData.dates[index]} (${daysDiff - 1} days skipped)`;
+                                                    }
+                                                }
+                                                return filteredData.dates[index];
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+
+                        // Daily Changes Chart
+                        const dailyCtx = document.getElementById('dailyTrendChart');
+                        if (!dailyCtx) {
+                            console.error('Daily trend chart canvas not found');
+                            return;
+                        }
+
+                        // Clear any existing daily chart
+                        const existingDailyChart = Chart.getChart(dailyCtx);
+                        if (existingDailyChart) {
+                            existingDailyChart.destroy();
+                        }
+
+                        // Calculate daily changes
+                        const dailyReceived = [];
+                        const dailySent = [];
+                        
+                        for (let i = 1; i < filteredData.received.length; i++) {
+                            dailyReceived.push(filteredData.received[i] - filteredData.received[i-1]);
+                            dailySent.push(filteredData.sent[i] - filteredData.sent[i-1]);
+                        }
+
+                        // Create daily changes chart
+                        new Chart(dailyCtx, {
+                            type: 'line',
+                            data: {
+                                labels: filteredData.dates.slice(1),
+                                datasets: [{
+                                    label: 'Daily Received',
+                                    data: dailyReceived,
+                                    borderColor: 'rgb(75, 192, 192)',
+                                    backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                                    tension: 0.1,
+                                    fill: true
+                                }, {
+                                    label: 'Daily Sent',
+                                    data: dailySent,
+                                    borderColor: 'rgb(255, 99, 132)',
+                                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                                    tension: 0.1,
+                                    fill: true
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        max: Math.max(...dailyReceived, ...dailySent) * 1.1,
+                                        grid: {
+                                            drawBorder: false
+                                        }
                                     },
                                     x: {
                                         grid: {
@@ -1142,6 +1267,15 @@
                                 plugins: {
                                     legend: {
                                         position: 'top'
+                                    }
+                                },
+                                elements: {
+                                    point: {
+                                        radius: 4,
+                                        hoverRadius: 6
+                                    },
+                                    line: {
+                                        borderWidth: 2
                                     }
                                 }
                             }
@@ -1909,6 +2043,10 @@
                             partnerSelect.appendChild(option);
                         });
                     }
+
+        
+                    
+                    ;
 
                     function submitManualEntry() {
                         const partner = document.getElementById('manualPartner').value;

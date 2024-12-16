@@ -420,63 +420,36 @@ def debug_db():
     finally:
         session.close()
 
-@app.route('/api/trends/<account_name>', methods=['GET'])
-def get_trends(account_name):
+@app.route('/api/trends/<account_name>')
+def get_account_trends(account_name):
     try:
-        session = db.Session()
-        try:
-            # Get date range from query parameters
-            days = int(request.args.get('days', 30))
+        days = request.args.get('days', default=30, type=int)
+        end_date = request.args.get('end_date')
+        
+        if end_date:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d')
+        else:
             end_date = datetime.now()
-            start_date = end_date - timedelta(days=days)
             
-            # Query the data
-            records = session.query(ReferralData)\
-                .filter(ReferralData.account_name == account_name)\
-                .filter(ReferralData.date >= start_date)\
-                .filter(ReferralData.date <= end_date)\
-                .order_by(ReferralData.date)\
-                .all()
-                
-            # Convert to list of dates and values
-            dates = []
-            received = []
-            sent = []
-            
-            # Get all dates in range
-            current_date = start_date
-            while current_date <= end_date:
-                dates.append(current_date.strftime('%m/%d'))
-                
-                # Find record for this date
-                record = next(
-                    (r for r in records if r.date.date() == current_date.date()),
-                    None
-                )
-                
-                if record:
-                    received.append(record.received)
-                    sent.append(record.sent)
-                else:
-                    # If no record exists for this date, use None instead of 0
-                    received.append(None)
-                    sent.append(None)
-                
-                current_date += timedelta(days=1)
-            
-            return jsonify({
-                'historical_data': {
-                    'dates': dates,
-                    'received': received,
-                    'sent': sent
-                }
-            })
-            
-        finally:
-            session.close()
-            
+        start_date = end_date - timedelta(days=days)
+        
+        trends = db.get_account_trends(account_name, start_date, end_date)
+        growth = db.calculate_growth_metrics(account_name, start_date, end_date)
+        
+        return jsonify({
+            'trends': trends,
+            'growth': {
+                'subscriber_growth': growth[0] if growth else 0,
+                'conversion_growth': growth[1] if growth else 0,
+                'earnings_growth': growth[2] if growth else 0
+            },
+            'period': {
+                'start': start_date.strftime('%Y-%m-%d'),
+                'end': end_date.strftime('%Y-%m-%d')
+            }
+        })
     except Exception as e:
-        print(f"Error getting trends: {str(e)}")
+        print(f"Error generating trends: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/trends/summary')

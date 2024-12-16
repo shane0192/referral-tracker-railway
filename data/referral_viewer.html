@@ -723,6 +723,21 @@
                         </div>
                     </div>
 
+                    <!-- Add this before the table -->
+                    <div class="row mb-4">
+                        <div class="col">
+                            <div class="search-container">
+                                <input 
+                                    type="text" 
+                                    id="partnerSearch" 
+                                    class="form-control" 
+                                    placeholder="Search partners..."
+                                    style="max-width: 300px;"
+                                >
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Add this after the date selector, before the table -->
                     <div class="row mb-4">
                         <div class="col-md-6">
@@ -1078,7 +1093,6 @@
                     function updateTrendChart(historicalData) {
                         console.log('Updating charts with data:', historicalData);
                         
-                        // Historical Trend Chart
                         const ctx = document.getElementById('trendChart');
                         if (!ctx) {
                             console.error('Trend chart canvas not found');
@@ -1100,12 +1114,16 @@
                                     label: 'Received',
                                     data: historicalData.received,
                                     borderColor: 'rgb(75, 192, 192)',
-                                    tension: 0.1
+                                    tension: 0.1,
+                                    spanGaps: true,  // This will create gaps for null values
+                                    pointRadius: 3
                                 }, {
                                     label: 'Sent',
                                     data: historicalData.sent,
                                     borderColor: 'rgb(255, 99, 132)',
-                                    tension: 0.1
+                                    tension: 0.1,
+                                    spanGaps: true,  // This will create gaps for null values
+                                    pointRadius: 3
                                 }]
                             },
                             options: {
@@ -1113,11 +1131,7 @@
                                 maintainAspectRatio: false,
                                 scales: {
                                     y: {
-                                        beginAtZero: true,
-                                        max: Math.max(...historicalData.received, ...historicalData.sent) * 1.1,
-                                        grid: {
-                                            drawBorder: false
-                                        }
+                                        beginAtZero: true
                                     },
                                     x: {
                                         grid: {
@@ -1128,83 +1142,6 @@
                                 plugins: {
                                     legend: {
                                         position: 'top'
-                                    }
-                                }
-                            }
-                        });
-
-                        // Daily Changes Chart
-                        const dailyCtx = document.getElementById('dailyTrendChart');
-                        if (!dailyCtx) {
-                            console.error('Daily trend chart canvas not found');
-                            return;
-                        }
-
-                        // Clear any existing daily chart
-                        const existingDailyChart = Chart.getChart(dailyCtx);
-                        if (existingDailyChart) {
-                            existingDailyChart.destroy();
-                        }
-
-                        // Calculate daily changes
-                        const dailyReceived = [];
-                        const dailySent = [];
-                        
-                        for (let i = 1; i < historicalData.received.length; i++) {
-                            dailyReceived.push(historicalData.received[i] - historicalData.received[i-1]);
-                            dailySent.push(historicalData.sent[i] - historicalData.sent[i-1]);
-                        }
-
-                        // Create daily changes chart
-                        new Chart(dailyCtx, {
-                            type: 'line',
-                            data: {
-                                labels: historicalData.dates.slice(1),
-                                datasets: [{
-                                    label: 'Daily Received',
-                                    data: dailyReceived,
-                                    borderColor: 'rgb(75, 192, 192)',
-                                    backgroundColor: 'rgba(75, 192, 192, 0.1)',
-                                    tension: 0.1,
-                                    fill: true
-                                }, {
-                                    label: 'Daily Sent',
-                                    data: dailySent,
-                                    borderColor: 'rgb(255, 99, 132)',
-                                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
-                                    tension: 0.1,
-                                    fill: true
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                scales: {
-                                    y: {
-                                        beginAtZero: true,
-                                        max: Math.max(...dailyReceived, ...dailySent) * 1.1,
-                                        grid: {
-                                            drawBorder: false
-                                        }
-                                    },
-                                    x: {
-                                        grid: {
-                                            drawBorder: false
-                                        }
-                                    }
-                                },
-                                plugins: {
-                                    legend: {
-                                        position: 'top'
-                                    }
-                                },
-                                elements: {
-                                    point: {
-                                        radius: 4,
-                                        hoverRadius: 6
-                                    },
-                                    line: {
-                                        borderWidth: 2
                                     }
                                 }
                             }
@@ -1972,10 +1909,6 @@
                             partnerSelect.appendChild(option);
                         });
                     }
-
-        
-                    
-                    ;
 
                     function submitManualEntry() {
                         const partner = document.getElementById('manualPartner').value;
@@ -2747,13 +2680,16 @@
                             );
                             const changesData = await changesResponse.json();
                             
-                            // Skip the first day's changes as it's the baseline
-                            const filteredChanges = changesData.daily_changes.filter((change, index) => {
-                                // Skip the first appearance of data for each type (sent/received)
-                                const isFirstSentDay = changesData.daily_changes.findIndex(c => c.sent !== 0) === index;
-                                const isFirstReceivedDay = changesData.daily_changes.findIndex(c => c.received !== 0) === index;
-                                return !isFirstSentDay && !isFirstReceivedDay;
-                            });
+                            // Get the first non-zero values (baselines)
+                            const firstSentIndex = changesData.daily_changes.findIndex(c => c.sent !== 0);
+                            const firstReceivedIndex = changesData.daily_changes.findIndex(c => c.received !== 0);
+                            
+                            // Filter out the baseline days
+                            const filteredChanges = changesData.daily_changes.map((change, index) => ({
+                                date: change.date,
+                                sent: index <= firstSentIndex ? 0 : change.sent,
+                                received: index <= firstReceivedIndex ? 0 : change.received
+                            }));
                             
                             // Update charts
                             updateTrendChart(trendData.historical_data);
@@ -2765,6 +2701,115 @@
                     }
                 </script>
 
+                
+
+                <!-- Add this JavaScript right after your existing scripts -->
+                <script>
+                    // Add search functionality
+                    document.getElementById('partnerSearch').addEventListener('input', function(e) {
+                        const searchTerm = e.target.value.toLowerCase();
+                        
+                        // Filter the tableData
+                        const filteredData = tableData.filter(item => 
+                            item.partner.toLowerCase().includes(searchTerm)
+                        );
+                        
+                        // Re-render table with filtered data
+                        const activePartners = filteredData.filter(item => 
+                            (item.period_received > 0 || item.period_sent > 0 || item.all_time_balance !== 0)
+                        );
+                        
+                        const inactivePartners = filteredData.filter(item => 
+                            (item.period_received === 0 && item.period_sent === 0 && item.all_time_balance === 0)
+                        );
+                        
+                        // Update active partners
+                        const tbody = document.querySelector('#activePartners');
+                        tbody.innerHTML = activePartners.map(item => {
+                            const avatarFile = avatar_mapping[item.partner] || 'default.png';
+                            return `
+                                <tr class="table-row-clickable" onclick="showTrendsPanel('${item.partner}', '${item.account}')">
+                                    <td class="px-4 py-4 text-sm">
+                                        <div class="d-flex align-items-center gap-3">
+                                            <div 
+                                                class="rounded-circle"
+                                                style="
+                                                    width: 40px; 
+                                                    height: 40px; 
+                                                    background-color: var(--color-background-darker);
+                                                    display: flex;
+                                                    align-items: center;
+                                                    justify-content: center;
+                                                "
+                                            >
+                                                <img 
+                                                    src="${API_BASE_URL}/data/avatars/${avatarFile}" 
+                                                    alt="${item.partner}"
+                                                    class="rounded-circle"
+                                                    style="width: 40px; height: 40px; object-fit: cover;"
+                                                    onerror="this.style.display='none'"
+                                                >
+                                            </div>
+                                            <div class="fw-semibold">${item.partner}</div>
+                                        </div>
+                                    </td>
+                                    <td class="table-number">${(item.period_received || 0).toLocaleString()}</td>
+                                    <td class="table-number">${(item.period_sent || 0).toLocaleString()}</td>
+                                    <td class="table-number ${item.period_balance > 0 ? 'text-success' : 'text-danger'}">
+                                        ${formatBalanceValue(item.period_balance || 0)}
+                                    </td>
+                                    <td class="table-number ${item.all_time_balance > 0 ? 'text-success' : 'text-danger'}">
+                                        ${formatBalanceValue(item.all_time_balance || 0)}
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('');
+                        
+                        // Update inactive partners
+                        const inactiveTbody = document.querySelector('#inactivePartnersSection');
+                        inactiveTbody.innerHTML = inactivePartners.map(item => {
+                            const avatarFile = avatar_mapping[item.partner] || 'default.png';
+                            return `
+                                <tr class="table-row-clickable" onclick="showTrendsPanel('${item.partner}', '${item.account}')">
+                                    <td class="px-4 py-4 text-sm">
+                                        <div class="d-flex align-items-center gap-3">
+                                            <div 
+                                                class="rounded-circle"
+                                                style="
+                                                    width: 40px; 
+                                                    height: 40px; 
+                                                    background-color: var(--color-background-darker);
+                                                    display: flex;
+                                                    align-items: center;
+                                                    justify-content: center;
+                                                "
+                                            >
+                                                <img 
+                                                    src="${API_BASE_URL}/data/avatars/${avatarFile}" 
+                                                    alt="${item.partner}"
+                                                    class="rounded-circle"
+                                                    style="width: 40px; height: 40px; object-fit: cover;"
+                                                    onerror="this.style.display='none'"
+                                                >
+                                            </div>
+                                            <div class="fw-semibold">${item.partner}</div>
+                                        </div>
+                                    </td>
+                                    <td class="table-number">0</td>
+                                    <td class="table-number">0</td>
+                                    <td class="table-number">0</td>
+                                    <td class="table-number">0</td>
+                                </tr>
+                            `;
+                        }).join('');
+                        
+                        // Update the "Show more" button text
+                        const buttonText = document.querySelector('.show-more-button .button-text');
+                        if (buttonText) {
+                            buttonText.textContent = `Show ${inactivePartners.length} inactive partners`;
+                        }
+                    });
+                </script>
             </body>
             </html>
             

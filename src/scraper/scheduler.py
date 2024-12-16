@@ -2,7 +2,7 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-from src.scraper.convertkit_scraper import ConvertKitScraper
+from src.scraper.convertkit_scraper import ConvertKitScraper, ALLOWED_ACCOUNTS
 from datetime import datetime, timedelta
 import logging
 import json
@@ -94,25 +94,25 @@ class ScraperScheduler:
     def run_scraper(self, force=False):
         """Run the scraper"""
         try:
-            logger.info("Starting scraper run...")
-            logger.info(f"Current time: {datetime.now()}")
+            current_time = datetime.now()
+            logger.info(f"Starting scraper run at {current_time}")
             
             # Clear successful accounts at start of day
-            current_time = datetime.now()
-            if current_time.hour == 6 and current_time.minute < 5:  # Within first 5 minutes of 6am
+            if current_time.hour == 6 and current_time.minute < 5:
                 logger.info("Starting new day - clearing successful accounts")
                 self.successful_accounts.clear()
             
-            # Add this block to handle hourly retries
+            # Determine which accounts to process
             is_hourly = not force and self.pending_accounts
             if is_hourly:
                 logger.info(f"Hourly run - processing pending accounts: {self.pending_accounts}")
                 target_accounts = self.pending_accounts.copy()
             else:
+                logger.info("Full run - processing all accounts")
                 target_accounts = set(ALLOWED_ACCOUNTS)
             
-            if not self.should_run(force=force):
-                logger.info("Skipping run based on schedule")
+            if not target_accounts:
+                logger.info("No accounts to process")
                 return
             
             scraper = None
@@ -221,21 +221,23 @@ class ScraperScheduler:
     def start(self):
         """Start the scheduler"""
         try:
-            # Verify schedule configuration
-            daily_job = self.scheduler.add_job(
-                self.run_scraper,
-                'cron',
-                hour=6,
-                minute=0,
-                id='daily_scrape'
-            )
+            logger.info("=" * 50)
+            logger.info("SCHEDULER STARTUP")
+            logger.info(f"Current time: {datetime.now()}")
             
-            hourly_job = self.scheduler.add_job(
-                self.run_scraper,
-                'interval',
-                hours=1,
-                id='hourly_check'
-            )
+            # Print all scheduled jobs
+            jobs = self.scheduler.get_jobs()
+            logger.info("Scheduled jobs:")
+            for job in jobs:
+                logger.info(f"- {job.id}: Next run at {job.next_run_time}")
+            
+            # Print account states
+            logger.info(f"Pending accounts: {self.pending_accounts}")
+            logger.info(f"Successful accounts: {self.successful_accounts}")
+            
+            # Start with a clean state
+            self.successful_accounts.clear()
+            self.pending_accounts.clear()
             
             # Calculate next run times manually
             now = datetime.now()
@@ -245,17 +247,39 @@ class ScraperScheduler:
             
             next_hourly = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
             
-            # Verify next run times
+            # Add jobs with misfire grace time
+            daily_job = self.scheduler.add_job(
+                self.run_scraper,
+                'cron',
+                hour=6,
+                minute=0,
+                id='daily_scrape',
+                misfire_grace_time=3600  # Allow job to run up to 1 hour late
+            )
+            
+            hourly_job = self.scheduler.add_job(
+                self.run_scraper,
+                'interval',
+                hours=1,
+                id='hourly_check',
+                misfire_grace_time=3600
+            )
+            
+            # Log schedule info
             logger.info("Schedule configuration:")
             logger.info(f"Daily job next run: {next_daily}")
             logger.info(f"Hourly job next run: {next_hourly}")
             
-            # Verify state files
-            logger.info("Checking state files...")
+            # Check if we need to run now
             last_run = self.get_last_run()
             logger.info(f"Last recorded run: {last_run}")
             
-            # Start the scheduler
+            if not last_run or (datetime.now() - last_run).days >= 1:
+                logger.info("No recent run detected - running now...")
+                self.run_scraper(force=True)
+            
+            # Start the scheduler with better error handling
+            logger.info("Starting scheduler...")
             self.scheduler.start()
             
         except Exception as e:

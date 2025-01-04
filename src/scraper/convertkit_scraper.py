@@ -18,19 +18,6 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from src.data.db_manager import DatabaseManager, ReferralData
 from src.utils.config import CONVERTKIT_EMAIL, CONVERTKIT_PASSWORD
 
-# Add this constant
-ALLOWED_ACCOUNTS = [
-    "Adam Graham",
-    "ATH Media LLC",
-    "Chris Donnelly",
-    "Eric Partaker",
-    "Good Good Good",
-    "Life's A Game with Amanda Goetz",
-    "Micro-Agency Launchpad",
-    "Nathan Barry",
-    "The Perfect Loaf"
-]
-
 class ConvertKitScraper:
     def __init__(self, headless=True):
         """Initialize the scraper with login credentials from config"""
@@ -54,12 +41,19 @@ class ConvertKitScraper:
         
         # Add headless mode options if requested
         if headless:
-            chrome_options.add_argument('--headless')
+            chrome_options.add_argument('--headless=new')  # Use new headless mode
             chrome_options.add_argument('--disable-gpu')
             chrome_options.add_argument('--no-sandbox')
             chrome_options.add_argument('--disable-dev-shm-usage')
-        
+            
+        # Add stability options
         chrome_options.add_argument('--window-size=1920,1080')
+        chrome_options.add_argument('--remote-debugging-port=9222')
+        chrome_options.add_argument('--disable-extensions')
+        chrome_options.add_argument('--disable-popup-blocking')
+        chrome_options.add_argument('--disable-blink-features=AutomationControlled')
+        chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
+        chrome_options.add_experimental_option('useAutomationExtension', False)
         
         try:
             print("\nInitializing Chrome driver...")
@@ -638,27 +632,24 @@ class ConvertKitScraper:
                         name_length = len(account_name)
                         clean_name = account_name[:name_length//2]
                         
-                        # Check if this account is in our allowed list
-                        if clean_name in ALLOWED_ACCOUNTS:
-                            accounts.append({
-                                'name': clean_name,
-                                'email': element.get_attribute('data-account-email'),
-                                'element': element
-                            })
-                            print(f"Added allowed account: {clean_name}")
-                        else:
-                            print(f"Skipping non-allowed account: {clean_name}")
+                        # Add all accounts without restriction
+                        accounts.append({
+                            'name': clean_name,
+                            'email': element.get_attribute('data-account-email'),
+                            'element': element
+                        })
+                        print(f"Added account: {clean_name}")
                 except Exception as e:
                     print(f"Error processing element: {str(e)}")
                     continue
             
             if not accounts:
-                print("\n🚨 No allowed accounts found in dropdown!")
+                print("\n🚨 No accounts found in dropdown!")
                 print("Taking screenshot for debugging...")
                 self.driver.save_screenshot("no_accounts_found.png")
-                raise Exception("No allowed accounts found in dropdown")
+                raise Exception("No accounts found in dropdown")
             
-            print(f"\n✅ Successfully found {len(accounts)} allowed accounts: {', '.join(acc['name'] for acc in accounts)}")
+            print(f"\n✅ Successfully found {len(accounts)} accounts: {', '.join(acc['name'] for acc in accounts)}")
             return accounts
             
         except Exception as e:

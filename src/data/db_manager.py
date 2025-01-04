@@ -8,6 +8,8 @@ from ..utils.config import DATABASE_URL
 import json
 import os
 import shutil
+import random
+import pytz
 
 Base = declarative_base()
 
@@ -25,19 +27,23 @@ class DatabaseManager:
         self.engine = create_engine(DATABASE_URL)
         Base.metadata.create_all(self.engine)
         self.Session = sessionmaker(bind=self.engine)
+        self.timezone = pytz.timezone('America/Los_Angeles')
     
     def save_data(self, account_name, recommending_me, my_recommendations):
-        """Save referral data to database"""
+        """Save referral data to database with PT timezone"""
         session = self.Session()
         try:
+            # Convert current time to PT
+            pt_now = datetime.now(self.timezone)
             data = ReferralData(
+                date=pt_now,
                 account_name=account_name,
                 recommending_me=recommending_me,
                 my_recommendations=my_recommendations
             )
             session.add(data)
             session.commit()
-            print(f"Data saved for account: {account_name}")
+            print(f"Data saved for account: {account_name} at {pt_now}")
         except Exception as e:
             print(f"Error saving data: {str(e)}")
             session.rollback()
@@ -618,3 +624,90 @@ class DatabaseManager:
                 </td>
             </tr>
         """
+
+    def generate_demo_data(self):
+        """Generate fake referral data for demo purposes"""
+        demo_partners = [
+            "Creator Weekly", "Digital Academy", "Startup Guide", 
+            "Tech Insights", "Growth Weekly", "Marketing School",
+            "Business Academy", "Content Pro", "Freelance Weekly",
+            "Indie Hackers Daily"
+        ]
+        
+        # Generate data for last 30 days
+        dates = [
+            datetime.now() - timedelta(days=i) 
+            for i in range(30)
+        ]
+        
+        demo_data = []
+        
+        # Create base values with realistic numbers
+        base_values = {}
+        for partner in demo_partners:
+            if partner in ["Creator Weekly", "Digital Academy", "Marketing School"]:
+                # Growing partnerships (start smaller)
+                base_values[partner] = random.randint(100, 300)
+            elif partner in ["Startup Guide", "Growth Weekly"]:
+                # Declining partnerships (start medium)
+                base_values[partner] = random.randint(500, 800)
+            else:
+                # Stable partnerships (varied starting points)
+                base_values[partner] = random.randint(200, 600)
+        
+        # Generate daily data with realistic trends
+        for date in dates:
+            receiving = []
+            sending = []
+            
+            # Create receiving partnerships (4-6 partners)
+            for partner in random.sample(demo_partners, random.randint(4, 6)):
+                base = base_values[partner]
+                
+                # Add trend-based variations
+                if partner in ["Creator Weekly", "Digital Academy", "Marketing School"]:
+                    # Growing trend (small daily increases)
+                    daily_change = random.randint(5, 15)
+                elif partner in ["Startup Guide", "Growth Weekly"]:
+                    # Declining trend (small daily decreases)
+                    daily_change = random.randint(-15, -5)
+                else:
+                    # Stable with tiny variations
+                    daily_change = random.randint(-3, 3)
+                
+                base_values[partner] += daily_change
+                
+                receiving.append({
+                    "creator": partner,
+                    "subscribers": str(max(0, base_values[partner])),
+                    "conversion_rate": f"{random.uniform(1.5, 4.5):.1f}%"
+                })
+            
+            # Create sending partnerships (3-5 partners)
+            for partner in random.sample(demo_partners, random.randint(3, 5)):
+                base = base_values[partner]
+                sending.append({
+                    "creator": partner,
+                    "subscribers": str(max(0, base - random.randint(50, 150))),
+                    "conversion_rate": f"{random.uniform(1.0, 3.5):.1f}%"
+                })
+            
+            demo_record = ReferralData(
+                date=date,
+                account_name="Demo Client",
+                recommending_me=receiving,
+                my_recommendations=sending
+            )
+            demo_data.append(demo_record)
+        
+        return sorted(demo_data, key=lambda x: x.date, reverse=True)  # Most recent first
+
+    def delete_entry(self, entry_id):
+        """Delete an entry from the database"""
+        try:
+            query = "DELETE FROM referral_data WHERE id = ?"
+            self.cursor.execute(query, (entry_id,))
+            self.conn.commit()
+        except Exception as e:
+            self.conn.rollback()
+            raise Exception(f"Failed to delete entry: {str(e)}")

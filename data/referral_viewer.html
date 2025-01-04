@@ -8,6 +8,7 @@
                 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
                 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
                 <link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+                <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
                 <style>
                     /* Root variables */
                     :root {
@@ -119,18 +120,35 @@
                     }
 
                     /* Growth items styling */
+                    .growth-item {
+                        padding: 12px;
+                        border-radius: 8px;
+                        margin-bottom: 4px;  /* Reduced from 8px */
+                    }
+
+                    .growth-item .partner-name {
+                        font-size: 1rem;
+                        font-weight: 500;
+                        color: var(--color-text);
+                    }
+
+                    .growth-value {
+                        font-size: 0.9rem;
+                        font-weight: 600;
+                    }
+
+                    .period-label {
+                        font-size: 0.9rem;
+                        color: #666;
+                        margin-left: 4px;
+                    }
+
                     .growth-item.positive {
                         background: #edfff1;
-                        padding: 16px;
-                        border-radius: 5px;
-                        margin-bottom: 8px;
                     }
 
                     .growth-item.negative {
                         background: #fff1f1;
-                        padding: 16px;
-                        border-radius: 5px;
-                        margin-bottom: 8px;
                     }
 
                     /* Modal updates */
@@ -318,9 +336,13 @@
                     }
 
                     .title-section .partner-name {
-                        font-size: 2.5rem;
+                        font-size: 2.3rem;
+                        font-family: 'Anton', sans-serif !important;
+                        font-weight: bold;
+                        line-height: 1.1;
                         color: #1e1e1e;
                         margin-top: 0;
+                        text-transform: uppercase;
                     }
 
                     /* Style the info icons */
@@ -680,6 +702,238 @@
                         position: relative;
                         padding-right: 40px;
                     }
+
+                    .partner-item {
+                        padding: 8px;
+                        border-radius: 4px;
+                        margin-bottom: 8px;
+                    }
+
+                    .partner-item:hover {
+                        background-color: var(--color-background-darker);
+                    }
+
+                    .value {
+                        margin-left: 8px;
+                        font-weight: 600;
+                    }
+
+                    .value.positive {
+                        color: #28a745;
+                    }
+
+                    .value.negative {
+                        color: #dc3545;
+                    }
+
+                    .period {
+                        color: #666;
+                        font-size: 0.9em;
+                        margin-left: 8px;
+                    }
+
+                    /* Add these styles in the existing <style> section */
+                    .partnership-carousel {
+                        overflow: hidden;
+                        position: relative;
+                        margin: 0 -15px;  /* Compensate for column padding */
+                    }
+
+                    .partnership-slide {
+                        display: flex;
+                        transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+                        padding: 0 15px;
+                        width: 100%;
+                    }
+
+                    .partnership-nav-container {
+                        position: absolute;
+                        top: 20px;
+                        right: 20px;
+                        display: flex;
+                        gap: 8px;
+                        z-index: 10;
+                    }
+
+                    .partnership-nav {
+                        width: 36px;
+                        height: 36px;
+                        padding: 0;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        border-radius: 50%;
+                        background-color: #007bff;
+                        border: none;
+                        color: white;
+                        transition: background-color 0.2s ease;
+                    }
+
+                    .partnership-nav:hover:not(:disabled) {
+                        background-color: #0056b3;
+                    }
+
+                    .partnership-nav:disabled {
+                        background-color: #e9ecef;
+                        color: #6c757d;
+                        cursor: not-allowed;
+                    }
+
+                    .partnership-indicators {
+                        display: flex;
+                        gap: 8px;
+                        align-items: center;
+                        justify-content: center;
+                        margin-top: 20px;
+                    }
+
+                    .indicator {
+                        width: 8px;
+                        height: 8px;
+                        border-radius: 50%;
+                        background-color: #dee2e6;
+                        cursor: pointer;
+                        transition: background-color 0.2s ease;
+                    }
+
+                    .indicator.active {
+                        background-color: #007bff;
+                    }
+
+                    /* Update the partnership health card styling */
+                    .partnership-health-card {
+                        display: flex;
+                        align-items: center;
+                        gap: 2rem;
+                        padding: 1rem 1.5rem;
+                        background: white;
+                        border-radius: 8px;
+                        margin-bottom: 1.5rem;
+                    }
+
+                    .health-metric {
+                        display: flex;
+                        align-items: center;
+                        gap: 1rem;
+                    }
+
+                    .health-metric-label {
+                        color: #666;
+                        font-size: 0.9rem;
+                    }
+
+                    .health-metric-value {
+                        font-weight: 600;
+                        font-size: 1.2rem;
+                    }
+
+                    .health-metric-value.positive {
+                        color: #28a745;
+                    }
+
+                    .health-metric-value.negative {
+                        color: #dc3545;
+                    }
+
+                    /* Update the button styles */
+                    .partnership-nav {
+                        background-color: #007bff !important;
+                        color: white !important;
+                    }
+
+                    .partnership-nav:hover:not(:disabled) {
+                        background-color: #0056b3 !important;
+                    }
+
+                    /* Update the search and manual referrals container */
+                    .search-container {
+                        display: flex;
+                        align-items: center;
+                        gap: 1rem;
+                        margin-bottom: 1.5rem;
+                    }
+
+                    /* Update the HTML structure for the partnership health section */
+                    .partnership-health-card {
+                        display: flex;
+                        align-items: center;
+                        gap: 2rem;
+                        padding: 1rem 1.5rem;
+                        background: white;
+                        border-radius: 8px;
+                        margin-bottom: 1.5rem;
+                    }
+
+                    /* Add these styles to your existing style section */
+                    .sortable {
+                        cursor: pointer;
+                        position: relative;
+                    }
+
+                    .sortable:after {
+                        content: '\2195';  /* Unicode for ↕ */
+                        font-size: 12px;
+                        color: #999;
+                        margin-left: 5px;
+                    }
+
+                    .sortable.asc:after {
+                        content: '\2191';  /* Unicode for ↑ */
+                        color: #007bff;
+                    }
+
+                    .sortable.desc:after {
+                        content: '\2193';  /* Unicode for ↓ */
+                        color: #007bff;
+                    }
+
+                    /* Form control styles */
+                    .form-control {
+                        height: 36px;
+                        padding: 8px 16px;
+                        border: 1px solid var(--color-border);
+                        border-radius: 8px;
+                        font-size: 14px;
+                        background: #FFFFFF;
+                        line-height: 20px;
+                    }
+
+                    /* Search and button container styles */
+                    .d-flex.justify-content-between .form-control {
+                        height: 38px;
+                        width: 250px;
+                        padding: 0.375rem 0.75rem;
+                    }
+
+                    .d-flex.justify-content-between .btn {
+                        height: 38px;
+                        padding: 0.375rem 0.75rem;
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 0.5rem;
+                    }
+
+                    /* Footer styles */
+                    .footer {
+                        width: 100%;
+                        background: white;
+                        padding: 12px 24px;
+                        border-top: 1px solid var(--color-border);
+                        text-align: center;
+                        font-size: 0.9rem;
+                        margin-top: 2rem;
+                    }
+
+                    .footer a {
+                        color: var(--color-text);
+                        text-decoration: none;
+                        opacity: 0.7;
+                        transition: opacity 0.2s ease;
+                    }
+
+                    .footer a:hover {
+                        opacity: 1;
+                    }
                 </style>
                 <!-- Add this in the head section with other scripts -->
                 <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -695,16 +949,7 @@
                                 <label for="clientSelect">Client</label>
                                 <select class="form-select" id="clientSelect">
                                     <option value="all">All Clients</option>
-<option value="ATH Media LLC">ATH Media LLC</option>
-<option value="Adam Graham">Adam Graham</option>
-<option value="Chris Donnelly">Chris Donnelly</option>
-<option value="ConvertKit">ConvertKit</option>
-<option value="Eric Partaker">Eric Partaker</option>
-<option value="Good Good Good">Good Good Good</option>
-<option value="Life's A Game with Amanda Goetz">Life's A Game with Amanda Goetz</option>
-<option value="Micro-Agency Launchpad">Micro-Agency Launchpad</option>
-<option value="Nathan Barry">Nathan Barry</option>
-<option value="The Perfect Loaf">The Perfect Loaf</option>
+                                    <option value="Demo Client">Demo Client</option>
                                 </select>
                             </div>
                         </div>
@@ -723,21 +968,6 @@
                         </div>
                     </div>
 
-                    <!-- Add this before the table -->
-                    <div class="row mb-4">
-                        <div class="col">
-                            <div class="search-container">
-                                <input 
-                                    type="text" 
-                                    id="partnerSearch" 
-                                    class="form-control" 
-                                    placeholder="Search partners..."
-                                    style="max-width: 300px;"
-                                >
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Add this after the date selector, before the table -->
                     <div class="row mb-4">
                         <div class="col-md-6">
@@ -747,11 +977,11 @@
                                     <div class="d-flex justify-content-between">
                                         <div class="metric">
                                             <label>Improving</label>
-                                            <span class="value positive">0</span>
+                                            <span class="value positive">1</span>
                                         </div>
                                         <div class="metric">
                                             <label>Declining</label>
-                                            <span class="value negative">0</span>
+                                            <span class="value negative">3</span>
                                         </div>
                                     </div>
                                 </div>
@@ -777,13 +1007,6 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Add this after your existing cards, before the table -->
-                    <div class="mb-4">
-                        <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#manualEntryModal">
-                            <i class="bi bi-plus-circle"></i> Add Manual Referrals
-                        </button>
                     </div>
 
                     <div id="masterDashboard" class="mb-5">
@@ -844,16 +1067,32 @@
                     </div>
 
                     <div id="defaultDashboard">
-                        <h3 class="mb-4">Largest Referral Imbalances</h3>
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h3 class="mb-0">Largest Referral Imbalances</h3>
+                            <div class="d-flex align-items-center gap-3">
+                                <input type="text" 
+                                    class="form-control form-control-sm" 
+                                    placeholder="Search partners..." 
+                                    id="partnerSearch"
+                                    style="width: 250px; height: 38px;"
+                                    oninput="filterPartners(this.value)">
+                                <button class="btn btn-outline-primary d-inline-flex align-items-center gap-2" 
+                                        style="height: 38px;"
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#manualEntryModal">
+                                    <i class="bi bi-plus-circle"></i> Add Manual Referrals
+                                </button>
+                            </div>
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-hover">
                                 <thead>
                                     <tr>
-                                        <th>Partner</th>
-                                        <th>Received</th>
-                                        <th>Sent</th>
-                                        <th>Balance</th>
-                                        <th>All-Time Balance</th>
+                                        <th class="sortable" onclick="sortTable('partner')">Partner</th>
+                                        <th class="sortable" onclick="sortTable('received')">Received</th>
+                                        <th class="sortable" onclick="sortTable('sent')">Sent</th>
+                                        <th class="sortable desc" onclick="sortTable('balance')">Balance</th>
+                                        <th class="sortable" onclick="sortTable('allTimeBalance')">All-Time Balance</th>
                                     </tr>
                                 </thead>
                                 <tbody id="activePartners">
@@ -887,7 +1126,7 @@
                     </div>
                     
                     <div class="metrics-container">
-                        <h2>Current Period</h2>
+                        <h2>Current Period <span class="period-label" id="period-label"></span></h2>
                         <div class="metrics-grid">
                             <div class="metric-item">
                                 <div class="metric-label">Received</div>
@@ -948,9 +1187,12 @@
 
                 <script>
                     // Add this at the very top of your JavaScript section
-                    const API_BASE_URL = window.location.hostname === 'localhost' 
+                    const API_BASE_URL = window.location.hostname === 'localhost'
                         ? 'http://localhost:5001'
                         : 'https://referral-tracker-8dea3f9d92b7.herokuapp.com';
+                    
+                    console.log('Current hostname:', window.location.hostname);
+                    console.log('API_BASE_URL set to:', API_BASE_URL);
 
                     // 1. Global variables (declare only once)
                     let exchangeChart = null;
@@ -960,20 +1202,54 @@
                     let trendChart = null;  // Global reference to chart
                     let dailyChangesChart = null; // Add this as a global variable at the top with other declarations
 
+                    // Define populateClientDropdown function
+                    async function populateClientDropdown() {
+                        try {
+                            const response = await fetch(`${API_BASE_URL}/api/available-accounts`);
+                            const data = await response.json();
+                            
+                            if (data.success) {
+                                const clientSelect = document.getElementById('clientSelect');
+                                clientSelect.innerHTML = '<option value="All Clients">All Clients</option>';
+                                
+                                // Only add enabled accounts to the dropdown
+                                data.enabled_accounts.forEach(account => {
+                                    const option = document.createElement('option');
+                                    option.value = account;
+                                    option.textContent = account;
+                                    clientSelect.appendChild(option);
+                                });
+                            } else {
+                                console.error('Failed to get accounts:', data.error);
+                                alert('Error loading accounts: ' + data.error);
+                            }
+                        } catch (error) {
+                            console.error('Error loading accounts:', error);
+                            alert('Error loading accounts: ' + error.message);
+                        }
+                    }
+
                     // 2. DOM Ready handler (single one)
                     document.addEventListener('DOMContentLoaded', async function() {
+                        console.log('DOMContentLoaded event fired');
                         try {
                             // Load avatar mapping
                             const avatarResponse = await fetch(`${API_BASE_URL}/data/avatars/avatar_mapping.json`);
                             avatar_mapping = await avatarResponse.json();
                             
+                            // Populate client dropdown first
+                            console.log('Calling populateClientDropdown');
+                            await populateClientDropdown();
+
                             // Initialize master dashboard view
                             toggleDashboardView('master');
                             await updateMasterDashboard();
                             
                             // Initialize tooltips
                             const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-                            tooltips.forEach(el => new bootstrap.Tooltip(el));
+                            if (tooltips.length > 0 && typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+                                tooltips.forEach(el => new bootstrap.Tooltip(el));
+                            }
                         } catch (error) {
                             console.error('Error during initialization:', error);
                         }
@@ -1062,6 +1338,66 @@
                                     }
                                 });
 
+                                // Get date range for display
+                                const dateRange = document.getElementById('dateRangeSelect').value;
+                                const dateRangeText = dateRange === '7' ? 'Last 7 days' : 
+                                                    dateRange === '30' ? 'Last 30 days' : 
+                                                    dateRange === '90' ? 'Last 90 days' : 'Custom range';
+
+                                // Update period label
+                                document.getElementById('period-label').textContent = dateRangeText;
+
+                                // Calculate current period metrics (using only data within the selected period)
+                                const received = data.historical_data.received;
+                                const sent = data.historical_data.sent;
+
+                                // Calculate period totals (changes within the period)
+                                const periodReceived = received[received.length - 1] - received[0];
+                                const periodSent = sent[sent.length - 1] - sent[0];
+                                const periodBalance = periodReceived - periodSent;
+
+                                // Update Current Period section
+                                document.getElementById('receivedMetric').textContent = 
+                                    data.current_period.received.toLocaleString();
+                                document.getElementById('sentMetric').textContent = 
+                                    data.current_period.sent.toLocaleString();
+                                document.getElementById('balanceMetric').textContent = 
+                                    data.current_period.balance.toLocaleString();
+
+                                // Calculate Growth Metrics
+                                // Daily Change: Average change per day over the period
+                                let totalReceivedChange = 0;
+                                let daysWithChanges = 0;
+
+                                // Calculate daily changes and growth rate
+                                for (let i = 1; i < received.length; i++) {
+                                    const receivedChange = received[i] - received[i-1];
+                                    if (receivedChange !== 0) {
+                                        totalReceivedChange += receivedChange;
+                                        daysWithChanges++;
+                                    }
+                                }
+
+                                // Daily Change: Average change on days when there were changes
+                                const avgDailyChange = daysWithChanges > 0 ? 
+                                    (totalReceivedChange / daysWithChanges).toFixed(1) : 0;
+
+                                // Growth Rate: Percentage change from start to end of period
+                                const startValue = received[0];
+                                const endValue = received[received.length - 1];
+                                const growthRate = startValue > 0 ? 
+                                    (((endValue - startValue) / startValue) * 100).toFixed(1) : 0;
+
+                                // Trend: Based on overall change during period
+                                const trend = (endValue - startValue) > 0 ? 'Improving' : 'Declining';
+
+                                // Update Growth Metrics section
+                                document.getElementById('dailyChangeMetric').textContent = 
+                                    (avgDailyChange > 0 ? '+' : '') + avgDailyChange;
+                                document.getElementById('growthRateMetric').textContent = 
+                                    (growthRate > 0 ? '+' : '') + growthRate + '%';
+                                document.getElementById('trendMetric').textContent = trend;
+
                                 // Calculate and update daily changes
                                 const dailyChanges = {
                                     dates: data.historical_data.dates.slice(1),
@@ -1069,13 +1405,29 @@
                                     sent: []
                                 };
                                 
+                                // Find first non-zero values (baselines)
+                                let baselineReceivedIndex = data.historical_data.received.findIndex(val => val > 0);
+                                let baselineSentIndex = data.historical_data.sent.findIndex(val => val > 0);
+                                
+                                // Calculate daily changes, but only after respective baselines
                                 for (let i = 1; i < data.historical_data.dates.length; i++) {
-                                    dailyChanges.received.push(
-                                        data.historical_data.received[i] - data.historical_data.received[i-1]
-                                    );
-                                    dailyChanges.sent.push(
-                                        data.historical_data.sent[i] - data.historical_data.sent[i-1]
-                                    );
+                                    // For received changes
+                                    if (i > baselineReceivedIndex && baselineReceivedIndex !== -1) {
+                                        dailyChanges.received.push(
+                                            data.historical_data.received[i] - data.historical_data.received[i-1]
+                                        );
+                                    } else {
+                                        dailyChanges.received.push(0);
+                                    }
+                                    
+                                    // For sent changes
+                                    if (i > baselineSentIndex && baselineSentIndex !== -1) {
+                                        dailyChanges.sent.push(
+                                            data.historical_data.sent[i] - data.historical_data.sent[i-1]
+                                        );
+                                    } else {
+                                        dailyChanges.sent.push(0);
+                                    }
                                 }
 
                                 // Update daily changes chart
@@ -1143,60 +1495,6 @@
                             });
                     }
 
-                    // Add this new function to handle the daily changes chart
-                    function updateDailyChangesChart(data) {
-                        const ctx = document.getElementById('dailyChangesChart').getContext('2d');
-                        
-                        if (dailyChangesChart instanceof Chart) {
-                            dailyChangesChart.destroy();
-                        }
-                        
-                        dailyChangesChart = new Chart(ctx, {
-                            type: 'bar',
-                            data: {
-                                labels: data.dates,
-                                datasets: [{
-                                    label: 'Received Changes',
-                                    data: data.received,
-                                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                                    borderColor: 'rgb(75, 192, 192)',
-                                    borderWidth: 1
-                                }, {
-                                    label: 'Sent Changes',
-                                    data: data.sent,
-                                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                                    borderColor: 'rgb(255, 99, 132)',
-                                    borderWidth: 1
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                scales: {
-                                    y: {
-                                        beginAtZero: true,
-                                        ticks: {
-                                            callback: function(value) {
-                                                return value > 0 ? '+' + value.toLocaleString() : value.toLocaleString();
-                                            }
-                                        }
-                                    }
-                                },
-                                plugins: {
-                                    tooltip: {
-                                        callbacks: {
-                                            label: function(context) {
-                                                const value = context.parsed.y;
-                                                const formattedValue = value > 0 ? '+' + value.toLocaleString() : value.toLocaleString();
-                                                return `${context.dataset.label}: ${formattedValue}`;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        });
-                    }
-
                     // Add this cleanup function
                     function closeTrendsPanel() {
                         const panel = document.getElementById('trendsPanel');
@@ -1213,6 +1511,7 @@
                             }
                         }
                     }
+                    
 
                     // 6. Update trend chart function
                     function updateTrendChart(chartData) {
@@ -1354,31 +1653,53 @@
                     }
 
                     function sortTable(column) {
+                        // Update sort indicators
+                        const headers = document.querySelectorAll('.sortable');
+                        headers.forEach(header => {
+                            header.classList.remove('asc', 'desc');
+                        });
+                        
+                        const clickedHeader = document.querySelector(`.sortable[onclick*="sortTable('${column}')"]`);
                         const direction = currentSort.column === column && currentSort.direction === 'desc' ? 'asc' : 'desc';
+                        clickedHeader?.classList.add(direction);
+                        
+                        // Sort the data
+                        if (!tableData) return;
                         
                         tableData.sort((a, b) => {
                             let valueA, valueB;
                             
                             switch(column) {
                                 case 'partner':
-                                    valueA = a.partner || '';
-                                    valueB = b.partner || '';
+                                    valueA = a.partner?.toLowerCase() || '';
+                                    valueB = b.partner?.toLowerCase() || '';
                                     return direction === 'desc' ? valueB.localeCompare(valueA) : valueA.localeCompare(valueB);
                                 case 'received':
-                                    valueA = a.period_received || a.received || 0;
-                                    valueB = b.period_received || b.received || 0;
+                                    valueA = a.period_received || 0;
+                                    valueB = b.period_received || 0;
                                     break;
                                 case 'sent':
-                                    valueA = a.period_sent || a.sent || 0;
-                                    valueB = b.period_sent || b.sent || 0;
+                                    valueA = a.period_sent || 0;
+                                    valueB = b.period_sent || 0;
                                     break;
                                 case 'balance':
-                                    valueA = a.period_balance || a.imbalance || 0;
-                                    valueB = b.period_balance || b.imbalance || 0;
+                                    valueA = a.period_balance || 0;
+                                    valueB = b.period_balance || 0;
                                     break;
+                                case 'allTimeBalance':
+                                    valueA = a.all_time_balance || 0;
+                                    valueB = b.all_time_balance || 0;
+                                    break;
+                                default:
+                                    return 0;
                             }
                             
-                            return direction === 'desc' ? valueA - valueB : valueB - valueA;
+                            // For balance columns, sort negative numbers first when descending
+                            if (column === 'balance' || column === 'allTimeBalance') {
+                                return direction === 'desc' ? valueA - valueB : valueB - valueA;
+                            }
+                            // For other numeric columns, sort normally
+                            return direction === 'desc' ? valueB - valueA : valueA - valueB;
                         });
                         
                         currentSort = { column, direction };
@@ -1390,18 +1711,18 @@
                         const thead = document.querySelector('table thead tr');
                         
                         thead.innerHTML = isDefaultView ? `
-                            <th onclick="sortTable('partner')" style="cursor: pointer;">Partner</th>
-                            <th onclick="sortTable('account')" style="cursor: pointer;">Client</th>
-                            <th onclick="sortTable('received')" style="cursor: pointer;">Received</th>
-                            <th onclick="sortTable('sent')" style="cursor: pointer;">Sent</th>
-                            <th onclick="sortTable('balance')" style="cursor: pointer;">Balance</th>
-                            <th onclick="sortTable('balance')" style="cursor: pointer;">All-Time Balance</th>
+                            <th class="sortable" onclick="sortTable('partner')">Partner</th>
+                            <th class="sortable" onclick="sortTable('account')">Client</th>
+                            <th class="sortable" onclick="sortTable('received')">Received</th>
+                            <th class="sortable" onclick="sortTable('sent')">Sent</th>
+                            <th class="sortable desc" onclick="sortTable('balance')">Balance</th>
+                            <th class="sortable" onclick="sortTable('allTimeBalance')">All-Time Balance</th>
                         ` : `
-                            <th onclick="sortTable('partner')" style="cursor: pointer;">Partner</th>
-                            <th onclick="sortTable('received')" style="cursor: pointer;">Received</th>
-                            <th onclick="sortTable('sent')" style="cursor: pointer;">Sent</th>
-                            <th onclick="sortTable('balance')" style="cursor: pointer;">Balance</th>
-                            <th onclick="sortTable('balance')" style="cursor: pointer;">All-Time Balance</th>
+                            <th class="sortable" onclick="sortTable('partner')">Partner</th>
+                            <th class="sortable" onclick="sortTable('received')">Received</th>
+                            <th class="sortable" onclick="sortTable('sent')">Sent</th>
+                            <th class="sortable desc" onclick="sortTable('balance')">Balance</th>
+                            <th class="sortable" onclick="sortTable('allTimeBalance')">All-Time Balance</th>
                         `;
                     }
 
@@ -1413,7 +1734,7 @@
                         
                         const isDefaultView = document.getElementById('clientSelect').value === 'all';
                         
-                        // Split data into active and inactive partners
+                        // Use the already sorted tableData to split into active and inactive
                         const activePartners = tableData.filter(item => 
                             (item.period_received > 0 || item.period_sent > 0 || item.all_time_balance !== 0)
                         );
@@ -1421,7 +1742,7 @@
                         const inactivePartners = tableData.filter(item => 
                             (item.period_received === 0 && item.period_sent === 0 && item.all_time_balance === 0)
                         );
-                        
+
                         // Render active partners
                         activePartners.forEach(item => {
                             const row = document.createElement('tr');
@@ -1452,9 +1773,9 @@
                                         <div class="fw-semibold">${item.partner}</div>
                                     </div>
                                 </td>
-                                <td class="table-number">${(item.period_received || 0).toLocaleString()}</td>
-                                <td class="table-number">${(item.period_sent || 0).toLocaleString()}</td>
-                                <td class="table-number ${item.period_balance > 0 ? 'text-success' : 'text-danger'}">${formatBalanceValue(item.period_balance || 0)}</td>
+                                <td class="table-number" data-bs-toggle="tooltip" data-bs-placement="top" title="Latest value: ${(item.latest_received || 0).toLocaleString()} (${item.latest_date ? new Date(item.latest_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) || 'No date' : 'No date'}), Start value: ${((item.latest_received || 0) - (item.period_received || 0)).toLocaleString()} (${item.start_date ? new Date(item.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) || 'No date' : 'No date'})">${(item.period_received || 0).toLocaleString()}</td>
+                                <td class="table-number" data-bs-toggle="tooltip" data-bs-placement="top" title="Latest value: ${(item.latest_sent || 0).toLocaleString()} (${item.latest_date ? new Date(item.latest_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) || 'No date' : 'No date'}), Start value: ${((item.latest_sent || 0) - (item.period_sent || 0)).toLocaleString()} (${item.start_date ? new Date(item.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) || 'No date' : 'No date'})">${(item.period_sent || 0).toLocaleString()}</td>
+                                <td class="table-number ${item.period_balance > 0 ? 'text-success' : 'text-danger'}" data-bs-toggle="tooltip" data-bs-placement="top" title="Latest balance: ${(item.latest_received || 0) - (item.latest_sent || 0)} (${item.latest_date ? new Date(item.latest_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) || 'No date' : 'No date'}), Start balance: ${((item.latest_received || 0) - (item.period_received || 0)) - ((item.latest_sent || 0) - (item.period_sent || 0))} (${item.start_date ? new Date(item.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) || 'No date' : 'No date'})">${formatBalanceValue(item.period_balance || 0)}</td>
                                 <td class="table-number ${item.all_time_balance > 0 ? 'text-success' : 'text-danger'}">${formatBalanceValue(item.all_time_balance || 0)}</td>
                             `;
                             
@@ -1496,9 +1817,9 @@
                                         <div class="fw-semibold">${item.partner}</div>
                                     </div>
                                 </td>
-                                <td class="table-number">0</td>
-                                <td class="table-number">0</td>
-                                <td class="table-number">0</td>
+                                <td class="table-number" data-bs-toggle="tooltip" data-bs-placement="top" title="Latest value: 0, Start value: 0">0</td>
+                                <td class="table-number" data-bs-toggle="tooltip" data-bs-placement="top" title="Latest value: 0, Start value: 0">0</td>
+                                <td class="table-number" data-bs-toggle="tooltip" data-bs-placement="top" title="Latest balance: 0, Start balance: 0">0</td>
                                 <td class="table-number">0</td>
                             `;
                             
@@ -1566,36 +1887,99 @@
 
                     // Replace or update the client selector event listener
                     document.getElementById('clientSelect').addEventListener('change', async function() {
-                        const selectedClient = this.value;
-                        closeTrendsPanel();
-                        
-                        if (selectedClient === 'all') {
-                            toggleDashboardView('master');
-                            await updateMasterDashboard();
-                        } else {
-                            toggleDashboardView('client');
-                            // Explicitly get date range and trigger data fetch
-                            const dateRange = document.getElementById('dateRangeSelect').value;
-                            const end = new Date();
-                            const start = new Date();
-                            start.setDate(end.getDate() - parseInt(dateRange));
+                        try {
+                            const selectedClient = this.value;
+                            closeTrendsPanel();
                             
-                            try {
-                                const url = new URL(`${API_BASE_URL}/api/partnership-metrics`);
-                                url.searchParams.append('account', selectedClient);
-                                url.searchParams.append('start', start.toISOString().split('T')[0]);
-                                url.searchParams.append('end', end.toISOString().split('T')[0]);
-                                
-                                const response = await fetch(url);
-                                const data = await response.json();
-                                
-                                // Update all necessary components
-                                tableData = data;
-                                await updateDashboardMetrics(data);
-                                renderTable();
-                            } catch (error) {
-                                console.error('Error loading client data:', error);
+                            if (selectedClient === 'all') {
+                                toggleDashboardView('master');
+                                await updateMasterDashboard();
+                            } else {
+                                toggleDashboardView('client');
+                                try {
+                                    const dateRange = document.getElementById('dateRangeSelect').value;
+                                    const end = new Date();
+                                    const start = new Date();
+                                    start.setDate(end.getDate() - parseInt(dateRange));
+                                    
+                                    // Fetch recommendations
+                                    const recommendationsResponse = await fetch(
+                                        `${API_BASE_URL}/api/partnership-recommendations?account=${encodeURIComponent(selectedClient)}`
+                                    );
+                                    const recommendationsData = await recommendationsResponse.json();
+                                    
+                                    // Fetch metrics data with the correct endpoint
+                                    const metricsUrl = `${API_BASE_URL}/api/partnership-metrics?` +
+                                        `account=${encodeURIComponent(selectedClient)}&` +
+                                        `start=${start.toISOString().split('T')[0]}&` +
+                                        `end=${end.toISOString().split('T')[0]}`;
+                                    
+                                    const metricsResponse = await fetch(metricsUrl);
+                                    const metricsData = await metricsResponse.json();
+                                    
+                                    // Update UI
+                                    // First, ensure the defaultDashboard has the correct structure
+                                    const defaultDashboard = document.getElementById('defaultDashboard');
+                                    defaultDashboard.innerHTML = `
+                                        <div class="d-flex justify-content-between align-items-center mb-4">
+                                            <h3 class="mb-0">Largest Referral Imbalances</h3>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <input type="text" 
+                                                    class="form-control form-control-sm" 
+                                                    placeholder="Search partners..." 
+                                                    id="partnerSearch"
+                                                    style="width: 250px; height: 38px;"
+                                                    oninput="filterPartners(this.value)">
+                                                <button class="btn btn-outline-primary d-inline-flex align-items-center gap-2" 
+                                                        style="height: 38px;"
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#manualEntryModal">
+                                                    <i class="bi bi-plus-circle"></i> Add Manual Referrals
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th class="sortable" onclick="sortTable('partner')">Partner</th>
+                                                        <th class="sortable" onclick="sortTable('received')">Received</th>
+                                                        <th class="sortable" onclick="sortTable('sent')">Sent</th>
+                                                        <th class="sortable desc" onclick="sortTable('balance')">Balance</th>
+                                                        <th class="sortable" onclick="sortTable('allTimeBalance')">All-Time Balance</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="activePartners">
+                                                </tbody>
+                                                <tbody id="inactivePartnersSection" class="collapse">
+                                                </tbody>
+                                            </table>
+                                            <button class="show-more-button" type="button" 
+                                                    data-bs-toggle="collapse" 
+                                                    data-bs-target="#inactivePartnersSection" 
+                                                    aria-expanded="false">
+                                            <span class="button-text">Show inactive partners</span>
+                                            <i class="bi bi-chevron-down"></i>
+                                        </button>
+                                        </div>`;
+
+                                    // Add recommendations at the beginning
+                                    if (recommendationsData && recommendationsData.recommendations) {
+                                        const recommendationsHtml = renderRecommendations(recommendationsData);
+                                        defaultDashboard.insertAdjacentHTML('afterbegin', recommendationsHtml);
+                                    }
+                                    
+                                    // Update table data and render
+                                    tableData = metricsData;
+                                    await updateDashboardMetrics(metricsData);
+                                    renderTable();
+                                    
+                                } catch (error) {
+                                    console.error('Error loading client data:', error);
+                                }
                             }
+                        } catch (error) {
+                            console.error('Error handling client selection:', error);
                         }
                     });
 
@@ -1723,6 +2107,7 @@
                                         <label>Balance</label>
                                         <span id="balance-trend">0</span>
                                     </div>
+
                                 </div>
                             </div>
                             <div class="relationship-summary">
@@ -1752,16 +2137,21 @@
                     async function loadData() {
                         try {
                             const dateRange = document.getElementById('dateRangeSelect').value;
+                            const client = document.getElementById('clientSelect').value;
                             const end = new Date();
                             const start = new Date();
                             start.setDate(end.getDate() - parseInt(dateRange));
 
-                            const response = await fetch(
-                                `${API_BASE_URL}/api/partnership-metrics?` +
+                            // Use largest-imbalances for dashboard view, partnership-metrics for client view
+                            const endpoint = client === 'all' ? 
+                                'largest-imbalances' : 'partnership-metrics';
+                            
+                            const url = `${API_BASE_URL}/api/${endpoint}?` +
                                 `start=${start.toISOString().split('T')[0]}&` +
-                                `end=${end.toISOString().split('T')[0]}`
-                            );
+                                `end=${end.toISOString().split('T')[0]}` +
+                                (client !== 'all' ? `&account=${encodeURIComponent(client)}` : '');
 
+                            const response = await fetch(url);
                             const data = await response.json();
                             
                             // Update all dashboard components with the same data
@@ -1962,8 +2352,6 @@
                         if (improvingElement && decliningElement) {
                             improvingElement.textContent = improving;
                             decliningElement.textContent = declining;
-                        } else {
-                            console.error('Could not find Partnership Health elements');
                         }
 
                         // Calculate and update Fastest Growing/Declining
@@ -1981,15 +2369,42 @@
                         const fastestGrowingContainer = document.querySelector('.fastest-growing');
                         if (fastestGrowingContainer) {
                             fastestGrowingContainer.innerHTML = fastestGrowing
-                                .map(partner => `
-                                    <div class="growth-item positive">
-                                        <div class="partner-name">${partner.partner}</div>
-                                        <div class="growth-value-container">
-                                            <span class="growth-value positive">+${partner.period_balance.toLocaleString()}</span>
-                                            <span class="period-label">${formatPeriodText(document.getElementById('dateRangeSelect').value)}</span>
+                                .map(partner => {
+                                    const avatarFile = avatar_mapping[partner.partner] || 'default.png';
+                                    return `
+                                        <div class="growth-item positive">
+                                            <div class="d-flex align-items-center">
+                                                <div 
+                                                    class="rounded-circle"
+                                                    style="
+                                                        width: 32px; 
+                                                        height: 32px; 
+                                                        background-color: var(--color-background-darker);
+                                                        display: flex;
+                                                        align-items: center;
+                                                        justify-content: center;
+                                                        margin-right: 12px;
+                                                    "
+                                                >
+                                                    <img 
+                                                        src="${API_BASE_URL}/data/avatars/${avatarFile}" 
+                                                        alt="${partner.partner}"
+                                                        class="rounded-circle"
+                                                        style="width: 32px; height: 32px; object-fit: cover;"
+                                                        onerror="this.style.display='none'"
+                                                    >
+                                                </div>
+                                                <div style="line-height: 1.2;">
+                                                    <div class="partner-name" style="margin-bottom: 2px;">${partner.partner}</div>
+                                                    <div>
+                                                        <span class="growth-value positive">+${partner.period_balance.toLocaleString()}</span>
+                                                        <span class="period-label">last ${document.getElementById('dateRangeSelect').value} days</span>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                `)
+                                    `;
+                                })
                                 .join('');
                         }
                         
@@ -1997,15 +2412,42 @@
                         const fastestDecliningContainer = document.querySelector('.fastest-declining');
                         if (fastestDecliningContainer) {
                             fastestDecliningContainer.innerHTML = fastestDeclining
-                                .map(partner => `
-                                    <div class="growth-item negative">
-                                        <div class="partner-name">${partner.partner}</div>
-                                        <div class="growth-value-container">
-                                            <span class="growth-value negative">${partner.period_balance.toLocaleString()}</span>
-                                            <span class="period-label">${formatPeriodText(document.getElementById('dateRangeSelect').value)}</span>
+                                .map(partner => {
+                                    const avatarFile = avatar_mapping[partner.partner] || 'default.png';
+                                    return `
+                                        <div class="growth-item negative">
+                                            <div class="d-flex align-items-center">
+                                                <div 
+                                                    class="rounded-circle"
+                                                    style="
+                                                        width: 32px; 
+                                                        height: 32px; 
+                                                        background-color: var(--color-background-darker);
+                                                        display: flex;
+                                                        align-items: center;
+                                                        justify-content: center;
+                                                        margin-right: 12px;
+                                                    "
+                                                >
+                                                    <img 
+                                                        src="${API_BASE_URL}/data/avatars/${avatarFile}" 
+                                                        alt="${partner.partner}"
+                                                        class="rounded-circle"
+                                                        style="width: 32px; height: 32px; object-fit: cover;"
+                                                        onerror="this.style.display='none'"
+                                                    >
+                                                </div>
+                                                <div style="line-height: 1.2;">
+                                                    <div class="partner-name" style="margin-bottom: 2px;">${partner.partner}</div>
+                                                    <div>
+                                                        <span class="growth-value negative">${partner.period_balance.toLocaleString()}</span>
+                                                        <span class="period-label">last ${document.getElementById('dateRangeSelect').value} days</span>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                `)
+                                    `;
+                                })
                                 .join('');
                         }
                     }
@@ -2209,30 +2651,50 @@
                         const selectedClient = this.value;
                         closeTrendsPanel();
                         
+                        // Clear any existing recommendations first
+                        const defaultDashboard = document.getElementById('defaultDashboard');
+                        const existingRecommendations = defaultDashboard.querySelectorAll('.card');
+                        existingRecommendations.forEach(rec => {
+                            if (rec.querySelector('h5')?.textContent === 'Possible Partnerships') {
+                                rec.remove();
+                            }
+                        });
+                        
                         if (selectedClient === 'all') {
                             toggleDashboardView('master');
                             await updateMasterDashboard();
                         } else {
                             toggleDashboardView('client');
-                            // Explicitly get date range and trigger data fetch
-                            const dateRange = document.getElementById('dateRangeSelect').value;
-                            const end = new Date();
-                            const start = new Date();
-                            start.setDate(end.getDate() - parseInt(dateRange));
-                            
                             try {
-                                const url = new URL(`${API_BASE_URL}/api/partnership-metrics`);
-                                url.searchParams.append('account', selectedClient);
-                                url.searchParams.append('start', start.toISOString().split('T')[0]);
-                                url.searchParams.append('end', end.toISOString().split('T')[0]);
-                               
-                                const response = await fetch(url);
-                                const data = await response.json();
+                                const dateRange = document.getElementById('dateRangeSelect').value;
+                                const end = new Date();
+                                const start = new Date();
+                                start.setDate(end.getDate() - parseInt(dateRange));
                                 
-                                // Update all necessary components
-                                tableData = data;
-                                await updateDashboardMetrics(data);
+                                // Fetch recommendations
+                                const recommendationsResponse = await fetch(
+                                    `${API_BASE_URL}/api/partnership-recommendations?account=${encodeURIComponent(selectedClient)}`
+                                );
+                                const recommendationsData = await recommendationsResponse.json();
+                                
+                                // Fetch metrics data
+                                const metricsUrl = new URL(`${API_BASE_URL}/api/partnership-metrics`);
+                                metricsUrl.searchParams.append('account', selectedClient);
+                                metricsUrl.searchParams.append('start', start.toISOString().split('T')[0]);
+                                metricsUrl.searchParams.append('end', end.toISOString().split('T')[0]);
+                                
+                                const metricsResponse = await fetch(metricsUrl);
+                                const metricsData = await metricsResponse.json();
+                                
+                                // Update UI
+                                const recommendationsHtml = renderRecommendations(recommendationsData);
+                                defaultDashboard.insertAdjacentHTML('afterbegin', recommendationsHtml);
+                                
+                                // Update other dashboard components
+                                tableData = metricsData;
+                                await updateDashboardMetrics(metricsData);
                                 renderTable();
+                                
                             } catch (error) {
                                 console.error('Error loading client data:', error);
                             }
@@ -2260,10 +2722,10 @@
 
                     // Function to update the master dashboard
                     async function updateMasterDashboard() {
-                            const dateRange = document.getElementById('dateRangeSelect').value;
-                            const end = new Date();
-                            const start = new Date();
-                            start.setDate(end.getDate() - parseInt(dateRange));
+                        const dateRange = document.getElementById('dateRangeSelect').value;
+                        const end = new Date();
+                        const start = new Date();
+                        start.setDate(end.getDate() - parseInt(dateRange));
                         
                         try {
                             // Changed to use partnership-metrics endpoint
@@ -2325,10 +2787,10 @@
                             <div class="growth-item ${p.period_balance >= 0 ? 'positive' : 'negative'}">
                                 <div class="d-flex flex-column">
                                     <div class="d-flex justify-content-between align-items-center">
-                                        <div>
+                                    <div>
                                             <h6 class="partner-name mb-0">${p.partner}</h6>
                                             <small class="text-muted d-block">Client: ${p.account}</small>
-                                        </div>
+                                    </div>
                                         <span class="${p.period_balance >= 0 ? 'positive' : 'negative'}">
                                             ${Math.abs(p.period_balance).toLocaleString()}
                                         </span>
@@ -2337,7 +2799,7 @@
                                         Sent: ${p.period_sent.toLocaleString()} | 
                                         Received: ${p.period_received.toLocaleString()}
                                     </small>
-                                </div>
+                                    </div>
                             </div>
                         `).join('') : '<div class="text-muted">No partnerships found</div>';
                     }
@@ -2366,19 +2828,19 @@
                                 <div class="growth-item negative">
                                     <div class="d-flex flex-column">
                                         <div class="d-flex justify-content-between align-items-center">
-                                            <div>
+                                <div>
                                                 <h6 class="partner-name mb-0">${p.partner}</h6>
                                                 <small class="text-muted d-block">Client: ${p.account}</small>
-                                            </div>
+                                </div>
                                             <span class="text-muted">
                                                 All-time: ${p.all_time_balance.toLocaleString()}
                                             </span>
-                                        </div>
+                                </div>
                                         <small class="text-muted">
                                             Last active: ${p.last_active || 'Unknown'}
                                         </small>
-                                    </div>
-                                </div>
+                            </div>
+                            </div>
                             `).join('') :
                             '<div class="text-muted">No inactive partnerships found</div>';
                     }
@@ -2523,9 +2985,9 @@
                     // Add the fastest growing/declining update
                     async function updateFastestGrowingDeclining() {
                         try {
-                            const dateRange = document.getElementById('dateRangeSelect').value;
-                            const end = new Date();
-                            const start = new Date();
+                        const dateRange = document.getElementById('dateRangeSelect').value;
+                        const end = new Date();
+                        const start = new Date();
                             start.setDate(end.getDate() - parseInt(dateRange));
 
                             // Fetch data from partnership-metrics endpoint
@@ -2534,39 +2996,61 @@
                                 `start=${start.toISOString().split('T')[0]}&` +
                                 `end=${end.toISOString().split('T')[0]}`
                             );
-                            
-                            const data = await response.json();
-                            console.log('Received data for fastest growing/declining:', data); // Debug log
 
+                            const data = await response.json();
+                            
                             // Filter and sort for growing partnerships (positive balance)
                             const fastestGrowing = data
-                                .filter(p => p.period_balance > 0)
-                                .sort((a, b) => b.period_balance - a.period_balance)
-                                .slice(0, 3);
-
+                            .filter(p => p.period_balance > 0)
+                            .sort((a, b) => b.period_balance - a.period_balance)
+                            .slice(0, 3);
+                            
                             // Filter and sort for declining partnerships (negative balance)
                             const fastestDeclining = data
-                                .filter(p => p.period_balance < 0)
-                                .sort((a, b) => a.period_balance - b.period_balance)
-                                .slice(0, 3);
-
+                            .filter(p => p.period_balance < 0)
+                            .sort((a, b) => a.period_balance - b.period_balance)
+                            .slice(0, 3);
+                        
                             // Update the growing partnerships section
                             const growingContainer = document.querySelector('.fastest-growing');
                             if (growingContainer) {
                                 growingContainer.innerHTML = fastestGrowing.length > 0 ?
-                                    fastestGrowing.map(partner => `
-                                        <div class="growth-item">
-                                            <div class="partner-name">${partner.partner}</div>
-                                            <div class="growth-value-container">
-                                                <span class="growth-value positive">+${partner.period_balance.toLocaleString()}</span>
-                                                <span class="period-label">last ${dateRange} days</span>
+                                    fastestGrowing.map(partner => {
+                                    const avatarFile = avatar_mapping[partner.partner] || 'default.png';
+                                    return `
+                                        <div class="growth-item positive">
+                                            <div class="d-flex align-items-center">
+                                                <div 
+                                                    class="rounded-circle"
+                                                    style="
+                                                        width: 32px; 
+                                                        height: 32px; 
+                                                        background-color: var(--color-background-darker);
+                                                        display: flex;
+                                                        align-items: center;
+                                                        justify-content: center;
+                                                        margin-right: 12px;
+                                                    "
+                                                >
+                                                    <img 
+                                                        src="${API_BASE_URL}/data/avatars/${avatarFile}" 
+                                                        alt="${partner.partner}"
+                                                        class="rounded-circle"
+                                                        style="width: 32px; height: 32px; object-fit: cover;"
+                                                        onerror="this.style.display='none'"
+                                                    >
+                                                </div>
+                                                <div style="line-height: 1.2;">
+                                                    <div class="partner-name" style="margin-bottom: 2px;">${partner.partner}</div>
+                                                    <div>
+                                                        <span class="growth-value positive">+${partner.period_balance.toLocaleString()}</span>
+                                                            <span class="period-label">last ${dateRange} days</span>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <small class="text-muted">
-                                                Sent: ${partner.period_sent.toLocaleString()} | 
-                                                Received: ${partner.period_received.toLocaleString()}
-                                            </small>
                                         </div>
-                                    `).join('') :
+                                    `;
+                                    }).join('') :
                                     '<p class="text-muted">No growing partnerships found</p>';
                             }
 
@@ -2574,19 +3058,42 @@
                             const decliningContainer = document.querySelector('.fastest-declining');
                             if (decliningContainer) {
                                 decliningContainer.innerHTML = fastestDeclining.length > 0 ?
-                                    fastestDeclining.map(partner => `
-                                        <div class="growth-item">
-                                            <div class="partner-name">${partner.partner}</div>
-                                            <div class="growth-value-container">
-                                                <span class="growth-value negative">${partner.period_balance.toLocaleString()}</span>
-                                                <span class="period-label">last ${dateRange} days</span>
+                                    fastestDeclining.map(partner => {
+                                    const avatarFile = avatar_mapping[partner.partner] || 'default.png';
+                                    return `
+                                        <div class="growth-item negative">
+                                            <div class="d-flex align-items-center">
+                                                <div 
+                                                    class="rounded-circle"
+                                                    style="
+                                                        width: 32px; 
+                                                        height: 32px; 
+                                                        background-color: var(--color-background-darker);
+                                                        display: flex;
+                                                        align-items: center;
+                                                        justify-content: center;
+                                                        margin-right: 12px;
+                                                    "
+                                                >
+                                                    <img 
+                                                        src="${API_BASE_URL}/data/avatars/${avatarFile}" 
+                                                        alt="${partner.partner}"
+                                                        class="rounded-circle"
+                                                        style="width: 32px; height: 32px; object-fit: cover;"
+                                                        onerror="this.style.display='none'"
+                                                    >
+                                                </div>
+                                                <div style="line-height: 1.2;">
+                                                    <div class="partner-name" style="margin-bottom: 2px;">${partner.partner}</div>
+                                                    <div>
+                                                        <span class="growth-value negative">${partner.period_balance.toLocaleString()}</span>
+                                                            <span class="period-label">last ${dateRange} days</span>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <small class="text-muted">
-                                                Sent: ${partner.period_sent.toLocaleString()} | 
-                                                Received: ${partner.period_received.toLocaleString()}
-                                            </small>
                                         </div>
-                                    `).join('') :
+                                    `;
+                                    }).join('') :
                                     '<p class="text-muted">No declining partnerships found</p>';
                             }
                         } catch (error) {
@@ -2596,10 +3103,10 @@
 
                     async function updateDashboard() {
                         try {
-                            const end = new Date();
-                            const start = new Date();
-                            start.setDate(end.getDate() - parseInt(dateRange));
-
+                                const end = new Date();
+                                const start = new Date();
+                                start.setDate(end.getDate() - parseInt(dateRange));
+                                
                             // Replace multiple largest-imbalances calls with single partnership-metrics call
                             const response = await fetch(
                                 `${API_BASE_URL}/api/partnership-metrics?` +
@@ -2625,7 +3132,7 @@
                             <div class="modal-header">
                                 <h5 class="modal-title">Add Manual Referral Data</h5>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                            </div>
+                                        </div>
                             <div class="modal-body">
                                 <form id="manualEntryForm">
                                     <div class="mb-3">
@@ -2638,36 +3145,36 @@
                                     <div class="mb-3">
                                         <label class="form-label">Date</label>
                                         <input type="date" class="form-control" id="manualDate" required>
-                                    </div>
+                                </div>
                                     <div class="row">
                                         <div class="col">
                                             <div class="mb-3">
                                                 <label class="form-label">Received</label>
                                                 <input type="number" class="form-control" id="manualReceived" 
                                                        placeholder="Optional">
-                                            </div>
-                                        </div>
+                                    </div>
+                                    </div>
                                         <div class="col">
                                             <div class="mb-3">
                                                 <label class="form-label">Sent</label>
                                                 <input type="number" class="form-control" id="manualSent" 
                                                        placeholder="Optional">
-                                            </div>
-                                        </div>
                                     </div>
+                                </div>
+                            </div>
                                     <div class="mb-3">
                                         <label class="form-label">Notes</label>
                                         <textarea class="form-control" id="manualNotes" rows="2" 
                                                 placeholder="e.g., Data from external tool"></textarea>
-                                    </div>
+                                </div>
                                 </form>
-                            </div>
+                                </div>
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                                 <button type="button" class="btn btn-primary" onclick="submitManualEntry()">Save</button>
                             </div>
-                        </div>
-                    </div>
+                            </div>
+                            </div>
                 </div>
 
                 <script>
@@ -2707,7 +3214,7 @@
                                 cleanedData.sent[index] = data.historical_data.sent[i] || 0;
                             });
 
-                            // Format dates for display
+                        // Format dates for display
                             const chartData = {
                                 dates: cleanedData.dates.map(d => {
                                     const date = new Date(d);
@@ -2772,18 +3279,18 @@
                                                     return value.toLocaleString();
                                                 }
                                             }
-                                        },
-                                        x: {
-                                            grid: {
-                                                display: false
-                                            }
                                         }
                                     },
-                                    interaction: {
-                                        mode: 'nearest',
-                                        axis: 'x',
-                                        intersect: false
+                                    x: {
+                                        grid: {
+                                            display: false
+                                        }
                                     }
+                                },
+                                interaction: {
+                                    mode: 'nearest',
+                                    axis: 'x',
+                                    intersect: false
                                 }
                             });
                         } catch (error) {
@@ -2795,10 +3302,10 @@
                 <script>
                     async function loadPartnershipData(partner) {
                         try {
-                            const client = document.getElementById('clientSelect').value;
+                        const client = document.getElementById('clientSelect').value;
                             const days = document.getElementById('dateRangeSelect').value;
-                            
-                            const end = new Date();
+
+                        const end = new Date();
                             const start = new Date(end);
                             start.setDate(start.getDate() - days);
                             
@@ -2837,7 +3344,7 @@
                             // Update charts
                             updateTrendChart(trendData.historical_data);
                             updateDailyChart(filteredChanges);
-                            
+
                         } catch (error) {
                             console.error('Error loading partnership data:', error);
                         }
@@ -2870,31 +3377,31 @@
                         const tbody = document.querySelector('#activePartners');
                         tbody.innerHTML = activePartners.map(item => {
                             const avatarFile = avatar_mapping[item.partner] || 'default.png';
-                            return `
+                                    return `
                                 <tr class="table-row-clickable" onclick="showTrendsPanel('${item.partner}', '${item.account}')">
                                     <td class="px-4 py-4 text-sm">
                                         <div class="d-flex align-items-center gap-3">
-                                            <div 
-                                                class="rounded-circle"
-                                                style="
+                                                <div 
+                                                    class="rounded-circle"
+                                                    style="
                                                     width: 40px; 
                                                     height: 40px; 
-                                                    background-color: var(--color-background-darker);
-                                                    display: flex;
-                                                    align-items: center;
-                                                    justify-content: center;
-                                                "
-                                            >
-                                                <img 
-                                                    src="${API_BASE_URL}/data/avatars/${avatarFile}" 
-                                                    alt="${item.partner}"
-                                                    class="rounded-circle"
-                                                    style="width: 40px; height: 40px; object-fit: cover;"
-                                                    onerror="this.style.display='none'"
+                                                        background-color: var(--color-background-darker);
+                                                        display: flex;
+                                                        align-items: center;
+                                                        justify-content: center;
+                                                    "
                                                 >
-                                            </div>
+                                                    <img 
+                                                        src="${API_BASE_URL}/data/avatars/${avatarFile}" 
+                                                    alt="${item.partner}"
+                                                        class="rounded-circle"
+                                                    style="width: 40px; height: 40px; object-fit: cover;"
+                                                        onerror="this.style.display='none'"
+                                                    >
+                                                </div>
                                             <div class="fw-semibold">${item.partner}</div>
-                                        </div>
+                                                    </div>
                                     </td>
                                     <td class="table-number">${(item.period_received || 0).toLocaleString()}</td>
                                     <td class="table-number">${(item.period_sent || 0).toLocaleString()}</td>
@@ -2904,7 +3411,7 @@
                                     <td class="table-number ${item.all_time_balance > 0 ? 'text-success' : 'text-danger'}">
                                         ${formatBalanceValue(item.all_time_balance || 0)}
                                     </td>
-                                </tr>
+                                    </tr>
                             `;
                         }).join('');
                         
@@ -2912,38 +3419,38 @@
                         const inactiveTbody = document.querySelector('#inactivePartnersSection');
                         inactiveTbody.innerHTML = inactivePartners.map(item => {
                             const avatarFile = avatar_mapping[item.partner] || 'default.png';
-                            return `
+                        return `
                                 <tr class="table-row-clickable" onclick="showTrendsPanel('${item.partner}', '${item.account}')">
-                                    <td class="px-4 py-4 text-sm">
-                                        <div class="d-flex align-items-center gap-3">
-                                            <div 
-                                                class="rounded-circle"
-                                                style="
-                                                    width: 40px; 
-                                                    height: 40px; 
+                                <td class="px-4 py-4 text-sm">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div 
+                                            class="rounded-circle"
+                                            style="
+                                                width: 40px; 
+                                                height: 40px; 
                                                     background-color: var(--color-background-darker);
-                                                    display: flex;
-                                                    align-items: center;
-                                                    justify-content: center;
-                                                "
-                                            >
-                                                <img 
-                                                    src="${API_BASE_URL}/data/avatars/${avatarFile}" 
+                                                display: flex;
+                                                align-items: center;
+                                                justify-content: center;
+                                            "
+                                        >
+                                            <img 
+                                                src="${API_BASE_URL}/data/avatars/${avatarFile}" 
                                                     alt="${item.partner}"
-                                                    class="rounded-circle"
-                                                    style="width: 40px; height: 40px; object-fit: cover;"
-                                                    onerror="this.style.display='none'"
-                                                >
-                                            </div>
-                                            <div class="fw-semibold">${item.partner}</div>
+                                                class="rounded-circle"
+                                                style="width: 40px; height: 40px; object-fit: cover;"
+                                                onerror="this.style.display='none'"
+                                            >
                                         </div>
-                                    </td>
+                                            <div class="fw-semibold">${item.partner}</div>
+                                    </div>
+                                </td>
+                                    <td class="table-number" data-bs-toggle="tooltip" data-bs-placement="top" title="Latest value: 0, Start value: 0">0</td>
+                                    <td class="table-number" data-bs-toggle="tooltip" data-bs-placement="top" title="Latest value: 0, Start value: 0">0</td>
+                                    <td class="table-number" data-bs-toggle="tooltip" data-bs-placement="top" title="Latest balance: 0, Start balance: 0">0</td>
                                     <td class="table-number">0</td>
-                                    <td class="table-number">0</td>
-                                    <td class="table-number">0</td>
-                                    <td class="table-number">0</td>
-                                </tr>
-                            `;
+                            </tr>
+                        `;
                         }).join('');
                         
                         // Update the "Show more" button text
@@ -2953,6 +3460,373 @@
                         }
                     });
                 </script>
+
+                <script>
+                    function filterPartners(searchTerm) {
+                        if (!tableData) return;
+                        
+                        searchTerm = searchTerm.toLowerCase();
+                        const tbody = document.querySelector('#activePartners');
+                        const inactiveTbody = document.querySelector('#inactivePartnersSection');
+                        
+                        // Filter all rows
+                        const rows = [...tbody.querySelectorAll('tr'), ...inactiveTbody.querySelectorAll('tr')];
+                        
+                        rows.forEach(row => {
+                            const partnerName = row.querySelector('.fw-semibold').textContent.toLowerCase();
+                            if (partnerName.includes(searchTerm)) {
+                                row.style.display = '';
+                        } else {
+                                row.style.display = 'none';
+                            }
+                        });
+                    }
+                </script>
+
+                <script>
+                    document.getElementById('clientSelect').addEventListener('change', function(e) {
+                        // Toggle search visibility
+                        const searchContainer = document.getElementById('searchContainer');
+                        if (searchContainer) {
+                            searchContainer.style.display = e.target.value === 'all' ? 'none' : 'block';
+                        }
+                        loadData();
+                    });
+                </script>
+
+                <script>
+                    document.getElementById('clientSelect').addEventListener('change', async function() {
+                        const selectedClient = this.value;
+                        closeTrendsPanel();
+                        
+                        // Clear any existing recommendations first
+                        const defaultDashboard = document.getElementById('defaultDashboard');
+                        const existingRecommendations = defaultDashboard.querySelectorAll('.card');
+                        existingRecommendations.forEach(rec => {
+                            if (rec.querySelector('h5')?.textContent === 'Possible Partnerships') {
+                                rec.remove();
+                            }
+                        });
+                        
+                        if (selectedClient === 'all') {
+                            toggleDashboardView('master');
+                            await updateMasterDashboard();
+                        } else {
+                            toggleDashboardView('client');
+                            try {
+                                const dateRange = document.getElementById('dateRangeSelect').value;
+                                const end = new Date();
+                                const start = new Date();
+                                start.setDate(end.getDate() - parseInt(dateRange));
+                                
+                                // Fetch recommendations
+                                const recommendationsResponse = await fetch(
+                                    `${API_BASE_URL}/api/partnership-recommendations?account=${encodeURIComponent(selectedClient)}`
+                                );
+                                const recommendationsData = await recommendationsResponse.json();
+                                
+                                // Fetch metrics data
+                                const metricsUrl = new URL(`${API_BASE_URL}/api/partnership-metrics`);
+                                metricsUrl.searchParams.append('account', selectedClient);
+                                metricsUrl.searchParams.append('start', start.toISOString().split('T')[0]);
+                                metricsUrl.searchParams.append('end', end.toISOString().split('T')[0]);
+                                
+                                const metricsResponse = await fetch(metricsUrl);
+                                const metricsData = await metricsResponse.json();
+                                
+                                // Update UI
+                                const recommendationsHtml = renderRecommendations(recommendationsData);
+                                defaultDashboard.insertAdjacentHTML('afterbegin', recommendationsHtml);
+                                
+                                // Update other dashboard components
+                                tableData = metricsData;
+                                await updateDashboardMetrics(metricsData);
+                                renderTable();
+                                
+                            } catch (error) {
+                                console.error('Error loading client data:', error);
+                            }
+                        }
+                    });
+                </script>
+
+                <script>
+                    // Add these variables at the top of your script section
+                    let currentPartnershipPage = 0;
+                    let totalPartnershipPages = 0;
+                    let allPartnerships = [];
+
+                    // Replace the existing renderRecommendations function
+                    function renderRecommendations(data) {
+                        // Early return with empty string if no data
+                        if (!data || !data.recommendations || data.recommendations.length === 0) {
+                            return '';
+                        }
+
+                        // Remove ALL existing partnership modules first
+                        const existingModules = document.querySelectorAll('.card');
+                        existingModules.forEach(module => {
+                            const heading = module.querySelector('h5');
+                            if (heading && heading.textContent === 'Possible Partnerships') {
+                                module.remove();
+                            }
+                        });
+
+                        // Store all partnerships globally, but limit to 10
+                        allPartnerships = Array.from(
+                            new Map(data.recommendations.map(item => [item.partner, item])).values()
+                        ).slice(0, 10); // Limit to 10 partnerships
+                        
+                        totalPartnershipPages = Math.ceil(allPartnerships.length / 3);
+                        currentPartnershipPage = 0;
+
+                        const avgVolume = data.metrics?.your_avg_volume || 0;
+                        return `
+                            <div class="card mb-4">
+                                <div class="card-body position-relative">
+                                    <h5 class="mb-2">Possible Partnerships</h5>
+                                    <p class="text-muted small mb-3">Your average outbound volume: ${avgVolume.toLocaleString()} referrals/month</p>
+                                    
+                                    <div class="partnership-nav-container">
+                                        <button class="btn partnership-nav" onclick="previousPartnerships()" id="prevBtn" disabled>
+                                            <i class="bi bi-chevron-left"></i>
+                                        </button>
+                                        <button class="btn partnership-nav" onclick="nextPartnerships()" id="nextBtn" ${totalPartnershipPages <= 1 ? 'disabled' : ''}>
+                                            <i class="bi bi-chevron-right"></i>
+                                        </button>
+                                    </div>
+
+                                    <div class="partnership-carousel">
+                                        <div class="row partnership-slide" id="partnershipSlide">
+                                            ${renderPartnershipPage(0)}
+                                        </div>
+                                    </div>
+
+                                    <div class="partnership-indicators">
+                                        ${Array(totalPartnershipPages).fill(0).map((_, i) => `
+                                            <div class="indicator ${i === 0 ? 'active' : ''}" onclick="goToPage(${i})"></div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    // Add these new functions after renderRecommendations
+                    function renderPartnershipPage(page) {
+                        const start = page * 3;
+                        const partnerships = allPartnerships.slice(start, start + 3);
+                        
+                        // Create an array of 3 slots, fill with partnerships or empty divs
+                        return Array(3).fill(null).map((_, index) => {
+                            const partner = partnerships[index];
+                            if (!partner) {
+                                return `<div class="col-md-4"></div>`; // Empty column for spacing
+                            }
+                            
+                            const avatarFile = avatar_mapping[partner.partner] || 'default.png';
+                            return `
+                                <div class="col-md-4">
+                                    <div class="p-3 border rounded">
+                                        <div class="d-flex align-items-center">
+                                            <div 
+                                                class="rounded-circle"
+                                                style="
+                                                    width: 40px; 
+                                                    height: 40px; 
+                                                    background-color: var(--color-background-darker);
+                                                    display: flex;
+                                                    align-items: center;
+                                                    justify-content: center;
+                                                    margin-right: 12px;
+                                                "
+                                            >
+                                                <img 
+                                                    src="${API_BASE_URL}/data/avatars/${avatarFile}" 
+                                                    alt="${partner.partner}"
+                                                    class="rounded-circle"
+                                                    style="width: 40px; height: 40px; object-fit: cover;"
+                                                    onerror="this.style.display='none'"
+                                                >
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold">${partner.partner}</div>
+                                                <div class="text-muted">${partner.volume_match.split('(')[0].trim()}</div>
+                                                <div class="text-muted">Partner: ${partner.example_partnership}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                    }
+
+                    function updatePartnershipDisplay() {
+                        const slide = document.getElementById('partnershipSlide');
+                        if (!slide) return;
+
+                        // Update the content of the slide
+                        slide.innerHTML = renderPartnershipPage(currentPartnershipPage);
+                        
+                        // Update navigation buttons
+                        document.getElementById('prevBtn').disabled = currentPartnershipPage === 0;
+                        document.getElementById('nextBtn').disabled = currentPartnershipPage === totalPartnershipPages - 1;
+                        
+                        // Update indicators
+                        const indicators = document.querySelectorAll('.indicator');
+                        indicators.forEach((indicator, index) => {
+                            indicator.classList.toggle('active', index === currentPartnershipPage);
+                        });
+                    }
+
+                    function nextPartnerships() {
+                        if (currentPartnershipPage < totalPartnershipPages - 1) {
+                            currentPartnershipPage++;
+                            updatePartnershipDisplay();
+                        }
+                    }
+
+                    function previousPartnerships() {
+                        if (currentPartnershipPage > 0) {
+                            currentPartnershipPage--;
+                            updatePartnershipDisplay();
+                        }
+                    }
+
+                    function goToPage(page) {
+                        if (page >= 0 && page < totalPartnershipPages) {
+                            currentPartnershipPage = page;
+                            updatePartnershipDisplay();
+                        }
+                    }
+                </script>
+
+                <!-- Add Account Manager Modal -->
+                <div id="accountManagerSection" style="display: none;" class="mb-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Account Management</h5>
+                            <p class="text-muted">Select which accounts to include in data collection</p>
+                            
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="selectAllAccounts" onchange="toggleAllAccounts(this)">
+                                    <label class="form-check-label" for="selectAllAccounts">
+                                        Select All
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div id="accountsList" style="max-height: 400px; overflow-y: auto;">
+                                <!-- Accounts will be populated here -->
+                            </div>
+                            
+                            <div class="mt-3">
+                                <button class="btn btn-primary" onclick="saveAccountSettings()">Save Changes</button>
+                                <button class="btn btn-outline-secondary" onclick="hideAccountManager()">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <script>
+                // Add these functions for account management
+                async function showAccountManager() {
+                    try {
+                        const response = await fetch(`${API_BASE_URL}/api/available-accounts`);
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            const accountsList = document.getElementById('accountsList');
+                            accountsList.innerHTML = data.accounts.map(account => {
+                                const statuses = [];
+                                if (data.available_accounts.includes(account)) {
+                                    statuses.push('<span class="badge bg-success">Available</span>');
+                                }
+                                if (data.db_accounts.includes(account)) {
+                                    statuses.push('<span class="badge bg-info">Has Data</span>');
+                                }
+                                
+                                return `
+                                    <div class="d-flex align-items-center p-2 border-bottom">
+                                        <div class="form-check flex-grow-1">
+                                            <input class="form-check-input account-checkbox" 
+                                                   type="checkbox" 
+                                                   value="${account}" 
+                                                   id="account_${account.replace(/\s+/g, '_')}"
+                                                   ${data.enabled_accounts.includes(account) ? 'checked' : ''}>
+                                            <label class="form-check-label" for="account_${account.replace(/\s+/g, '_')}">
+                                                ${account}
+                                            </label>
+                                        </div>
+                                        <div class="ms-2">
+                                            ${statuses.join(' ')}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('');
+                            
+                            document.getElementById('accountManagerSection').style.display = 'block';
+                            
+                            // Update select all checkbox state
+                            const allCheckboxes = document.querySelectorAll('.account-checkbox');
+                            const allChecked = Array.from(allCheckboxes).every(cb => cb.checked);
+                            document.getElementById('selectAllAccounts').checked = allChecked;
+                        } else {
+                            console.error('Failed to get accounts:', data.error);
+                            alert('Error loading accounts: ' + data.error);
+                        }
+                    } catch (error) {
+                        console.error('Error loading accounts:', error);
+                        alert('Error loading accounts: ' + error.message);
+                    }
+                }
+
+                function hideAccountManager() {
+                    document.getElementById('accountManagerSection').style.display = 'none';
+                }
+
+                function toggleAllAccounts(checkbox) {
+                    const accountCheckboxes = document.querySelectorAll('.account-checkbox');
+                    accountCheckboxes.forEach(box => box.checked = checkbox.checked);
+                }
+
+                async function saveAccountSettings() {
+                    try {
+                        const selectedAccounts = Array.from(document.querySelectorAll('.account-checkbox:checked'))
+                            .map(checkbox => checkbox.value);
+                        
+                        const response = await fetch(`${API_BASE_URL}/api/update-enabled-accounts`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                accounts: selectedAccounts
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        if (data.success) {
+                            alert('Account settings saved successfully!');
+                            hideAccountManager();
+                            // Refresh the client dropdown
+                            await populateClientDropdown();
+                        } else {
+                            alert('Error saving account settings: ' + data.error);
+                        }
+                    } catch (error) {
+                        alert('Error saving account settings: ' + error);
+                    }
+                }
+                </script>
+
+                <footer class="footer">
+                    <a href="http://localhost:5001/admin/database" class="admin-link">
+                        <i class="bi bi-gear"></i> Admin Interface
+                    </a>
+                </footer>
             </body>
             </html>
+            
             

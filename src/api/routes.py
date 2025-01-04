@@ -16,8 +16,8 @@ from src.data.db_manager import DatabaseManager, ReferralData
 from src.scraper.scheduler import ScraperScheduler
 
 app = Flask(__name__, static_folder='../../frontend/build', static_url_path='/')
-app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'your-secret-key-here')  # Change this in production
-app.permanent_session_lifetime = timedelta(days=30)  # Session lasts 30 days
+app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-here')
+app.permanent_session_lifetime = timedelta(days=30)
 
 # Define allowed origins for CORS
 ALLOWED_ORIGINS = [
@@ -40,9 +40,44 @@ CORS(app, resources={
         "methods": ["GET", "POST", "DELETE", "OPTIONS"],
         "allow_headers": ["Content-Type"],
         "supports_credentials": True
-    }
+    },
+    r"/login": {"origins": ALLOWED_ORIGINS},
+    r"/logout": {"origins": ALLOWED_ORIGINS}
 })
 db = DatabaseManager()
+
+# Login required decorator
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('logged_in'):
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+# Login route
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        password = request.form.get('password')
+        if password == os.environ.get('APP_PASSWORD', 'default-password'):
+            session['logged_in'] = True
+            session.permanent = True
+            return redirect(url_for('index'))
+        return 'Invalid password'
+    return '''
+        <form method="post">
+            <p><input type=password name=password>
+            <p><input type=submit value=Login>
+        </form>
+    '''
+
+# Root route
+@app.route('/')
+def index():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    return send_from_directory(app.static_folder, 'index.html')
 
 def safe_int_convert(value):
     """Safely convert a value to integer, handling empty strings, commas and percentage signs"""
@@ -546,25 +581,6 @@ def get_trends_summary():
     except Exception as e:
         print(f"Error generating trends summary: {str(e)}")
         return jsonify({'error': str(e)}), 500
-
-@app.route('/')
-@login_required
-def serve():
-    return app.send_static_file('index.html')
-
-@app.route('/debug/trends')
-@login_required
-def debug_trends():
-    account = request.args.get('account', 'test_account')
-    days = int(request.args.get('days', '30'))
-    end_date = datetime.now()
-    start_date = end_date - timedelta(days=days)
-    
-    return jsonify({
-        'trends': db.get_account_trends(account, start_date, end_date),
-        'growth': db.calculate_growth_metrics(account, start_date, end_date),
-        'summary': db.get_trends_summary(days)
-    })
 
 @app.route('/api/test/import-csv')
 @login_required
@@ -2464,31 +2480,6 @@ def bulk_delete():
         return jsonify({'message': f'Successfully deleted {len(entries)} entries'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-# Login required decorator
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not session.get('logged_in'):
-            return redirect(url_for('login'))
-        return f(*args, **kwargs)
-    return decorated_function
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        password = request.form.get('password')
-        if password == os.environ.get('APP_PASSWORD', 'default-password'):
-            session['logged_in'] = True
-            session.permanent = True
-            return redirect(url_for('index'))
-        return 'Invalid password'
-    return '''
-        <form method="post">
-            <p><input type=password name=password>
-            <p><input type=submit value=Login>
-        </form>
-    '''
 
 @app.route('/logout')
 def logout():

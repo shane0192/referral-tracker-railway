@@ -12,10 +12,15 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - [%(name)s] - %(message)s',
     handlers=[
         logging.FileHandler("scheduler.log"),
-        logging.FileHandler("scheduler.debug.log", level=logging.DEBUG),
         logging.StreamHandler()
     ]
 )
+
+# Add debug file handler separately
+debug_handler = logging.FileHandler("scheduler.debug.log")
+debug_handler.setLevel(logging.DEBUG)
+logging.getLogger().addHandler(debug_handler)
+
 logger = logging.getLogger(__name__)
 
 scheduler = BlockingScheduler()

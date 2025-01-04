@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template_string, send_from_directory, make_response
+from flask import Flask, request, jsonify, render_template_string, send_from_directory, make_response, render_template, session, redirect, url_for
 from flask_cors import CORS
 from datetime import datetime, timedelta
 import sys
@@ -8,20 +8,16 @@ import random
 from sqlalchemy.sql import func
 import json
 import pytz  # Add this import at the top
+from functools import wraps
 
 # Add the project root to Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from src.data.db_manager import DatabaseManager, ReferralData
 from src.scraper.scheduler import ScraperScheduler
 
-app = Flask(__name__)
-# Get environment variables with defaults
-FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:8000')
-ALLOWED_ORIGINS = [
-    'http://localhost:8000',  # Local development
-    'https://referral-tracker-8dea3f9d92b7.herokuapp.com',  # Production URL
-    FRONTEND_URL  # Dynamic URL from environment
-]
+app = Flask(__name__, static_folder='../../frontend/build', static_url_path='/')
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'your-secret-key-here')  # Change this in production
+app.permanent_session_lifetime = timedelta(days=30)  # Session lasts 30 days
 
 # Configure CORS with multiple origins
 CORS(app, resources={
@@ -134,6 +130,7 @@ def interpolate_missing_days(data, start_date, end_date):
     return filled_data
 
 @app.route('/api/partnership-metrics')
+@login_required
 def get_partnership_metrics():
     try:
         print("\n\n=== PARTNERSHIP METRICS DEBUG ===")
@@ -314,11 +311,13 @@ def get_partnership_metrics():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/earliest-date')
+@login_required
 def get_earliest_date():
     earliest_date = db.get_earliest_data_date()
     return jsonify({'earliest_date': earliest_date.isoformat() if earliest_date else None})
 
 @app.route('/api/largest-imbalances')
+@login_required
 def get_largest_imbalances():
     try:
         # Get date parameters
@@ -415,6 +414,7 @@ def get_largest_imbalances():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/debug/db')
+@login_required
 def debug_db():
     session = db.Session()
     try:
@@ -435,6 +435,7 @@ def debug_db():
         session.close()
 
 @app.route('/api/trends/<account_name>')
+@login_required
 def get_trends(account_name):
     try:
         partner = request.args.get('partner')
@@ -518,6 +519,7 @@ def get_trends(account_name):
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/trends/summary')
+@login_required
 def get_trends_summary():
     try:
         days = request.args.get('days', default=30, type=int)
@@ -538,21 +540,12 @@ def get_trends_summary():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/')
-def home():
-    return jsonify({
-        "status": "ok",
-        "message": "API is running",
-        "endpoints": [
-            "/api/partnership-metrics",
-            "/api/earliest-date",
-            "/api/largest-imbalances",
-            "/api/trends/<account_name>",
-            "/api/trends/summary",
-            "/debug/db"
-        ]
-    })
+@login_required
+def serve():
+    return app.send_static_file('index.html')
 
 @app.route('/debug/trends')
+@login_required
 def debug_trends():
     account = request.args.get('account', 'test_account')
     days = int(request.args.get('days', '30'))
@@ -566,6 +559,7 @@ def debug_trends():
     })
 
 @app.route('/api/test/import-csv')
+@login_required
 def import_csv_data():
     """Import existing CSV data into the database"""
     session = db.Session()
@@ -641,6 +635,7 @@ def after_request(response):
     return response
 
 @app.route('/api/partnership-trends')
+@login_required
 def get_partnership_trends():
     try:
         account = request.args.get('account')
@@ -751,11 +746,13 @@ def get_partnership_trends():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/partnership-metrics', methods=['OPTIONS'])
+@login_required
 def handle_options():
     response = jsonify({'status': 'ok'})
     return response
 
 @app.route('/admin/database')
+@login_required
 def database_admin():
     session = db.Session()
     try:
@@ -1252,6 +1249,7 @@ def database_admin():
         session.close()
 
 @app.route('/admin/delete-record/<int:record_id>', methods=['DELETE'])
+@login_required
 def delete_record(record_id):
     session = db.Session()
     try:
@@ -1265,6 +1263,7 @@ def delete_record(record_id):
         session.close()
 
 @app.route('/admin/clear-database', methods=['POST'])
+@login_required
 def clear_database():
     session = db.Session()
     try:
@@ -1278,6 +1277,7 @@ def clear_database():
         session.close()
 
 @app.route('/api/debug/database')
+@login_required
 def debug_database():
     session = db.Session()
     try:
@@ -1297,6 +1297,7 @@ def debug_database():
         session.close()
 
 @app.route('/api/run-scraper', methods=['POST'])
+@login_required
 def run_scraper():
     try:
         app.logger.info("Starting scraper run")
@@ -1364,6 +1365,7 @@ def run_scraper():
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/last-scrape-time')
+@login_required
 def get_last_scrape_time():
     try:
         with open('last_run.json', 'r') as f:
@@ -1373,6 +1375,7 @@ def get_last_scrape_time():
         return jsonify({'error': str(e)})
 
 @app.route('/admin/cleanup-duplicates', methods=['POST'])
+@login_required
 def cleanup_duplicates():
     session = db.Session()
     try:
@@ -1408,6 +1411,7 @@ def cleanup_duplicates():
         session.close()
 
 @app.route('/admin/bulk-delete', methods=['POST'])
+@login_required
 def bulk_delete_records():
     try:
         data = request.get_json()
@@ -1431,6 +1435,7 @@ def bulk_delete_records():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/daily-changes')
+@login_required
 def get_daily_changes():
     try:
         # Add cache control headers
@@ -1519,6 +1524,7 @@ def get_daily_changes():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/admin/cleanup-initial-data', methods=['POST'])
+@login_required
 def cleanup_initial_data():
     session = db.Session()
     try:
@@ -1577,6 +1583,7 @@ def cleanup_initial_data():
         session.close()
 
 @app.route('/data/<path:filename>')
+@login_required
 def serve_static(filename):
     # Handle avatar files specifically
     if filename.startswith('avatars/'):
@@ -1588,6 +1595,7 @@ def serve_static(filename):
     return send_from_directory(data_dir, filename)
 
 @app.route('/api/debug/record/<date>')
+@login_required
 def debug_record(date):
     session = db.Session()
     try:
@@ -1609,6 +1617,7 @@ def debug_record(date):
         session.close()
 
 @app.route('/admin/record/<int:record_id>')
+@login_required
 def record_detail(record_id):
     session = db.Session()
     try:
@@ -1720,6 +1729,7 @@ def record_detail(record_id):
         session.close()
 
 @app.route('/admin/import-data', methods=['GET', 'POST'])
+@login_required
 def import_data():
     if request.method == 'GET':
         # Get list of unique account names from database
@@ -1961,6 +1971,7 @@ def process_partnership_records(records, partner):
 
 # Add the new debug endpoint
 @app.route('/api/debug/creator-science')
+@login_required
 def debug_creator_science():
     try:
         session = db.Session()
@@ -1998,6 +2009,7 @@ def debug_creator_science():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/fix-nathan-barry-dec6', methods=['POST'])
+@login_required
 def fix_nathan_barry_dec6():
     try:
         session = db.Session()
@@ -2031,6 +2043,7 @@ def fix_nathan_barry_dec6():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/partnership-recommendations', methods=['GET'])
+@login_required
 def get_partnership_recommendations():
     try:
         account = request.args.get('account')
@@ -2277,6 +2290,7 @@ def get_partnership_recommendations():
         return jsonify({'error': 'Internal server error'}), 500
 
 @app.route('/api/demo-data')
+@login_required
 def get_demo_data():
     """Get demo data for demonstration purposes"""
     try:
@@ -2298,6 +2312,7 @@ def get_demo_data():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/trends/demo/<partner_name>')
+@login_required
 def get_demo_trends(partner_name):
     """Get trend data for a demo partnership"""
     try:
@@ -2338,6 +2353,7 @@ def get_demo_trends(partner_name):
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/available-accounts')
+@login_required
 def get_available_accounts():
     try:
         # Get accounts from database
@@ -2387,6 +2403,7 @@ def get_available_accounts():
         session.close()
 
 @app.route('/api/update-enabled-accounts', methods=['POST'])
+@login_required
 def update_enabled_accounts():
     try:
         data = request.get_json()
@@ -2424,6 +2441,7 @@ def update_enabled_accounts():
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/bulk_delete', methods=['POST'])
+@login_required
 def bulk_delete():
     try:
         entries = request.json.get('entries', [])
@@ -2438,6 +2456,37 @@ def bulk_delete():
         return jsonify({'message': f'Successfully deleted {len(entries)} entries'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+# Simple authentication decorator
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('logged_in'):
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        password = request.form.get('password')
+        if password == os.environ.get('APP_PASSWORD', 'paperboy-demo'):  # Change this in production
+            session.permanent = True  # Use permanent session
+            session['logged_in'] = True
+            return redirect('/')
+        return 'Invalid password', 401
+    return '''
+        <form method="post" style="max-width: 300px; margin: 100px auto; text-align: center;">
+            <h2>Enter Password</h2>
+            <input type="password" name="password" style="width: 100%; padding: 8px; margin: 10px 0;">
+            <button type="submit" style="width: 100%; padding: 8px; background: #007bff; color: white; border: none; border-radius: 4px;">Login</button>
+        </form>
+    '''
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
 
 if __name__ == '__main__':
     print("Starting Flask server...")

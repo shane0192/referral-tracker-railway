@@ -2465,7 +2465,7 @@ def bulk_delete():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Simple authentication decorator
+# Login required decorator
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -2478,16 +2478,15 @@ def login_required(f):
 def login():
     if request.method == 'POST':
         password = request.form.get('password')
-        if password == os.environ.get('APP_PASSWORD', 'paperboy-demo'):  # Change this in production
-            session.permanent = True  # Use permanent session
+        if password == os.environ.get('APP_PASSWORD', 'default-password'):
             session['logged_in'] = True
-            return redirect('/')
-        return 'Invalid password', 401
+            session.permanent = True
+            return redirect(url_for('index'))
+        return 'Invalid password'
     return '''
-        <form method="post" style="max-width: 300px; margin: 100px auto; text-align: center;">
-            <h2>Enter Password</h2>
-            <input type="password" name="password" style="width: 100%; padding: 8px; margin: 10px 0;">
-            <button type="submit" style="width: 100%; padding: 8px; background: #007bff; color: white; border: none; border-radius: 4px;">Login</button>
+        <form method="post">
+            <p><input type=password name=password>
+            <p><input type=submit value=Login>
         </form>
     '''
 

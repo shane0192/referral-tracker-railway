@@ -48,7 +48,7 @@ class ConvertKitScraper:
         chrome_options.add_argument('--disable-extensions')
         chrome_options.add_argument('--single-process')
         chrome_options.add_argument('--remote-debugging-port=9222')
-        chrome_options.binary_location = os.environ.get('GOOGLE_CHROME_BIN', '/usr/bin/google-chrome')
+        chrome_options.binary_location = os.environ.get('CHROME_EXECUTABLE_PATH', '/usr/bin/google-chrome-stable')
         
         # Add stability options
         chrome_options.add_argument('--window-size=1920,1080')

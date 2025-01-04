@@ -19,6 +19,14 @@ app = Flask(__name__, static_folder='../../frontend/build', static_url_path='/')
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'your-secret-key-here')  # Change this in production
 app.permanent_session_lifetime = timedelta(days=30)  # Session lasts 30 days
 
+# Define allowed origins for CORS
+ALLOWED_ORIGINS = [
+    'http://localhost:8000',
+    'http://localhost:5001',
+    'https://referral-tracker-8dea3f9d92b7.herokuapp.com',
+    'https://referral-tracker-production.up.railway.app'
+]
+
 # Configure CORS with multiple origins
 CORS(app, resources={
     r"/api/*": {  # Only allows routes starting with /api/

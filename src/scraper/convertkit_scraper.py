@@ -48,7 +48,10 @@ class ConvertKitScraper:
         chrome_options.add_argument('--disable-extensions')
         chrome_options.add_argument('--single-process')
         chrome_options.add_argument('--remote-debugging-port=9222')
-        chrome_options.binary_location = os.environ.get('CHROME_EXECUTABLE_PATH', '/usr/bin/google-chrome-stable')
+        
+        # Set Chrome binary location for Chrome for Testing
+        chrome_binary = os.environ.get('CHROME_EXECUTABLE_PATH', '/app/.chrome-for-testing/chrome-linux64/chrome')
+        chrome_options.binary_location = chrome_binary
         
         # Add stability options
         chrome_options.add_argument('--window-size=1920,1080')
@@ -60,7 +63,14 @@ class ConvertKitScraper:
         try:
             print("\nInitializing Chrome driver...")
             print("Headless mode: enabled")
-            self.driver = webdriver.Chrome(options=chrome_options)
+            print(f"Chrome binary location: {chrome_binary}")
+            
+            # Set ChromeDriver path for Chrome for Testing
+            chromedriver_path = os.environ.get('CHROMEDRIVER_PATH', '/app/.chrome-for-testing/chromedriver-linux64/chromedriver')
+            print(f"ChromeDriver path: {chromedriver_path}")
+            
+            service = webdriver.ChromeService(executable_path=chromedriver_path)
+            self.driver = webdriver.Chrome(service=service, options=chrome_options)
             print("Chrome driver initialized successfully")
             
         except Exception as e:

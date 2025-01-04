@@ -63,13 +63,84 @@ def login():
         if password == os.environ.get('APP_PASSWORD', 'default-password'):
             session['logged_in'] = True
             session.permanent = True
-            return redirect(url_for('index'))
-        return 'Invalid password'
+            return redirect('/data/referral_viewer.html')
+        return redirect(url_for('login', error=True))
+    error = request.args.get('error', False)
     return '''
-        <form method="post">
-            <p><input type=password name=password>
-            <p><input type=submit value=Login>
-        </form>
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Referral Tracker - Login</title>
+            <style>
+                body {
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                    background-color: #f5f5f5;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 100vh;
+                    margin: 0;
+                }
+                .login-container {
+                    background: white;
+                    padding: 2rem;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                    width: 100%;
+                    max-width: 320px;
+                }
+                h1 {
+                    color: #333;
+                    text-align: center;
+                    margin-bottom: 1.5rem;
+                    font-size: 1.5rem;
+                }
+                .form-group {
+                    margin-bottom: 1rem;
+                }
+                input[type="password"] {
+                    width: 100%;
+                    padding: 0.75rem;
+                    border: 1px solid #ddd;
+                    border-radius: 4px;
+                    font-size: 1rem;
+                    box-sizing: border-box;
+                }
+                input[type="submit"] {
+                    width: 100%;
+                    padding: 0.75rem;
+                    background-color: #007bff;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    font-size: 1rem;
+                    cursor: pointer;
+                    transition: background-color 0.2s;
+                }
+                input[type="submit"]:hover {
+                    background-color: #0056b3;
+                }
+                .error {
+                    color: #dc3545;
+                    text-align: center;
+                    margin-bottom: 1rem;
+                    display: ''' + ('block' if error else 'none') + ''';
+                }
+            </style>
+        </head>
+        <body>
+            <div class="login-container">
+                <h1>Referral Tracker</h1>
+                <div class="error">Invalid password. Please try again.</div>
+                <form method="post">
+                    <div class="form-group">
+                        <input type="password" name="password" placeholder="Enter password" required>
+                    </div>
+                    <input type="submit" value="Login">
+                </form>
+            </div>
+        </body>
+        </html>
     '''
 
 # Root route
@@ -77,7 +148,7 @@ def login():
 def index():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
-    return send_from_directory(app.static_folder, 'index.html')
+    return redirect('/data/referral_viewer.html')
 
 def safe_int_convert(value):
     """Safely convert a value to integer, handling empty strings, commas and percentage signs"""

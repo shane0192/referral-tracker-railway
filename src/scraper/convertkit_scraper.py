@@ -23,6 +23,7 @@ class ConvertKitScraper:
         """Initialize the scraper with login credentials from config"""
         self.email = CONVERTKIT_EMAIL
         self.password = CONVERTKIT_PASSWORD
+        self.headless = headless
         
         # Create a dedicated profile directory in the project folder
         self.profile_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'automation_chrome_profile')
@@ -30,7 +31,7 @@ class ConvertKitScraper:
             os.makedirs(self.profile_dir)
             print("\n⚠️ First time setup: You'll need to log in manually once and verify 2FA")
             print("After this, the session should persist for about a month")
-            headless = False  # Force visible mode for first-time setup
+            self.headless = False  # Force visible mode for first-time setup
         
         print(f"Using Chrome profile at: {self.profile_dir}")
         
@@ -39,8 +40,11 @@ class ConvertKitScraper:
         chrome_options.add_argument(f'user-data-dir={self.profile_dir}')
         chrome_options.add_argument('--profile-directory=Default')
         
-        # Force headless mode and add Heroku-specific options
-        chrome_options.add_argument('--headless=new')
+        # Only add headless mode if specified
+        if self.headless:
+            chrome_options.add_argument('--headless=new')
+            
+        # Add other required options
         chrome_options.add_argument('--disable-gpu')
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--disable-dev-shm-usage')
@@ -62,7 +66,7 @@ class ConvertKitScraper:
         
         try:
             print("\nInitializing Chrome driver...")
-            print("Headless mode: enabled")
+            print(f"Headless mode: {'enabled' if self.headless else 'disabled'}")
             print(f"Chrome binary location: {chrome_binary}")
             
             # Set ChromeDriver path for Chrome for Testing
@@ -148,6 +152,29 @@ class ConvertKitScraper:
             
             print("\n🚨 LOGIN REQUIRED 🚨")
             print("Session has expired and manual login is needed.")
+            
+            # If we're in headless mode, restart in non-headless mode
+            if self.headless:
+                print("Restarting browser in non-headless mode for manual login...")
+                self.driver.quit()
+                self.headless = False
+                
+                # Reinitialize the driver with updated options
+                chrome_options = Options()
+                chrome_options.add_argument(f'user-data-dir={self.profile_dir}')
+                chrome_options.add_argument('--profile-directory=Default')
+                chrome_options.add_argument('--disable-gpu')
+                chrome_options.add_argument('--no-sandbox')
+                chrome_options.add_argument('--disable-dev-shm-usage')
+                chrome_options.add_argument('--window-size=1920,1080')
+                
+                chromedriver_path = os.environ.get('CHROMEDRIVER_PATH', '/app/.chrome-for-testing/chromedriver-linux64/chromedriver')
+                service = webdriver.ChromeService(executable_path=chromedriver_path)
+                self.driver = webdriver.Chrome(service=service, options=chrome_options)
+                
+                # Navigate to login page again
+                self.driver.get("https://app.kit.com/dashboard")
+            
             print("\nNext steps:")
             print("1. Log in manually in the browser window")
             print("2. Complete 2FA verification if prompted")

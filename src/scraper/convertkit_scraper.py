@@ -37,37 +37,54 @@ class ConvertKitScraper:
         
         # Setup Chrome options
         chrome_options = Options()
-        chrome_options.add_argument(f'user-data-dir={self.profile_dir}')
-        chrome_options.add_argument('--profile-directory=Default')
         
-        # Only add headless mode if specified
-        if self.headless:
-            chrome_options.add_argument('--headless=new')
+        # Check if running on Heroku
+        if 'DYNO' in os.environ:
+            print("Running on Heroku - using Chrome for Testing configuration")
+            chrome_options.binary_location = os.environ.get('CHROME_BIN', '/app/.chrome-for-testing/chrome-linux64/chrome')
+            chrome_options.add_argument('--headless=new')  # Force headless on Heroku
+            chrome_options.add_argument('--disable-gpu')
+            chrome_options.add_argument('--no-sandbox')
+            chrome_options.add_argument('--disable-dev-shm-usage')
+            chrome_options.add_argument('--disable-software-rasterizer')
+            chrome_options.add_argument('--disable-extensions')
+            chrome_options.add_argument('--single-process')
+            chrome_options.add_argument('--remote-debugging-port=9222')
+        else:
+            # Local development setup
+            self.profile_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'automation_chrome_profile')
+            if not os.path.exists(self.profile_dir):
+                os.makedirs(self.profile_dir)
+                print("\n⚠️ First time setup: You'll need to log in manually once and verify 2FA")
+                print("After this, the session should persist for about a month")
+                self.headless = False
             
-        # Add other required options
-        chrome_options.add_argument('--disable-gpu')
-        chrome_options.add_argument('--no-sandbox')
-        chrome_options.add_argument('--disable-dev-shm-usage')
-        chrome_options.add_argument('--disable-software-rasterizer')
-        chrome_options.add_argument('--disable-extensions')
-        chrome_options.add_argument('--single-process')
-        chrome_options.add_argument('--remote-debugging-port=9222')
-        
-        # Set Chrome binary location for Chrome for Testing
-        chrome_binary = os.environ.get('CHROME_EXECUTABLE_PATH', '/app/.chrome-for-testing/chrome-linux64/chrome')
-        chrome_options.binary_location = chrome_binary
-        
-        # Add stability options
-        chrome_options.add_argument('--window-size=1920,1080')
-        chrome_options.add_argument('--disable-popup-blocking')
-        chrome_options.add_argument('--disable-blink-features=AutomationControlled')
-        chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
-        chrome_options.add_experimental_option('useAutomationExtension', False)
+            chrome_options.add_argument(f'user-data-dir={self.profile_dir}')
+            chrome_options.add_argument('--profile-directory=Default')
+            
+            if self.headless:
+                chrome_options.add_argument('--headless=new')
+            
+            # Add other required options
+            chrome_options.add_argument('--disable-gpu')
+            chrome_options.add_argument('--no-sandbox')
+            chrome_options.add_argument('--disable-dev-shm-usage')
+            chrome_options.add_argument('--disable-software-rasterizer')
+            chrome_options.add_argument('--disable-extensions')
+            chrome_options.add_argument('--single-process')
+            chrome_options.add_argument('--remote-debugging-port=9222')
+            
+            # Add stability options
+            chrome_options.add_argument('--window-size=1920,1080')
+            chrome_options.add_argument('--disable-popup-blocking')
+            chrome_options.add_argument('--disable-blink-features=AutomationControlled')
+            chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
+            chrome_options.add_experimental_option('useAutomationExtension', False)
         
         try:
             print("\nInitializing Chrome driver...")
             print(f"Headless mode: {'enabled' if self.headless else 'disabled'}")
-            print(f"Chrome binary location: {chrome_binary}")
+            print(f"Chrome binary location: {chrome_options.binary_location}")
             
             # Set ChromeDriver path for Chrome for Testing
             chromedriver_path = os.environ.get('CHROMEDRIVER_PATH', '/app/.chrome-for-testing/chromedriver-linux64/chromedriver')

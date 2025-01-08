@@ -49,9 +49,7 @@ class ConvertKitScraper:
             
             # Initialize the driver
             if self.is_heroku:
-                chromedriver_path = os.environ.get('CHROMEDRIVER_PATH')
-                if not chromedriver_path:
-                    raise Exception("ChromeDriver path not found in Heroku environment")
+                chromedriver_path = '/app/.chrome-for-testing/chromedriver-linux64/chromedriver'
             else:
                 chromedriver_path = os.path.join(
                     os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
@@ -82,10 +80,10 @@ class ConvertKitScraper:
             
     def _setup_heroku_options(self, chrome_options):
         """Configure Chrome options for Heroku environment"""
-        # Get Chrome binary path
-        chrome_binary = os.environ.get('GOOGLE_CHROME_SHIM') or os.environ.get('GOOGLE_CHROME_BIN')
-        if not chrome_binary:
-            raise Exception("Chrome binary path not found in Heroku environment")
+        # Get Chrome binary path for Chrome-for-testing
+        chrome_binary = '/app/.chrome-for-testing/chrome-linux64/chrome'
+        if not os.path.exists(chrome_binary):
+            raise Exception(f"Chrome binary not found at {chrome_binary}")
             
         chrome_options.binary_location = chrome_binary
         

@@ -23,110 +23,109 @@ class ConvertKitScraper:
         """Initialize the scraper with login credentials from config"""
         self.email = CONVERTKIT_EMAIL
         self.password = CONVERTKIT_PASSWORD
-        self.headless = headless
+        self.headless = True  # Always use headless mode
+        self.max_retries = 3
+        self.retry_delay = 5  # seconds
+        self.is_heroku = 'DYNO' in os.environ
         
-        # Create a dedicated profile directory in the project folder
-        self.profile_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'automation_chrome_profile')
-        if not os.path.exists(self.profile_dir):
-            os.makedirs(self.profile_dir)
-            print("\n⚠️ First time setup: You'll need to log in manually once and verify 2FA")
-            print("After this, the session should persist for about a month")
-            self.headless = False  # Force visible mode for first-time setup
+        # Initialize Chrome driver based on environment
+        self.setup_chrome_driver()
         
-        print(f"Using Chrome profile at: {self.profile_dir}")
-        
-        # Setup Chrome options
-        chrome_options = Options()
-        
-        # Check if running on Heroku
-        if 'DYNO' in os.environ:
-            print("Running on Heroku - using Chrome for Testing configuration")
-            chrome_options.binary_location = os.environ.get('CHROME_BIN', '/app/.chrome-for-testing/chrome-linux64/chrome')
-            chrome_options.add_argument('--headless=new')  # Force headless on Heroku
-            chrome_options.add_argument('--disable-gpu')
-            chrome_options.add_argument('--no-sandbox')
-            chrome_options.add_argument('--disable-dev-shm-usage')
-            chrome_options.add_argument('--disable-software-rasterizer')
-            chrome_options.add_argument('--disable-extensions')
-            chrome_options.add_argument('--single-process')
-            chrome_options.add_argument('--remote-debugging-port=9222')
-        else:
-            # Local development setup
-            self.profile_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'automation_chrome_profile')
-            if not os.path.exists(self.profile_dir):
-                os.makedirs(self.profile_dir)
-                print("\n⚠️ First time setup: You'll need to log in manually once and verify 2FA")
-                print("After this, the session should persist for about a month")
-                self.headless = False
-            
-            chrome_options.add_argument(f'user-data-dir={self.profile_dir}')
-            chrome_options.add_argument('--profile-directory=Default')
-            
-            if self.headless:
-                chrome_options.add_argument('--headless=new')
-            
-            # Add other required options
-            chrome_options.add_argument('--disable-gpu')
-            chrome_options.add_argument('--no-sandbox')
-            chrome_options.add_argument('--disable-dev-shm-usage')
-            chrome_options.add_argument('--disable-software-rasterizer')
-            chrome_options.add_argument('--disable-extensions')
-            chrome_options.add_argument('--single-process')
-            chrome_options.add_argument('--remote-debugging-port=9222')
-            
-            # Add stability options
-            chrome_options.add_argument('--window-size=1920,1080')
-            chrome_options.add_argument('--disable-popup-blocking')
-            chrome_options.add_argument('--disable-blink-features=AutomationControlled')
-            chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
-            chrome_options.add_experimental_option('useAutomationExtension', False)
-        
+    def setup_chrome_driver(self):
+        """Set up Chrome driver with appropriate configuration for environment"""
         try:
-            print("\nInitializing Chrome driver...")
-            print(f"Headless mode: {'enabled' if self.headless else 'disabled'}")
-            print(f"Chrome binary location: {chrome_options.binary_location}")
+            chrome_options = Options()
             
-            # Set ChromeDriver path for Chrome for Testing
-            chromedriver_path = os.environ.get('CHROMEDRIVER_PATH', '/app/.chrome-for-testing/chromedriver-linux64/chromedriver')
+            if self.is_heroku:
+                self._setup_heroku_options(chrome_options)
+            else:
+                self._setup_local_options(chrome_options)
+            
+            # Common options for both environments
+            chrome_options.add_argument('--disable-gpu')
+            chrome_options.add_argument('--no-sandbox')
+            chrome_options.add_argument('--disable-dev-shm-usage')
+            chrome_options.add_argument('--window-size=1920,1080')
+            
+            # Initialize the driver
+            if self.is_heroku:
+                chromedriver_path = os.environ.get('CHROMEDRIVER_PATH')
+                if not chromedriver_path:
+                    raise Exception("ChromeDriver path not found in Heroku environment")
+            else:
+                chromedriver_path = os.path.join(
+                    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+                    'chrome-for-testing/chromedriver-mac-arm64/chromedriver'
+                )
+            
+            print(f"\nInitializing Chrome driver...")
+            print(f"Environment: {'Heroku' if self.is_heroku else 'Local'}")
             print(f"ChromeDriver path: {chromedriver_path}")
             
             service = webdriver.ChromeService(executable_path=chromedriver_path)
             self.driver = webdriver.Chrome(service=service, options=chrome_options)
-            print("Chrome driver initialized successfully")
+            
+            # Set timeouts
+            self.driver.set_page_load_timeout(30)
+            self.driver.implicitly_wait(10)
+            
+            print("✅ Chrome driver initialized successfully")
             
         except Exception as e:
-            print(f"Failed to initialize Chrome driver: {str(e)}")
+            print(f"❌ Failed to initialize Chrome driver: {str(e)}")
+            if self.is_heroku:
+                print("\nHeroku environment variables:")
+                print(f"GOOGLE_CHROME_BIN: {os.environ.get('GOOGLE_CHROME_BIN')}")
+                print(f"GOOGLE_CHROME_SHIM: {os.environ.get('GOOGLE_CHROME_SHIM')}")
+                print(f"CHROMEDRIVER_PATH: {os.environ.get('CHROMEDRIVER_PATH')}")
             raise
-
-        self.current_account = None  # Add this to track current account
-        self.max_retries = 3
-        self.retry_delay = 5  # seconds
-
-    def setup_driver(self):
-        """Initialize the Chrome WebDriver"""
-        try:
-            options = webdriver.ChromeOptions()
             
-            # Set up a persistent profile directory
-            user_data_dir = os.path.join(os.getcwd(), 'chrome_profile')
-            options.add_argument(f'user-data-dir={user_data_dir}')
+    def _setup_heroku_options(self, chrome_options):
+        """Configure Chrome options for Heroku environment"""
+        # Get Chrome binary path
+        chrome_binary = os.environ.get('GOOGLE_CHROME_SHIM') or os.environ.get('GOOGLE_CHROME_BIN')
+        if not chrome_binary:
+            raise Exception("Chrome binary path not found in Heroku environment")
             
-            # Other options
-            options.add_argument('--no-sandbox')
-            options.add_argument('--disable-dev-shm-usage')
-            options.add_argument('--window-size=1920,1080')
+        chrome_options.binary_location = chrome_binary
+        
+        # Heroku-specific options
+        chrome_options.add_argument('--headless=new')
+        chrome_options.add_argument('--disable-setuid-sandbox')
+        chrome_options.add_argument('--disable-extensions')
+        chrome_options.add_argument('--disable-software-rasterizer')
+        chrome_options.add_argument('--single-process')
+        
+        # Memory optimizations for Heroku
+        chrome_options.add_argument('--js-flags=--max-old-space-size=2048')
+        chrome_options.add_argument('--memory-pressure-off')
+        
+    def _setup_local_options(self, chrome_options):
+        """Configure Chrome options for local environment"""
+        # Set up profile directory for session persistence
+        self.profile_dir = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            'automation_chrome_profile'
+        )
+        
+        if not os.path.exists(self.profile_dir):
+            os.makedirs(self.profile_dir)
+            print("\n⚠️ First time setup: You'll need to log in manually once and verify 2FA")
+            print("After this, the session should persist for about a month")
+            self.headless = False  # Force visible mode only for first-time setup
             
-            print(f"Using Chrome profile at: {user_data_dir}")
+        print(f"Using Chrome profile at: {self.profile_dir}")
+        
+        # Local-specific options
+        chrome_options.add_argument(f'user-data-dir={self.profile_dir}')
+        chrome_options.add_argument('--profile-directory=Default')
+        
+        if self.headless:
+            chrome_options.add_argument('--headless=new')
             
-            # Create service
-            service = webdriver.ChromeService()
-            
-            # Initialize driver with service and options
-            self.driver = webdriver.Chrome(service=service, options=options)
-            
-        except Exception as e:
-            print(f"Failed to setup driver: {str(e)}")
-            raise
+        # Additional stability options for local
+        chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
+        chrome_options.add_experimental_option('useAutomationExtension', False)
 
     def save_cookies(self):
         """Save cookies after successful login"""
@@ -714,41 +713,89 @@ class ConvertKitScraper:
             raise
 
     def switch_to_account(self, account_info):
-        """Switch to a different account"""
-        try:
-            print(f"Attempting to switch to account: {account_info['name']}")
-            
-            # Use the same selector that works in get_current_account()
-            menu_selector = "//button[contains(@class, 'inline-flex') and .//img[@alt[contains(., 'Avatar')]]]"
-            menu_button = WebDriverWait(self.driver, 10).until(
-                EC.element_to_be_clickable((By.XPATH, menu_selector))
-            )
-            
-            print("Found account menu button, clicking...")
-            menu_button.click()
-            time.sleep(2)
-            
-            # Find and click account link
-            account_link = WebDriverWait(self.driver, 10).until(
-                EC.element_to_be_clickable((
-                    By.CSS_SELECTOR, 
-                    f"a[role='menuitem'][data-account-email='{account_info['email']}']"
-                ))
-            )
-            
-            print(f"Found account link, clicking...")
-            account_link.click()
-            time.sleep(5)
-            
-            self.current_account = account_info['name']
-            print(f"Switched to account: {account_info['name']}")
-            
-            return True
+        """Switch to a different account with retries and improved error handling"""
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                print(f"\nAttempting to switch to account: {account_info['name']} (Attempt {attempt + 1}/{max_retries})")
                 
-        except Exception as e:
-            print(f"Failed to switch to account {account_info['name']}: {str(e)}")
-            self.driver.save_screenshot(f"account_switch_error_{account_info['name'].lower().replace(' ', '_')}.png")
-            raise
+                # First verify we're not already on this account
+                current = self.get_current_account()
+                if current == account_info['name']:
+                    print(f"Already on account {account_info['name']}")
+                    return True
+                
+                # Click account menu with retry
+                menu_selectors = [
+                    "//button[contains(@class, 'inline-flex') and .//img[@alt[contains(., 'Avatar')]]]",
+                    "//button[@aria-haspopup='true']",
+                    "//button[contains(@class, 'inline-flex')]//span[contains(@class, 'truncate')]/.."
+                ]
+                
+                menu_clicked = False
+                for selector in menu_selectors:
+                    try:
+                        menu_button = WebDriverWait(self.driver, 10).until(
+                            EC.element_to_be_clickable((By.XPATH, selector))
+                        )
+                        menu_button.click()
+                        menu_clicked = True
+                        break
+                    except:
+                        continue
+                
+                if not menu_clicked:
+                    raise Exception("Could not click account menu with any selector")
+                
+                time.sleep(2)  # Wait for dropdown to appear
+                
+                # Find and click account link with retry
+                account_selectors = [
+                    f"//a[@role='menuitem']//div[contains(text(), '{account_info['name']}')]",
+                    f"//a[@role='menuitem'][contains(@data-valuetext, '{account_info['name']}')]",
+                    f"//a[contains(@class, 'settings-link')][contains(., '{account_info['name']}')]"
+                ]
+                
+                account_clicked = False
+                for selector in account_selectors:
+                    try:
+                        account_link = WebDriverWait(self.driver, 10).until(
+                            EC.element_to_be_clickable((By.XPATH, selector))
+                        )
+                        account_link.click()
+                        account_clicked = True
+                        break
+                    except:
+                        continue
+                
+                if not account_clicked:
+                    raise Exception(f"Could not find account {account_info['name']} in dropdown")
+                
+                # Wait for switch and verify
+                time.sleep(5)
+                new_account = self.get_current_account()
+                if new_account != account_info['name']:
+                    raise Exception(f"Account switch failed. Expected {account_info['name']}, got {new_account}")
+                
+                print(f"✅ Successfully switched to account: {account_info['name']}")
+                return True
+                
+            except Exception as e:
+                print(f"Switch attempt {attempt + 1} failed: {str(e)}")
+                self.driver.save_screenshot(f"switch_error_{attempt + 1}.png")
+                
+                if attempt == max_retries - 1:
+                    print(f"❌ Failed to switch to account {account_info['name']} after {max_retries} attempts")
+                    raise
+                
+                print("Retrying...")
+                time.sleep(5)
+                
+                # Try to close any open menus before retry
+                try:
+                    self.driver.find_element(By.TAG_NAME, 'body').click()
+                except:
+                    pass
 
     def is_logged_out(self):
         """Check if we're on the login page"""
@@ -764,30 +811,112 @@ class ConvertKitScraper:
             return True  # Assume logged out if there's an error
 
     def get_current_account(self):
-        """Get the name of the currently active account"""
-        try:
-            # Look for the account button in the top right
-            account_button = WebDriverWait(self.driver, 10).until(
-                EC.presence_of_element_located((By.XPATH, "//button[contains(@class, 'inline-flex') and .//img[@alt[contains(., 'Avatar')]]]//span[1]"))
-            )
-            # Get the first line of text (account name)
-            account_name = account_button.text.strip()
-            print(f"Current account: {account_name}")
-            return account_name
+        """Get the name of the currently active account with retries and multiple selectors"""
+        max_retries = 3
+        selectors = [
+            "//button[contains(@class, 'inline-flex') and .//img[@alt[contains(., 'Avatar')]]]//span[1]",
+            "//button[@aria-haspopup='true']//span[contains(@class, 'text-sm')]",
+            "//button[contains(@class, 'inline-flex')]//span[contains(@class, 'truncate')]"
+        ]
         
-        except Exception as e:
-            print(f"Failed to get current account name: {str(e)}")
-            self.driver.save_screenshot("current_account_error.png")
-            raise
+        for attempt in range(max_retries):
+            try:
+                for selector in selectors:
+                    try:
+                        account_element = WebDriverWait(self.driver, 10).until(
+                            EC.presence_of_element_located((By.XPATH, selector))
+                        )
+                        account_name = account_element.text.strip()
+                        if account_name:
+                            print(f"Current account: {account_name}")
+                            return account_name
+                    except:
+                        continue
+                
+                # If we get here, none of the selectors worked
+                raise Exception("Could not find account name with any selector")
+                
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    print(f"Failed to get current account name after {max_retries} attempts")
+                    self.driver.save_screenshot("current_account_error.png")
+                    raise
+                print(f"Attempt {attempt + 1} failed, retrying...")
+                time.sleep(5)
 
-    def scrape_all_accounts(self, account_list):
-        """Scrape data for multiple accounts"""
-        for account in account_list:
-            if self.switch_account(account):
-                print(f"Scraping data for {account}...")
-                self.scrape_referral_data()
-            else:
-                print(f"Skipping {account} due to switch error")
+    def scrape_all_accounts(self):
+        """Scrape data for all enabled accounts"""
+        try:
+            print("\nStarting scrape of all accounts...")
+            
+            # Get list of available accounts
+            accounts = self.get_available_accounts()
+            if not accounts:
+                raise Exception("No accounts found to scrape")
+            
+            processed_accounts = []
+            failed_accounts = []
+            
+            for account in accounts:
+                try:
+                    print(f"\n=== Processing account: {account['name']} ===")
+                    
+                    # Skip if we've already processed this account
+                    if account['name'] in processed_accounts:
+                        print(f"Already processed {account['name']}, skipping...")
+                        continue
+                    
+                    # Try to switch to account with retries
+                    max_retries = 3
+                    for attempt in range(max_retries):
+                        try:
+                            if self.switch_to_account(account):
+                                break
+                        except Exception as e:
+                            if attempt == max_retries - 1:
+                                raise
+                            print(f"Attempt {attempt + 1} failed, retrying...")
+                            time.sleep(5)
+                    
+                    # Verify we switched successfully
+                    current_account = self.get_current_account()
+                    if current_account != account['name']:
+                        raise Exception(f"Failed to switch to {account['name']}, current account is {current_account}")
+                    
+                    # Navigate to creator network and scrape data
+                    print(f"Scraping data for {account['name']}...")
+                    data = self.scrape_referral_data()
+                    
+                    if data:
+                        processed_accounts.append(account['name'])
+                        print(f"✅ Successfully processed {account['name']}")
+                    else:
+                        failed_accounts.append(account['name'])
+                        print(f"❌ Failed to get data for {account['name']}")
+                    
+                except Exception as e:
+                    print(f"❌ Error processing {account['name']}: {str(e)}")
+                    failed_accounts.append(account['name'])
+                    self.save_screenshot(f"account_error_{account['name'].lower().replace(' ', '_')}.png")
+                    continue
+            
+            # Summary
+            print("\n=== Scraping Summary ===")
+            print(f"Successfully processed {len(processed_accounts)} accounts:")
+            for acc in processed_accounts:
+                print(f"✅ {acc}")
+            
+            if failed_accounts:
+                print(f"\nFailed to process {len(failed_accounts)} accounts:")
+                for acc in failed_accounts:
+                    print(f"❌ {acc}")
+            
+            return processed_accounts, failed_accounts
+            
+        except Exception as e:
+            print(f"Failed to scrape all accounts: {str(e)}")
+            self.save_screenshot("scrape_all_accounts_error.png")
+            raise
 
     def navigate_to_creator_network(self):
         """Navigate to the Creator Network page"""

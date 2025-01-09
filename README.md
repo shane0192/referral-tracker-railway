@@ -2,6 +2,14 @@
 
 A web application for tracking and managing referral partnerships between creators, with features for monitoring referral metrics, managing accounts, and analyzing partnership trends.
 
+## Architecture Overview
+
+The system consists of two main components:
+1. Local Scraper: Runs on your machine using launchd, collecting data from ConvertKit
+2. Web Interface: Hosted on Heroku, providing data visualization and analysis
+
+Both components connect to the same Railway PostgreSQL database, ensuring data consistency.
+
 ## Project Structure
 
 ```
@@ -17,17 +25,22 @@ referral_tracker/
 │   │   ├── db_manager.py      # Database management and operations
 │   │   └── referral_data.csv  # Backup CSV data
 │   └── clock.py              # Scheduler process
+├── config/                   # Configuration files
+│   ├── .env                 # Environment variables
+│   ├── requirements.txt     # Python dependencies
+│   └── runtime.txt         # Python runtime version
+├── logs/                    # Log files directory
+│   ├── scheduler_output.log # Scheduler standard output
+│   └── scheduler_error.log  # Scheduler error output
 ├── data/
-│   ├── referral_viewer.html   # Main frontend interface
-│   ├── referral_data.db      # SQLite database
-│   └── avatars/              # Partner avatar images
-├── config/
-│   └── enabled_accounts.json  # Account configuration
+│   ├── referral_viewer.html # Main frontend interface
+│   ├── referral_data.db    # SQLite database (development)
+│   └── avatars/            # Partner avatar images
+├── automation_chrome_profile/ # Chrome profile for automation
+├── chrome-for-testing/      # ChromeDriver files
 ├── scripts/
-│   ├── run_scheduler.sh       # Scheduler startup script
-│   ├── convert_timestamps.py  # Utility for timestamp conversion
-│   └── transfer_data.py       # Data migration utility
-└── requirements.txt          # Python dependencies
+│   └── run_scheduler.sh    # Scheduler startup script
+└── com.paperboy.referral-tracker.plist  # Launch agent configuration
 ```
 
 ## Core Functionality

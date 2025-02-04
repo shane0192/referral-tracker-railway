@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, JSON, func, desc, case
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, JSON, func, desc, case, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime, timedelta
@@ -21,6 +21,15 @@ class ReferralData(Base):
     account_name = Column(String)
     recommending_me = Column(JSON)
     my_recommendations = Column(JSON)
+
+class AllowedAccount(Base):
+    __tablename__ = 'allowed_accounts'
+    
+    id = Column(Integer, primary_key=True)
+    account_name = Column(String, unique=True, nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 class DatabaseManager:
     def __init__(self):

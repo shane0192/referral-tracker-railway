@@ -12,7 +12,7 @@ from functools import wraps
 
 # Add the project root to Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-from src.data.db_manager import DatabaseManager, ReferralData
+from src.data.db_manager import DatabaseManager, ReferralData, AllowedAccount
 from src.scraper.scheduler import ScraperScheduler
 
 app = Flask(__name__, static_folder='../../frontend/build', static_url_path='/')
@@ -2451,51 +2451,53 @@ def get_demo_trends(partner_name):
 @login_required
 def get_available_accounts():
     try:
-        # Get accounts from database
         session = db.Session()
-        db_accounts = session.query(ReferralData.account_name).distinct().all()
-        db_accounts = [account[0] for account in db_accounts]
-        
-        # Get enabled accounts from config
-        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'config')
-        os.makedirs(config_path, exist_ok=True)
-        config_file = os.path.join(config_path, 'enabled_accounts.json')
-        
         try:
-            with open(config_file, 'r') as f:
-                config_data = json.load(f)
-                if isinstance(config_data, list):
-                    enabled_accounts = config_data
-                    known_accounts = enabled_accounts.copy()
-                else:
-                    enabled_accounts = config_data.get('enabled', [])
-                    known_accounts = config_data.get('known', [])
-        except (FileNotFoundError, json.JSONDecodeError):
-            enabled_accounts = []
-            known_accounts = []
-
-        # Add Demo Client to enabled accounts if not present
-        if 'Demo Client' not in enabled_accounts:
-            enabled_accounts.append('Demo Client')
-        if 'Demo Client' not in known_accounts:
-            known_accounts.append('Demo Client')
-
-        # Return all required data
-        return jsonify({
-            'success': True,
-            'accounts': sorted(list(set(known_accounts))),  # All known accounts
-            'enabled_accounts': sorted(list(set(enabled_accounts))),  # Currently enabled accounts
-            'db_accounts': sorted(list(set(db_accounts))),  # Accounts with data in DB
-            'available_accounts': sorted(list(set(known_accounts)))  # All available accounts
-        })
+            # Get all accounts from AllowedAccount table
+            allowed_accounts = session.query(AllowedAccount).all()
+            
+            # Get accounts that have data in ReferralData
+            db_accounts = session.query(ReferralData.account_name).distinct().all()
+            db_accounts = [account[0] for account in db_accounts]
+            
+            # Separate into enabled and known accounts
+            enabled_accounts = [acc.account_name for acc in allowed_accounts if acc.is_active]
+            known_accounts = [acc.account_name for acc in allowed_accounts]
+            
+            # Add Demo Client if not present
+            if 'Demo Client' not in enabled_accounts:
+                enabled_accounts.append('Demo Client')
+            if 'Demo Client' not in known_accounts:
+                known_accounts.append('Demo Client')
+                # Also add to database if not exists
+                demo_account = session.query(AllowedAccount).filter_by(account_name='Demo Client').first()
+                if not demo_account:
+                    demo_account = AllowedAccount(account_name='Demo Client', is_active=True)
+                    session.add(demo_account)
+                    session.commit()
+            
+            # Return all required data
+            return jsonify({
+                'success': True,
+                'accounts': sorted(list(set(known_accounts))),  # All known accounts
+                'enabled_accounts': sorted(list(set(enabled_accounts))),  # Currently enabled accounts
+                'db_accounts': sorted(list(set(db_accounts))),  # Accounts with data in DB
+                'available_accounts': sorted(list(set(known_accounts)))  # All available accounts
+            })
+        except Exception as e:
+            print(f"Error getting available accounts: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            })
+        finally:
+            session.close()
     except Exception as e:
         print(f"Error getting available accounts: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)
         })
-    finally:
-        session.close()
 
 @app.route('/api/update-enabled-accounts', methods=['POST'])
 @login_required
@@ -2524,15 +2526,46 @@ def update_enabled_accounts():
         # Add any newly enabled accounts to known accounts
         known_accounts.extend([acc for acc in enabled_accounts if acc not in known_accounts])
         
-        # Save both lists
+        # Save both lists to JSON
         with open(config_file, 'w') as f:
             json.dump({
                 'enabled': enabled_accounts,
                 'known': known_accounts
             }, f)
             
+        # Update database
+        session = db.Session()
+        try:
+            # First, get all known accounts and set them as inactive
+            for account_name in known_accounts:
+                account = session.query(AllowedAccount).filter_by(account_name=account_name).first()
+                if account:
+                    account.is_active = False
+                else:
+                    # Create new account record if it doesn't exist
+                    account = AllowedAccount(account_name=account_name, is_active=False)
+                    session.add(account)
+            
+            # Then set enabled accounts as active
+            for account_name in enabled_accounts:
+                account = session.query(AllowedAccount).filter_by(account_name=account_name).first()
+                if account:
+                    account.is_active = True
+                else:
+                    # Create new account record if it doesn't exist
+                    account = AllowedAccount(account_name=account_name, is_active=True)
+                    session.add(account)
+            
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+            
         return jsonify({'success': True})
     except Exception as e:
+        print(f"Error updating enabled accounts: {str(e)}")
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/bulk_delete', methods=['POST'])

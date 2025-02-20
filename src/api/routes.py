@@ -766,7 +766,7 @@ def get_partnership_trends():
             dates = []
             received_values = []
             sent_values = []
-            conversion_rates = []
+            conversion_rates = []  # New array for conversion rates
             
             # Find baselines
             baseline_received = None
@@ -796,17 +796,20 @@ def get_partnership_trends():
             for record in sorted_records:
                 date_str = record.date.strftime('%-m/%-d')
                 
-                received = next((safe_int_convert(rec['subscribers']) 
-                    for rec in record.recommending_me if rec['creator'] == partner), 0)
-                sent = next((safe_int_convert(rec['subscribers']) 
-                    for rec in record.my_recommendations if rec['creator'] == partner), 0)
-                conversion_rate = float(next((rec.get('conversion_rate', 0) 
-                    for rec in record.recommending_me if rec['creator'] == partner), 0))
+                # Find the recommendation data for this partner
+                partner_received = next((rec for rec in record.recommending_me if rec['creator'] == partner), None)
+                partner_sent = next((rec for rec in record.my_recommendations if rec['creator'] == partner), None)
+                
+                received = safe_int_convert(partner_received['subscribers']) if partner_received else 0
+                sent = safe_int_convert(partner_sent['subscribers']) if partner_sent else 0
+                
+                # Get conversion rate if available
+                conversion_rate = float(partner_received['conversion_rate']) if partner_received and 'conversion_rate' in partner_received else None
                 
                 dates.append(date_str)
                 received_values.append(received)
                 sent_values.append(sent)
-                conversion_rates.append(conversion_rate)
+                conversion_rates.append(conversion_rate)  # Add conversion rate to the data
 
             # Calculate current period metrics (using baselines)
             current_received = received_values[-1] - (baseline_received or 0)
@@ -817,13 +820,13 @@ def get_partnership_trends():
                     'dates': dates,
                     'received': received_values,
                     'sent': sent_values,
-                    'conversion_rates': conversion_rates
+                    'conversion_rates': conversion_rates  # Include conversion rates in response
                 },
                 'current_period': {
                     'received': current_received,
                     'sent': current_sent,
                     'balance': current_received - current_sent,
-                    'conversion_rate': conversion_rates[-1] if conversion_rates else 0
+                    'conversion_rate': conversion_rates[-1] if conversion_rates and conversion_rates[-1] is not None else None
                 },
                 'baselines': {
                     'received': {

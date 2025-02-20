@@ -1137,8 +1137,11 @@
                                 <div class="metric-value" id="sentMetric">1,884</div>
                             </div>
                             <div class="metric-item">
-                                <div class="metric-label">Balance</div>
-                                <div class="metric-value" id="balanceMetric">-1,879</div>
+                                <div class="metric-label">
+                                    Conversion Rate
+                                    <i class="bi bi-info-circle" data-bs-toggle="tooltip" data-bs-placement="top" title="Percentage of sent referrals that converted"></i>
+                                </div>
+                                <div class="metric-value" id="conversionRateMetric">0%</div>
                             </div>
                         </div>
                     </div>
@@ -1178,6 +1181,13 @@
                     </div>
 
                     <div class="metrics-container">
+                        <h2>Conversion Rate Trend</h2>
+                        <div class="chart-container">
+                            <canvas id="conversionRateChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="metrics-container">
                         <h2>Daily Changes</h2>
                         <div class="chart-container">
                             <canvas id="dailyChangesChart"></canvas>
@@ -1201,6 +1211,7 @@
                     let avatar_mapping = {};
                     let trendChart = null;  // Global reference to chart
                     let dailyChangesChart = null; // Add this as a global variable at the top with other declarations
+                    let conversionRateChart = null;
 
                     // Define populateClientDropdown function
                     async function populateClientDropdown() {
@@ -1361,8 +1372,8 @@
                                     data.current_period.received.toLocaleString();
                                 document.getElementById('sentMetric').textContent = 
                                     data.current_period.sent.toLocaleString();
-                                document.getElementById('balanceMetric').textContent = 
-                                    data.current_period.balance.toLocaleString();
+                                document.getElementById('conversionRateMetric').textContent = 
+                                    data.current_period.conversion_rate.toFixed(1) + '%';
 
                                 // Calculate Growth Metrics
                                 // Daily Change: Average change per day over the period
@@ -1481,6 +1492,49 @@
                                         }
                                     }
                                 });
+
+                                // Add conversion rate chart
+                                const conversionCtx = document.getElementById('conversionRateChart').getContext('2d');
+                                if (conversionRateChart instanceof Chart) {
+                                    conversionRateChart.destroy();
+                                }
+                                conversionRateChart = new Chart(conversionCtx, {
+                                    type: 'line',
+                                    data: {
+                                        labels: data.historical_data.dates,
+                                        datasets: [{
+                                            label: 'Conversion Rate',
+                                            data: data.historical_data.conversion_rates,
+                                            borderColor: 'rgb(153, 102, 255)',
+                                            backgroundColor: 'rgba(153, 102, 255, 0.1)',
+                                            tension: 0.1,
+                                            fill: true
+                                        }]
+                                    },
+                                    options: {
+                                        responsive: true,
+                                        maintainAspectRatio: false,
+                                        scales: {
+                                            y: {
+                                                beginAtZero: true,
+                                                ticks: {
+                                                    callback: function(value) {
+                                                        return value.toFixed(1) + '%';
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        plugins: {
+                                            tooltip: {
+                                                callbacks: {
+                                                    label: function(context) {
+                                                        return `Conversion Rate: ${context.parsed.y.toFixed(1)}%`;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                });
                             })
                             .catch(error => {
                                 console.error('Error:', error);
@@ -1508,6 +1562,10 @@
                             if (dailyChangesChart instanceof Chart) {
                                 dailyChangesChart.destroy();
                                 dailyChangesChart = null;
+                            }
+                            if (conversionRateChart instanceof Chart) {
+                                conversionRateChart.destroy();
+                                conversionRateChart = null;
                             }
                         }
                     }

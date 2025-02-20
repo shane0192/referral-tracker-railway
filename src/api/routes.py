@@ -803,30 +803,36 @@ def get_partnership_trends():
                 received = safe_int_convert(partner_received['subscribers']) if partner_received else 0
                 sent = safe_int_convert(partner_sent['subscribers']) if partner_sent else 0
                 
-                # Get conversion rate if available
-                conversion_rate = float(partner_received['conversion_rate']) if partner_received and 'conversion_rate' in partner_received else None
+                # Get conversion rate if available, with safer type conversion
+                try:
+                    conversion_rate = float(partner_received['conversion_rate']) if partner_received and 'conversion_rate' in partner_received else None
+                except (ValueError, TypeError):
+                    conversion_rate = None
                 
                 dates.append(date_str)
                 received_values.append(received)
                 sent_values.append(sent)
-                conversion_rates.append(conversion_rate)  # Add conversion rate to the data
+                conversion_rates.append(conversion_rate)
 
             # Calculate current period metrics (using baselines)
             current_received = received_values[-1] - (baseline_received or 0)
             current_sent = sent_values[-1] - (baseline_sent or 0)
+            
+            # Get the latest valid conversion rate
+            latest_conversion_rate = next((rate for rate in reversed(conversion_rates) if rate is not None), None)
             
             return jsonify({
                 'historical_data': {
                     'dates': dates,
                     'received': received_values,
                     'sent': sent_values,
-                    'conversion_rates': conversion_rates  # Include conversion rates in response
+                    'conversion_rates': conversion_rates
                 },
                 'current_period': {
                     'received': current_received,
                     'sent': current_sent,
                     'balance': current_received - current_sent,
-                    'conversion_rate': conversion_rates[-1] if conversion_rates and conversion_rates[-1] is not None else None
+                    'conversion_rate': latest_conversion_rate
                 },
                 'baselines': {
                     'received': {

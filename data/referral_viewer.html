@@ -1352,50 +1352,62 @@
                                     conversionRateChart.destroy();
                                 }
 
-                                // Filter out null values and prepare data
-                                const conversionData = data.historical_data.conversion_rates.map((rate, index) => ({
-                                    x: data.historical_data.dates[index],
-                                    y: rate !== null ? rate * 100 : null
-                                })).filter(point => point.y !== null);
+                                // Check if we have valid conversion rate data
+                                if (data.historical_data.conversion_rates) {
+                                    // Filter out null values and prepare data
+                                    const conversionData = data.historical_data.conversion_rates.map((rate, index) => ({
+                                        x: data.historical_data.dates[index],
+                                        y: rate !== null ? rate * 100 : null  // Convert back to percentage
+                                    })).filter(point => point.y !== null);
 
-                                conversionRateChart = new Chart(conversionCtx, {
-                                    type: 'line',
-                                    data: {
-                                        datasets: [{
-                                            label: 'Conversion Rate',
-                                            data: conversionData,
-                                            borderColor: '#9333ea',
-                                            backgroundColor: '#9333ea',
-                                            tension: 0.4
-                                        }]
-                                    },
-                                    options: {
-                                        responsive: true,
-                                        maintainAspectRatio: false,
-                                        interaction: {
-                                            intersect: false,
-                                            mode: 'index'
+                                    conversionRateChart = new Chart(conversionCtx, {
+                                        type: 'line',
+                                        data: {
+                                            datasets: [{
+                                                label: 'Conversion Rate',
+                                                data: conversionData,
+                                                borderColor: '#9333ea',
+                                                backgroundColor: '#9333ea',
+                                                tension: 0.4
+                                            }]
                                         },
-                                        plugins: {
-                                            legend: {
-                                                position: 'top'
+                                        options: {
+                                            responsive: true,
+                                            maintainAspectRatio: false,
+                                            interaction: {
+                                                intersect: false,
+                                                mode: 'index'
                                             },
-                                            tooltip: {
-                                                callbacks: {
-                                                    label: context => `${context.parsed.y.toFixed(1)}%`
+                                            plugins: {
+                                                legend: {
+                                                    position: 'top'
+                                                },
+                                                tooltip: {
+                                                    callbacks: {
+                                                        label: context => `${context.parsed.y.toFixed(2)}%`
+                                                    }
                                                 }
-                                            }
-                                        },
-                                        scales: {
-                                            y: {
-                                                beginAtZero: true,
-                                                ticks: {
-                                                    callback: value => value + '%'
+                                            },
+                                            scales: {
+                                                y: {
+                                                    beginAtZero: true,
+                                                    max: 100,  // Set max to 100%
+                                                    ticks: {
+                                                        callback: value => value.toFixed(1) + '%'
+                                                    }
                                                 }
                                             }
                                         }
-                                    }
-                                });
+                                    });
+                                } else {
+                                    // If no conversion rate data, show a message
+                                    const container = conversionCtx.canvas.parentElement;
+                                    container.innerHTML = `
+                                        <div class="alert alert-info text-center">
+                                            No conversion rate data available for this period
+                                        </div>
+                                    `;
+                                }
 
                                 // Get date range for display
                                 const dateRange = document.getElementById('dateRangeSelect').value;

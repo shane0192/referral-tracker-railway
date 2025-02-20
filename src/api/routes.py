@@ -803,10 +803,19 @@ def get_partnership_trends():
                 received = safe_int_convert(partner_received['subscribers']) if partner_received else 0
                 sent = safe_int_convert(partner_sent['subscribers']) if partner_sent else 0
                 
-                # Get conversion rate if available, with safer type conversion
+                # Get conversion rate if available, with safer type conversion and validation
                 try:
-                    conversion_rate = float(partner_received['conversion_rate']) if partner_received and 'conversion_rate' in partner_received else None
-                except (ValueError, TypeError):
+                    conversion_rate = None
+                    if partner_received and 'conversion_rate' in partner_received:
+                        # Convert to float and validate
+                        rate = float(partner_received['conversion_rate'])
+                        # Ensure rate is between 0 and 100
+                        if 0 <= rate <= 100:
+                            conversion_rate = rate / 100  # Convert percentage to decimal
+                        else:
+                            print(f"Invalid conversion rate {rate}% found for {partner} on {date_str}")
+                except (ValueError, TypeError) as e:
+                    print(f"Error processing conversion rate for {partner} on {date_str}: {str(e)}")
                     conversion_rate = None
                 
                 dates.append(date_str)
@@ -820,6 +829,10 @@ def get_partnership_trends():
             
             # Get the latest valid conversion rate
             latest_conversion_rate = next((rate for rate in reversed(conversion_rates) if rate is not None), None)
+            
+            # If we have no valid conversion rates, set to None
+            if all(rate is None for rate in conversion_rates):
+                conversion_rates = None
             
             return jsonify({
                 'historical_data': {

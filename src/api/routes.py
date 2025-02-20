@@ -799,8 +799,8 @@ def get_partnership_trends():
                 received_rec = next((rec for rec in record.recommending_me if rec['creator'] == partner), None)
                 sent_rec = next((rec for rec in record.my_recommendations if rec['creator'] == partner), None)
                 
-                received = safe_int_convert(received_rec['subscribers']) if received_rec else 0
-                sent = safe_int_convert(sent_rec['subscribers']) if sent_rec else 0
+                received = safe_int_convert(received_rec.get('subscribers', 0)) if received_rec else 0
+                sent = safe_int_convert(sent_rec.get('subscribers', 0)) if sent_rec else 0
                 conversion_rate = float(received_rec.get('conversion_rate', 0)) if received_rec else 0
                 
                 dates.append(date_str)

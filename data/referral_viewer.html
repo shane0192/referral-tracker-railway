@@ -1137,11 +1137,8 @@
                                 <div class="metric-value" id="sentMetric">1,884</div>
                             </div>
                             <div class="metric-item">
-                                <div class="metric-label">
-                                    Conversion Rate
-                                    <i class="bi bi-info-circle" data-bs-toggle="tooltip" data-bs-placement="top" title="Percentage of sent referrals that converted"></i>
-                                </div>
-                                <div class="metric-value" id="conversionRateMetric">0%</div>
+                                <div class="metric-label">Balance</div>
+                                <div class="metric-value" id="balanceMetric">-1,879</div>
                             </div>
                         </div>
                     </div>
@@ -1181,7 +1178,7 @@
                     </div>
 
                     <div class="metrics-container">
-                        <h2>Conversion Rate Trend</h2>
+                        <h2>Conversion Rate</h2>
                         <div class="chart-container">
                             <canvas id="conversionRateChart"></canvas>
                         </div>
@@ -1211,7 +1208,7 @@
                     let avatar_mapping = {};
                     let trendChart = null;  // Global reference to chart
                     let dailyChangesChart = null; // Add this as a global variable at the top with other declarations
-                    let conversionRateChart = null;
+                    let conversionRateChart = null;  // Add this variable
 
                     // Define populateClientDropdown function
                     async function populateClientDropdown() {
@@ -1349,6 +1346,57 @@
                                     }
                                 });
 
+                                // Render conversion rate chart
+                                const conversionCtx = document.getElementById('conversionRateChart').getContext('2d');
+                                if (conversionRateChart instanceof Chart) {
+                                    conversionRateChart.destroy();
+                                }
+
+                                // Filter out null values and prepare data
+                                const conversionData = data.historical_data.conversion_rates.map((rate, index) => ({
+                                    x: data.historical_data.dates[index],
+                                    y: rate !== null ? rate * 100 : null
+                                })).filter(point => point.y !== null);
+
+                                conversionRateChart = new Chart(conversionCtx, {
+                                    type: 'line',
+                                    data: {
+                                        datasets: [{
+                                            label: 'Conversion Rate',
+                                            data: conversionData,
+                                            borderColor: '#9333ea',
+                                            backgroundColor: '#9333ea',
+                                            tension: 0.4
+                                        }]
+                                    },
+                                    options: {
+                                        responsive: true,
+                                        maintainAspectRatio: false,
+                                        interaction: {
+                                            intersect: false,
+                                            mode: 'index'
+                                        },
+                                        plugins: {
+                                            legend: {
+                                                position: 'top'
+                                            },
+                                            tooltip: {
+                                                callbacks: {
+                                                    label: context => `${context.parsed.y.toFixed(1)}%`
+                                                }
+                                            }
+                                        },
+                                        scales: {
+                                            y: {
+                                                beginAtZero: true,
+                                                ticks: {
+                                                    callback: value => value + '%'
+                                                }
+                                            }
+                                        }
+                                    }
+                                });
+
                                 // Get date range for display
                                 const dateRange = document.getElementById('dateRangeSelect').value;
                                 const dateRangeText = dateRange === '7' ? 'Last 7 days' : 
@@ -1372,8 +1420,8 @@
                                     data.current_period.received.toLocaleString();
                                 document.getElementById('sentMetric').textContent = 
                                     data.current_period.sent.toLocaleString();
-                                document.getElementById('conversionRateMetric').textContent = 
-                                    data.current_period.conversion_rate.toFixed(1) + '%';
+                                document.getElementById('balanceMetric').textContent = 
+                                    data.current_period.balance.toLocaleString();
 
                                 // Calculate Growth Metrics
                                 // Daily Change: Average change per day over the period
@@ -1492,49 +1540,6 @@
                                         }
                                     }
                                 });
-
-                                // Add conversion rate chart
-                                const conversionCtx = document.getElementById('conversionRateChart').getContext('2d');
-                                if (conversionRateChart instanceof Chart) {
-                                    conversionRateChart.destroy();
-                                }
-                                conversionRateChart = new Chart(conversionCtx, {
-                                    type: 'line',
-                                    data: {
-                                        labels: data.historical_data.dates,
-                                        datasets: [{
-                                            label: 'Conversion Rate',
-                                            data: data.historical_data.conversion_rates,
-                                            borderColor: 'rgb(153, 102, 255)',
-                                            backgroundColor: 'rgba(153, 102, 255, 0.1)',
-                                            tension: 0.1,
-                                            fill: true
-                                        }]
-                                    },
-                                    options: {
-                                        responsive: true,
-                                        maintainAspectRatio: false,
-                                        scales: {
-                                            y: {
-                                                beginAtZero: true,
-                                                ticks: {
-                                                    callback: function(value) {
-                                                        return value.toFixed(1) + '%';
-                                                    }
-                                                }
-                                            }
-                                        },
-                                        plugins: {
-                                            tooltip: {
-                                                callbacks: {
-                                                    label: function(context) {
-                                                        return `Conversion Rate: ${context.parsed.y.toFixed(1)}%`;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                });
                             })
                             .catch(error => {
                                 console.error('Error:', error);
@@ -1554,7 +1559,7 @@
                         const panel = document.getElementById('trendsPanel');
                         if (panel) {
                             panel.classList.remove('active');
-                            // Clean up both charts
+                            // Clean up all charts
                             if (trendChart instanceof Chart) {
                                 trendChart.destroy();
                                 trendChart = null;

@@ -793,6 +793,7 @@ def get_partnership_trends():
                         break
 
             # Process records with both raw and adjusted values
+            last_conversion = None  # Track last valid conversion rate
             for record in sorted_records:
                 date_str = record.date.strftime('%-m/%-d')
                 
@@ -805,23 +806,21 @@ def get_partnership_trends():
                 
                 # Get conversion rate if available, with safer type conversion and validation
                 try:
-                    conversion_rate = None
                     if partner_received and 'conversion_rate' in partner_received:
                         # Convert to float and validate
                         rate = float(partner_received['conversion_rate'])
                         # Ensure rate is between 0 and 100
                         if 0 <= rate <= 100:
-                            conversion_rate = rate / 100  # Convert percentage to decimal
+                            last_conversion = rate / 100  # Convert percentage to decimal
                         else:
                             print(f"Invalid conversion rate {rate}% found for {partner} on {date_str}")
                 except (ValueError, TypeError) as e:
                     print(f"Error processing conversion rate for {partner} on {date_str}: {str(e)}")
-                    conversion_rate = None
                 
                 dates.append(date_str)
                 received_values.append(received)
                 sent_values.append(sent)
-                conversion_rates.append(conversion_rate)
+                conversion_rates.append(last_conversion)  # Use last known valid rate
 
             # Calculate current period metrics (using baselines)
             current_received = received_values[-1] - (baseline_received or 0)

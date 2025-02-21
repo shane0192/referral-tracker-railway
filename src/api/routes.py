@@ -749,62 +749,76 @@ def get_partnership_trends():
         
         session = db.Session()
         try:
-            records = session.query(ReferralData)\
+            # Get ALL records for this account/partner pair to get all conversion rate history
+            all_records = session.query(ReferralData)\
                 .filter(ReferralData.account_name == account)\
-                .filter(ReferralData.date.between(start_date, end_date))\
                 .order_by(ReferralData.date)\
                 .all()
 
-            # Group records by date
-            daily_records = {}
-            for record in records:
-                date_key = record.date.strftime('%Y-%m-%d')
-                daily_records[date_key] = record
-            
-            sorted_records = [daily_records[date] for date in sorted(daily_records.keys())]
+            # Get records within date range for other metrics
+            range_records = [r for r in all_records if start_date <= r.date <= end_date]
             
             dates = []
             received_values = []
             sent_values = []
-            sent_conversion_rates = []
-            received_conversion_rates = []
             
-            # Process each record
-            for record in sorted_records:
+            # Process each record for subscriber counts
+            for record in range_records:
                 date_str = record.date.strftime('%Y-%m-%d')  # Use ISO format for dates
                 dates.append(date_str)
                 
-                # Handle received values and rates
+                # Handle received values
                 partner_received = next((rec for rec in record.recommending_me if rec['creator'] == partner), None)
                 received = safe_int_convert(partner_received['subscribers']) if partner_received else 0
                 received_values.append(received)
+
+                # Handle sent values
+                partner_sent = next((rec for rec in record.my_recommendations if rec['creator'] == partner), None)
+                sent = safe_int_convert(partner_sent['subscribers']) if partner_sent else 0
+                sent_values.append(sent)
+
+            # Now process ALL records for conversion rates
+            conversion_dates = []
+            sent_rates = []
+            received_rates = []
+            
+            for record in all_records:
+                date_str = record.date.strftime('%Y-%m-%d')
                 
                 # Get received conversion rate if it exists
                 received_rate = None
+                partner_received = next((rec for rec in record.recommending_me if rec['creator'] == partner), None)
                 if partner_received and 'conversion_rate' in partner_received:
                     try:
                         rate = float(partner_received['conversion_rate'])
                         if 0 <= rate <= 100:  # Validate rate is between 0-100%
                             received_rate = rate / 100  # Convert percentage to decimal
+                            # Only add the date and rate if we have a valid rate
+                            conversion_dates.append(date_str)
+                            received_rates.append(received_rate)
+                            sent_rates.append(None)  # Add None for sent rate to keep arrays aligned
                     except (ValueError, TypeError):
                         pass
-                received_conversion_rates.append(received_rate)
 
-                # Handle sent values and rates
-                partner_sent = next((rec for rec in record.my_recommendations if rec['creator'] == partner), None)
-                sent = safe_int_convert(partner_sent['subscribers']) if partner_sent else 0
-                sent_values.append(sent)
-                
                 # Get sent conversion rate if it exists
                 sent_rate = None
+                partner_sent = next((rec for rec in record.my_recommendations if rec['creator'] == partner), None)
                 if partner_sent and 'conversion_rate' in partner_sent:
                     try:
                         rate = float(partner_sent['conversion_rate'])
                         if 0 <= rate <= 100:  # Validate rate is between 0-100%
                             sent_rate = rate / 100  # Convert percentage to decimal
+                            # Only add the date and rate if we have a valid rate and we haven't already added this date
+                            if date_str not in conversion_dates:
+                                conversion_dates.append(date_str)
+                                received_rates.append(None)  # Add None for received rate to keep arrays aligned
+                                sent_rates.append(sent_rate)
+                            else:
+                                # If date exists, update the sent rate at that index
+                                idx = conversion_dates.index(date_str)
+                                sent_rates[idx] = sent_rate
                     except (ValueError, TypeError):
                         pass
-                sent_conversion_rates.append(sent_rate)
 
             # Find baselines
             baseline_received = None
@@ -812,7 +826,7 @@ def get_partnership_trends():
             baseline_received_date = None
             baseline_sent_date = None
             
-            for record in sorted_records:
+            for record in range_records:
                 # Find first non-zero values for baselines
                 for rec in record.recommending_me:
                     if rec['creator'] == partner:
@@ -831,20 +845,21 @@ def get_partnership_trends():
                         break
 
             # Calculate current period metrics
-            current_received = received_values[-1] - (baseline_received or 0)
-            current_sent = sent_values[-1] - (baseline_sent or 0)
+            current_received = received_values[-1] - (baseline_received or 0) if received_values else 0
+            current_sent = sent_values[-1] - (baseline_sent or 0) if sent_values else 0
             
             # Get the latest valid conversion rates
-            latest_sent_rate = next((rate for rate in reversed(sent_conversion_rates) if rate is not None), None)
-            latest_received_rate = next((rate for rate in reversed(received_conversion_rates) if rate is not None), None)
+            latest_sent_rate = next((rate for rate in reversed(sent_rates) if rate is not None), None)
+            latest_received_rate = next((rate for rate in reversed(received_rates) if rate is not None), None)
 
             return jsonify({
                 'historical_data': {
                     'dates': dates,
                     'received': received_values,
                     'sent': sent_values,
-                    'sent_conversion_rates': sent_conversion_rates,
-                    'received_conversion_rates': received_conversion_rates
+                    'conversion_dates': conversion_dates,  # Separate dates for conversion rates
+                    'sent_conversion_rates': sent_rates,
+                    'received_conversion_rates': received_rates
                 },
                 'current_period': {
                     'received': current_received,
@@ -1380,8 +1395,8 @@ def database_admin():
 @app.route('/admin/delete-record/<int:record_id>', methods=['DELETE'])
 @login_required
 def delete_record(record_id):
-    session = db.Session()
-    try:
+        session = db.Session()
+        try:
         record = session.query(ReferralData).get(record_id)
         if record:
             session.delete(record)
@@ -2388,7 +2403,7 @@ def get_partnership_recommendations():
                                 partner_partnerships.update(rec['creator'] for rec in record.recommending_me)
 
                     recommendations.append({
-                        'partner': partner,
+                    'partner': partner,
                         'monthly_volume': data['volume'],
                         'current_partnerships': list(partner_partnerships),
                         'volume_match': f"{data['volume']:,} referrals/month (±25% of your volume)",
@@ -2408,7 +2423,7 @@ def get_partnership_recommendations():
                 print("=== End Debug ===\n")
 
                 return jsonify(response_data)
-
+            
         finally:
             session.close()
             
@@ -2485,8 +2500,8 @@ def get_demo_trends(partner_name):
 @login_required
 def get_available_accounts():
     try:
-        session = db.Session()
-        try:
+    session = db.Session()
+    try:
             # Get all accounts from AllowedAccount table
             allowed_accounts = session.query(AllowedAccount).all()
             

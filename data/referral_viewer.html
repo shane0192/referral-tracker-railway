@@ -1,1608 +1,1667 @@
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Creator Network Analytics</title>
-                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-                <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
-                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
-                <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
-                <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-                <link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-                <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
-                <style>
-                    /* Root variables */
-                    :root {
-                        --font-primary: 'Libre Franklin', sans-serif;
-                        --color-background: #f9f7f4;
-                        --color-text: #1E1E1E;
-                        --color-border: #dcd4c4;
-                        --color-background-darker: #f6f2ea;
-                    }
-
-                    /* Base styles */
-                    * {
-                        font-family: var(--font-primary);
-                    }
-
-                    body {
-                        background-color: var(--color-background);
-                        color: var(--color-text);
-                        line-height: 1.5;
-                    }
-
-                    /* Typography updates */
-                    h1, h2, h3, .display-4, p, span, label, input, select, button {
-                        font-family: var(--font-primary) !important;
-                    }
-
-                    h2 {
-                        font-weight: 800;
-                        font-size: 1.4rem;
-                    }
-
-                    /* Form control updates */
-                    .form-select, .form-control {
-                        width: 100%;
-                        padding: 12px 16px;
-                        border: 1px solid var(--color-border);
-                        border-radius: 8px;
-                        height: 65px;
-                        font-size: 16px;
-                        background: #FFFFFF;
-                    }
-
-                    .form-select:focus, .form-control:focus {
-                        outline: none;
-                        border-color: #007AFF;
-                        box-shadow: 0 0 0 2px rgba(0,122,255,0.1);
-                    }
-
-                    /* Card updates */
-                    .card {
-                        background: white;
-                        padding: 32px !important;
-                        border: none;
-                        border-radius: 5px;
-                    }
-
-                    .card-body {
-                        padding: 0;
-                    }
-
-                    /* Table updates */
-                    .table {
-                        width: 100%;
-                        margin-bottom: 0;
-                    }
-
-                    .table th {
-                        font-weight: 600;
-                        color: var(--color-text);
-                        border-bottom: 2px solid var(--color-border);
-                        padding: 16px;
-                    }
-
-                    .table td {
-                        vertical-align: middle;
-                        border-bottom: 1px solid var(--color-border);
-                        padding: 16px;
-                    }
-
-                    /* Button updates */
-                    .btn {
-                        font-size: 0.9rem !important;
-                        font-weight: 500;
-                        padding: 8px 16px;
-                        border-radius: 8px;
-                    }
-
-                    .btn-outline-primary {
-                        border-color: var(--color-border);
-                        color: var(--color-text);
-                    }
-
-                    .btn-outline-primary:hover {
-                        background-color: var(--color-background);
-                        border-color: var(--color-text);
-                        color: var(--color-text);
-                    }
-
-                    /* Trends panel updates */
-                    .trends-panel {
-                        background: var(--color-background);
-                        padding: 32px !important;
-                    }
-
-                    .metrics-summary {
-                        background: white;
-                        border-radius: 5px;
-                        padding: 24px;
-                    }
-
-                    /* Growth items styling */
-                    .growth-item {
-                        padding: 12px;
-                        border-radius: 8px;
-                        margin-bottom: 4px;  /* Reduced from 8px */
-                    }
-
-                    .growth-item .partner-name {
-                        font-size: 1rem;
-                        font-weight: 500;
-                        color: var(--color-text);
-                    }
-
-                    .growth-value {
-                        font-size: 0.9rem;
-                        font-weight: 600;
-                    }
-
-                    .period-label {
-                        font-size: 0.9rem;
-                        color: #666;
-                        margin-left: 4px;
-                    }
-
-                    .growth-item.positive {
-                        background: #edfff1;
-                    }
-
-                    .growth-item.negative {
-                        background: #fff1f1;
-                    }
-
-                    /* Modal updates */
-                    .modal-content {
-                        background: var(--color-background);
-                        border: none;
-                        border-radius: 12px;
-                    }
-
-                    .modal-header {
-                        border-bottom: 1px solid var(--color-border);
-                        padding: 24px 32px;
-                    }
-
-                    .modal-body {
-                        padding: 32px;
-                    }
-
-                    .modal-footer {
-                        border-top: 1px solid var(--color-border);
-                        padding: 24px 32px;
-                    }
-
-                    .positive { color: green; }
-                    .negative { color: red; }
-                    .table-container { margin-bottom: 2rem; }
-                    .trends-panel {
-                        position: fixed;
-                        right: -500px;
-                        top: 0;
-                        width: 500px;
-                        height: 100vh;
-                        background: white;
-                        box-shadow: -20px 1px 120px 30px rgba(0, 0, 0, 0.1);
-                        transition: right 0.3s ease;
-                        z-index: 1050;
-                        padding: 20px;
-                        overflow-y: auto;
-                    }
-                    .text-muted {
-                font-size: 14px;
-                font-weight: 100;
-                line-height: 1.7em;
-                color: #181919 !important;
-            }
-                    .trends-panel.active { right: 0; }
-                    .chart-container {
-                        height: 300px !important;
-                        position: relative;
-                        margin-bottom: 40px;
-                    }
-                    
-                    .chart-container canvas {
-                        max-height: 100%;
-                    }
-                    
-                    .chart-container h4 {
-                        margin-bottom: 20px;
-                    }
-                    
-                    .table-row-clickable:hover {
-                        background-color: var(--color-background-darker) !important;
-                        cursor: pointer;
-                    }
-                    .metrics-summary {
-                        background: #f8f9fa;
-                        padding: 15px;
-                        border-radius: 8px;
-                        margin-bottom: 20px;
-                    }
-                    
-                    .metric {
-                        margin-bottom: 10px;
-                    }
-                    
-                    .metric label {
-                        display: block;
-                        font-size: 0.9em;
-                        color: #666;
-                    }
-                    
-                    .metric span {
-                        font-size: 1.2em;
-                        font-weight: bold;
-                    }
-                    .partnership-trends {
-                        background: white;
-                        padding: 20px;
-                        border-radius: 8px;
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                        margin-top: 20px;
-                    }
-
-                    .current-period .stats {
-                        display: grid;
-                        grid-template-columns: repeat(3, 1fr);
-                        gap: 20px;
-                        margin: 15px 0;
-                    }
-
-                    .relationship-summary {
-                        display: grid;
-                        grid-template-columns: repeat(2, 1fr);
-                        gap: 20px;
-                        margin: 20px 0;
-                    }
-
-                    .rounded-circle {
-                        background-color: #e0d4be !important;
-                    }
-
-                    .trend-item {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        padding: 10px;
-                        border-bottom: 1px solid #eee;
-                    }
-
-                    .trend-direction {
-                        padding: 4px 8px;
-                        border-radius: 4px;
-                        font-size: 0.9em;
-                    }
-
-                    .trend-direction.improving {
-                        background: #e6ffe6;
-                        color: #006600;
-                    }
-
-                    .trend-direction.declining {
-                        background: #ffe6e6;
-                        color: #660000;
-                    }
-
-                    /* Ensure tooltips appear above the panel */
-                    .tooltip {
-                        z-index: 1060 !important;
-                    }
-                    
-                    /* Style the partner name header */
-                    #partnerNameHeader {
-                        font-size: 1.5rem;
-                        margin: 0;
-                        padding: 0;
-                    }
-
-                    .partner-name {
-                        font-size: 1.75rem;
-                        font-weight: 600;
-                        margin: 0;
-                        padding: 0;
-                    }
-
-                    .trends-panel {
-                        padding: 20px;
-                    }
-
-                    /* Ensure tooltips are visible */
-                    .tooltip {
-                        z-index: 9999 !important;
-                    }
-
-                    .trends-panel h1 {
-                        font-size: 2rem;
-                        margin-bottom: 0.5rem;
-                    }
-                    
-                    .trends-panel .partner-name {
-                        font-size: 1.5rem;
-                        color: #666;
-                        margin-top: 0;
-                    }
-
-                    .panel-header {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: flex-start;
-                        margin-bottom: 2rem;
-                    }
-
-                    .title-section h1 {
-                        font-size: 2rem;
-                        margin-bottom: 0.5rem;
-                    }
-
-                    .title-section .partner-name {
-                        font-size: 2.3rem;
-                        font-family: 'Anton', sans-serif !important;
-                        font-weight: bold;
-                        line-height: 1.1;
-                        color: #1e1e1e;
-                        margin-top: 0;
-                        text-transform: uppercase;
-                    }
-
-                    /* Style the info icons */
-                    .bi-info-circle {
-                        font-size: 0.9em;
-                        color: #6c757d;
-                        cursor: help;
-                        margin-left: 4px;
-                    }
-
-                    .card-body h6 {
-                        font-size: 0.9rem;
-                        color: #666;
-                        margin-bottom: 1rem;
-                    }
-                    
-                    .growth-item {
-                        margin-bottom: 0.5rem;
-                    }
-                    
-                    .growth-item .partner-name {
-                        font-size: 0.85rem;
-                        color: #333;
-                        margin-bottom: 0.1rem;
-                    }
-                    
-                    .growth-item .growth-value {
-                        font-size: 0.8rem;
-                        font-weight: 500;
-                    }
-                    
-                    .growth-value.positive {
-                        color: #28a745;
-                    }
-                    
-                    .growth-value.negative {
-                        color: #dc3545;
-                    }
-                    .growth-value-container {
-                        display: flex;
-                        align-items: baseline;
-                        gap: 4px;
-                    }
-                    
-                    .period-label {
-                        font-size: 0.7rem;
-                        color: #666;
-                        font-weight: normal;
-                    }
-                    
-                    .show-more-button {
-                        margin: 1rem 0 3rem 0;
-                        color: #9a8a71;
-                        text-decoration: none;
-                        display: inline-flex;
-                        align-items: center;
-                        gap: 0.5rem;
-                        background-color: #f1ede6;
-                        padding: 1rem 1rem;
-                        border: #9a8a71;
-                        border-radius: 4px;
-                        transition: all 0.2s ease;
-                    }
-                    
-                    .show-more-button:hover {
-                        background-color: #f8f9fa;
-                        color: #495057;
-                    }
-                    
-                    .show-more-button i {
-                        transition: transform 0.2s ease;
-                    }
-                    
-                    .show-more-button[aria-expanded="true"] i {
-                        transform: rotate(180deg);
-                    }
-                    
-                    /* Add more bottom margin to the container */
-                    .container {
-                        margin-bottom: 5rem;
-                    }
-
-                    /* Add this to your existing CSS styles section */
-                    .table th:nth-child(4),
-                    .table td:nth-child(4) {
-                        background-color: var(--color-background-darker);
-                    }
-
-                    /* Update the form label styling */
-                    .form-label, 
-                    label {
-                        margin-bottom: 5px;
-                        display: block;
-                    }
-
-                    /* Update table cell alignment */
-                    .table td:first-child {
-                        text-align: left;  /* Keep partner name left-aligned */
-                    }
-
-                    .table td:not(:first-child),
-                    .table th:not(:first-child) {
-                        text-align: center;  /* Center all other columns */
-                    }
-
-                    /* Keep the pill styling centered within the cell */
-                    .table td .positive,
-                    .table td .negative {
-                        padding: 4px 12px;
-                        border-radius: 999px;
-                        display: inline-block;
-                    }
-
-                    .table td .positive {
-                        color: #0a7d2c;
-                        background-color: #e6ffe6;
-                    }
-
-                    .table td .negative {
-                        color: #d32f2f;
-                        background-color: #ffe6e6;
-                    }
-
-                    /* Modal updates to match main page */
-                    .modal-content {
-                        background: var(--color-background);
-                        border: none;
-                        border-radius: 12px;
-                    }
-
-                    .modal-header {
-                        border-bottom: 1px solid var(--color-border);
-                        padding: 24px 32px;
-                    }
-
-                    .modal-body {
-                        padding: 32px;
-                    }
-
-                    .modal-footer {
-                        border-top: 1px solid var(--color-border);
-                        padding: 24px 32px;
-                    }
-
-                    /* Form control updates to match main page */
-                    .modal .form-select, 
-                    .modal .form-control {
-                        width: 100%;
-                        padding: 12px 16px;
-                        border: 1px solid var(--color-border);
-                        border-radius: 8px;
-                        height: 65px;
-                        font-size: 16px;
-                        background: #FFFFFF;
-                    }
-
-                    .modal .form-select:focus, 
-                    .modal .form-control:focus {
-                        outline: none;
-                        border-color: #007AFF;
-                        box-shadow: 0 0 0 2px rgba(0,122,255,0.1);
-                    }
-
-                    /* Typography updates */
-                    .modal-title {
-                        font-weight: 800;
-                        font-size: 1.4rem;
-                    }
-
-                    .modal label {
-                        font-weight: 500;
-                        margin-bottom: 8px;
-                    }
-
-                    /* Button updates to match main page */
-                    .modal .btn {
-                        font-size: 0.9rem !important;
-                        font-weight: 500;
-                        padding: 8px 16px;
-                        border-radius: 8px;
-                    }
-
-                    .modal .btn-outline-primary {
-                        border-color: var(--color-border);
-                        color: var(--color-text);
-                    }
-
-                    .modal .btn-outline-primary:hover {
-                        background-color: var(--color-background);
-                        border-color: var(--color-text);
-                        color: var(--color-text);
-                    }
-
-                    /* Modal header typography */
-                    .modal-header {
-                        display: flex;
-                        flex-direction: column;
-                        gap: 4px;
-                    }
-
-                    .modal-header h6 {
-                        font-size: 0.9rem;
-                        color: #666;
-                        font-weight: 500;
-                        margin: 0;
-                    }
-
-                    .modal-header h1 {
-                        font-size: 2rem;
-                        font-weight: 800;
-                        margin: 0;
-                    }
-
-                    /* Section headers */
-                    .modal-body h5 {
-                        font-size: 1.1rem;
-                        font-weight: 700;
-                        margin-bottom: 1rem;
-                        color: var(--color-text);
-                    }
-
-                    .trend-metrics {
-                        margin-top: 3.5rem;
-                    }
-
-                    .metrics-summary {
-                        background: #f8f9fa;
-                        padding: 15px;
-                        border-radius: 8px;
-                        margin-bottom: 20px;
-                    }
-
-                    .metric {
-                        margin-bottom: 10px;
-                    }
-
-                    .metric label {
-                        display: block;
-                        font-size: 0.9em;
-                        color: #666;
-                    }
-
-                    .metric span {
-                        font-size: 1.2em;
-                        font-weight: bold;
-                    }
-
-                    /* Add this grid layout */
-                    .current-period .stats,
-                    .trend-metrics .metrics-summary {
-                        display: grid;
-                        grid-template-columns: repeat(3, 1fr);
-                        gap: 20px;
-                        margin: 15px 0;
-                    }
-
-                    .table-number {
-                        font-size: 0.9rem;  /* or 14px */
-                    }
-
-                    /* Update title sizes */
-                    .section-title {
-                        font-size: 1.2rem;  /* Smaller than default h2 */
-                        font-weight: 700;
-                        margin-bottom: 1rem;
-                    }
-
-                    /* Add more spacing between sections */
-                    .metrics-container {
-                        margin-bottom: 3.5rem;  /* Increased to 3.5rem */
-                    }
-
-                    /* Adjust card spacing */
-                    .card {
-                        margin-bottom: 1.5rem;  /* Add space between cards */
-                    }
-
-                    /* Adjust metric label sizes */
-                    .metric-label {
-                        font-size: 0.9rem;
-                        color: var(--color-text);
-                        opacity: 0.7;
-                    }
-
-                    .metrics-container {
-                        margin-bottom: 3.5rem;
-                    }
-
-                    .metrics-container h2 {
-                        font-size: 1.2rem;
-                        font-weight: 700;
-                        margin-bottom: 1rem;
-                        color: var(--color-text);
-                    }
-
-                    .metrics-grid {
-                        display: grid;
-                        grid-template-columns: repeat(3, 1fr);
-                        gap: 24px;
-                        background: #f9f9f9;
-                        padding: 24px;
-                        border-radius: 8px;
-                    }
-
-                    .metric-item {
-                        display: flex;
-                        flex-direction: column;
-                        gap: 8px;
-                    }
-
-                    .metric-label {
-                        font-size: 0.9rem;
-                        color: #666;
-                        display: flex;
-                        align-items: center;
-                        gap: 4px;
-                    }
-
-                    .metric-value {
-                        font-size: 1rem;
-                        font-weight: 700;
-                        color: var(--color-text);
-                    }
-
-                    .bi-info-circle {
-                        font-size: 0.8rem;
-                        color: #999;
-                        cursor: help;
-                    }
-
-                    .network-graph-container {
-                        width: 100%;
-                        height: 600px;
-                        background: white;
-                        border-radius: 8px;
-                        overflow: hidden;
-                    }
-
-                    .network-graph-container svg {
-                        width: 100%;
-                        height: 100%;
-                    }
-
-                    .btn-close {
-                        position: absolute;
-                        right: 20px;
-                        top: 20px;
-                        opacity: 0.5;
-                        transition: opacity 0.2s;
-                    }
-
-                    .btn-close:hover {
-                        opacity: 1;
-                    }
-
-                    .panel-header {
-                        position: relative;
-                        padding-right: 40px;
-                    }
-
-                    .partner-item {
-                        padding: 8px;
-                        border-radius: 4px;
-                        margin-bottom: 8px;
-                    }
-
-                    .partner-item:hover {
-                        background-color: var(--color-background-darker);
-                    }
-
-                    .value {
-                        margin-left: 8px;
-                        font-weight: 600;
-                    }
-
-                    .value.positive {
-                        color: #28a745;
-                    }
-
-                    .value.negative {
-                        color: #dc3545;
-                    }
-
-                    .period {
-                        color: #666;
-                        font-size: 0.9em;
-                        margin-left: 8px;
-                    }
-
-                    /* Add these styles in the existing <style> section */
-                    .partnership-carousel {
-                        overflow: hidden;
-                        position: relative;
-                        margin: 0 -15px;  /* Compensate for column padding */
-                    }
-
-                    .partnership-slide {
-                        display: flex;
-                        transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-                        padding: 0 15px;
-                        width: 100%;
-                    }
-
-                    .partnership-nav-container {
-                        position: absolute;
-                        top: 20px;
-                        right: 20px;
-                        display: flex;
-                        gap: 8px;
-                        z-index: 10;
-                    }
-
-                    .partnership-nav {
-                        width: 36px;
-                        height: 36px;
-                        padding: 0;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        border-radius: 50%;
-                        background-color: #007bff;
-                        border: none;
-                        color: white;
-                        transition: background-color 0.2s ease;
-                    }
-
-                    .partnership-nav:hover:not(:disabled) {
-                        background-color: #0056b3;
-                    }
-
-                    .partnership-nav:disabled {
-                        background-color: #e9ecef;
-                        color: #6c757d;
-                        cursor: not-allowed;
-                    }
-
-                    .partnership-indicators {
-                        display: flex;
-                        gap: 8px;
-                        align-items: center;
-                        justify-content: center;
-                        margin-top: 20px;
-                    }
-
-                    .indicator {
-                        width: 8px;
-                        height: 8px;
-                        border-radius: 50%;
-                        background-color: #dee2e6;
-                        cursor: pointer;
-                        transition: background-color 0.2s ease;
-                    }
-
-                    .indicator.active {
-                        background-color: #007bff;
-                    }
-
-                    /* Update the partnership health card styling */
-                    .partnership-health-card {
-                        display: flex;
-                        align-items: center;
-                        gap: 2rem;
-                        padding: 1rem 1.5rem;
-                        background: white;
-                        border-radius: 8px;
-                        margin-bottom: 1.5rem;
-                    }
-
-                    .health-metric {
-                        display: flex;
-                        align-items: center;
-                        gap: 1rem;
-                    }
-
-                    .health-metric-label {
-                        color: #666;
-                        font-size: 0.9rem;
-                    }
-
-                    .health-metric-value {
-                        font-weight: 600;
-                        font-size: 1.2rem;
-                    }
-
-                    .health-metric-value.positive {
-                        color: #28a745;
-                    }
-
-                    .health-metric-value.negative {
-                        color: #dc3545;
-                    }
-
-                    /* Update the button styles */
-                    .partnership-nav {
-                        background-color: #007bff !important;
-                        color: white !important;
-                    }
-
-                    .partnership-nav:hover:not(:disabled) {
-                        background-color: #0056b3 !important;
-                    }
-
-                    /* Update the search and manual referrals container */
-                    .search-container {
-                        display: flex;
-                        align-items: center;
-                        gap: 1rem;
-                        margin-bottom: 1.5rem;
-                    }
-
-                    /* Update the HTML structure for the partnership health section */
-                    .partnership-health-card {
-                        display: flex;
-                        align-items: center;
-                        gap: 2rem;
-                        padding: 1rem 1.5rem;
-                        background: white;
-                        border-radius: 8px;
-                        margin-bottom: 1.5rem;
-                    }
-
-                    /* Add these styles to your existing style section */
-                    .sortable {
-                        cursor: pointer;
-                        position: relative;
-                    }
-
-                    .sortable:after {
-                        content: '\2195';  /* Unicode for ↕ */
-                        font-size: 12px;
-                        color: #999;
-                        margin-left: 5px;
-                    }
-
-                    .sortable.asc:after {
-                        content: '\2191';  /* Unicode for ↑ */
-                        color: #007bff;
-                    }
-
-                    .sortable.desc:after {
-                        content: '\2193';  /* Unicode for ↓ */
-                        color: #007bff;
-                    }
-
-                    /* Form control styles */
-                    .form-control {
-                        height: 36px;
-                        padding: 8px 16px;
-                        border: 1px solid var(--color-border);
-                        border-radius: 8px;
-                        font-size: 14px;
-                        background: #FFFFFF;
-                        line-height: 20px;
-                    }
-
-                    /* Search and button container styles */
-                    .d-flex.justify-content-between .form-control {
-                        height: 38px;
-                        width: 250px;
-                        padding: 0.375rem 0.75rem;
-                    }
-
-                    .d-flex.justify-content-between .btn {
-                        height: 38px;
-                        padding: 0.375rem 0.75rem;
-                        display: inline-flex;
-                        align-items: center;
-                        gap: 0.5rem;
-                    }
-
-                    /* Footer styles */
-                    .footer {
-                        width: 100%;
-                        background: white;
-                        padding: 12px 24px;
-                        border-top: 1px solid var(--color-border);
-                        text-align: center;
-                        font-size: 0.9rem;
-                        margin-top: 2rem;
-                    }
-
-                    .footer a {
-                        color: var(--color-text);
-                        text-decoration: none;
-                        opacity: 0.7;
-                        transition: opacity 0.2s ease;
-                    }
-
-                    .footer a:hover {
-                        opacity: 1;
-                    }
-                </style>
-                <!-- Add this in the head section with other scripts -->
-                <script src="https://d3js.org/d3.v7.min.js"></script>
-            </head>
-            <body>
-                <div class="container mt-4">
-                    <h2 class="mb-4">Creator Network Analytics</h2>
-                    
-                    <!-- Add Client and Date Selectors -->
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="clientSelect">Client</label>
-                                <select class="form-select" id="clientSelect">
-                                    <option value="all">All Clients</option>
-                                    <option value="Demo Client">Demo Client</option>
-                                </select>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Creator Network Analytics</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
+    <style>
+        /* Root variables */
+        :root {
+            --font-primary: 'Libre Franklin', sans-serif;
+            --color-background: #f9f7f4;
+            --color-text: #1E1E1E;
+            --color-border: #dcd4c4;
+            --color-background-darker: #f6f2ea;
+        }
+
+        /* Base styles */
+        * {
+            font-family: var(--font-primary);
+        }
+
+        body {
+            background-color: var(--color-background);
+            color: var(--color-text);
+            line-height: 1.5;
+        }
+
+        /* Typography updates */
+        h1, h2, h3, .display-4, p, span, label, input, select, button {
+            font-family: var(--font-primary) !important;
+        }
+
+        h2 {
+            font-weight: 800;
+            font-size: 1.4rem;
+        }
+
+        /* Form control updates */
+        .form-select, .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            height: 65px;
+            font-size: 16px;
+            background: #FFFFFF;
+        }
+
+        .form-select:focus, .form-control:focus {
+            outline: none;
+            border-color: #007AFF;
+            box-shadow: 0 0 0 2px rgba(0,122,255,0.1);
+        }
+
+        /* Card updates */
+        .card {
+            background: white;
+            padding: 32px !important;
+            border: none;
+            border-radius: 5px;
+        }
+
+        .card-body {
+            padding: 0;
+        }
+
+        /* Table updates */
+        .table {
+            width: 100%;
+            margin-bottom: 0;
+        }
+
+        .table th {
+            font-weight: 600;
+            color: var(--color-text);
+            border-bottom: 2px solid var(--color-border);
+            padding: 16px;
+        }
+
+        .table td {
+            vertical-align: middle;
+            border-bottom: 1px solid var(--color-border);
+            padding: 16px;
+        }
+
+        /* Button updates */
+        .btn {
+            font-size: 0.9rem !important;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 8px;
+        }
+
+        .btn-outline-primary {
+            border-color: var(--color-border);
+            color: var(--color-text);
+        }
+
+        .btn-outline-primary:hover {
+            background-color: var(--color-background);
+            border-color: var(--color-text);
+            color: var(--color-text);
+        }
+
+        /* Trends panel updates */
+        .trends-panel {
+            background: var(--color-background);
+            padding: 32px !important;
+        }
+
+        .metrics-summary {
+            background: white;
+            border-radius: 5px;
+            padding: 24px;
+        }
+
+        /* Growth items styling */
+        .growth-item {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 4px;  /* Reduced from 8px */
+        }
+
+        .growth-item .partner-name {
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--color-text);
+        }
+
+        .growth-value {
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .period-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-left: 4px;
+        }
+
+        .growth-item.positive {
+            background: #edfff1;
+        }
+
+        .growth-item.negative {
+            background: #fff1f1;
+        }
+
+        /* Modal updates */
+        .modal-content {
+            background: var(--color-background);
+            border: none;
+            border-radius: 12px;
+        }
+
+        .modal-header {
+            border-bottom: 1px solid var(--color-border);
+            padding: 24px 32px;
+        }
+
+        .modal-body {
+            padding: 32px;
+        }
+
+        .modal-footer {
+            border-top: 1px solid var(--color-border);
+            padding: 24px 32px;
+        }
+
+        .positive { color: green; }
+        .negative { color: red; }
+        .table-container { margin-bottom: 2rem; }
+        .trends-panel {
+            position: fixed;
+            right: -500px;
+            top: 0;
+            width: 500px;
+            height: 100vh;
+            background: white;
+            box-shadow: -20px 1px 120px 30px rgba(0, 0, 0, 0.1);
+            transition: right 0.3s ease;
+            z-index: 1050;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .text-muted {
+    font-size: 14px;
+    font-weight: 100;
+    line-height: 1.7em;
+    color: #181919 !important;
+}
+        .trends-panel.active { right: 0; }
+        .chart-container {
+            height: 300px !important;
+            position: relative;
+            margin-bottom: 40px;
+        }
+        
+        .chart-container canvas {
+            max-height: 100%;
+        }
+        
+        .chart-container h4 {
+            margin-bottom: 20px;
+        }
+        
+        .table-row-clickable:hover {
+            background-color: var(--color-background-darker) !important;
+            cursor: pointer;
+        }
+        .metrics-summary {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .metric {
+            margin-bottom: 10px;
+        }
+        
+        .metric label {
+            display: block;
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        .metric span {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        .partnership-trends {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+
+        .current-period .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin: 15px 0;
+        }
+
+        .relationship-summary {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .rounded-circle {
+            background-color: #e0d4be !important;
+        }
+
+        .trend-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .trend-direction {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .trend-direction.improving {
+            background: #e6ffe6;
+            color: #006600;
+        }
+
+        .trend-direction.declining {
+            background: #ffe6e6;
+            color: #660000;
+        }
+
+        /* Ensure tooltips appear above the panel */
+        .tooltip {
+            z-index: 1060 !important;
+        }
+        
+        /* Style the partner name header */
+        #partnerNameHeader {
+            font-size: 1.5rem;
+            margin: 0;
+            padding: 0;
+        }
+
+        .partner-name {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin: 0;
+            padding: 0;
+        }
+
+        .trends-panel {
+            padding: 20px;
+        }
+
+        /* Ensure tooltips are visible */
+        .tooltip {
+            z-index: 9999 !important;
+        }
+
+        .trends-panel h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .trends-panel .partner-name {
+            font-size: 1.5rem;
+            color: #666;
+            margin-top: 0;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 2rem;
+        }
+
+        .title-section h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .title-section .partner-name {
+            font-size: 2.3rem;
+            font-family: 'Anton', sans-serif !important;
+            font-weight: bold;
+            line-height: 1.1;
+            color: #1e1e1e;
+            margin-top: 0;
+            text-transform: uppercase;
+        }
+
+        /* Style the info icons */
+        .bi-info-circle {
+            font-size: 0.9em;
+            color: #6c757d;
+            cursor: help;
+            margin-left: 4px;
+        }
+
+        .card-body h6 {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 1rem;
+        }
+        
+        .growth-item {
+            margin-bottom: 0.5rem;
+        }
+        
+        .growth-item .partner-name {
+            font-size: 0.85rem;
+            color: #333;
+            margin-bottom: 0.1rem;
+        }
+        
+        .growth-item .growth-value {
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .growth-value.positive {
+            color: #28a745;
+        }
+        
+        .growth-value.negative {
+            color: #dc3545;
+        }
+        .growth-value-container {
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+        }
+        
+        .period-label {
+            font-size: 0.7rem;
+            color: #666;
+            font-weight: normal;
+        }
+        
+        .show-more-button {
+            margin: 1rem 0 3rem 0;
+            color: #9a8a71;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background-color: #f1ede6;
+            padding: 1rem 1rem;
+            border: #9a8a71;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+        
+        .show-more-button:hover {
+            background-color: #f8f9fa;
+            color: #495057;
+        }
+        
+        .show-more-button i {
+            transition: transform 0.2s ease;
+        }
+        
+        .show-more-button[aria-expanded="true"] i {
+            transform: rotate(180deg);
+        }
+        
+        /* Add more bottom margin to the container */
+        .container {
+            margin-bottom: 5rem;
+        }
+
+        /* Add this to your existing CSS styles section */
+        .table th:nth-child(4),
+        .table td:nth-child(4) {
+            background-color: var(--color-background-darker);
+        }
+
+        /* Update the form label styling */
+        .form-label, 
+        label {
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        /* Update table cell alignment */
+        .table td:first-child {
+            text-align: left;  /* Keep partner name left-aligned */
+        }
+
+        .table td:not(:first-child),
+        .table th:not(:first-child) {
+            text-align: center;  /* Center all other columns */
+        }
+
+        /* Keep the pill styling centered within the cell */
+        .table td .positive,
+        .table td .negative {
+            padding: 4px 12px;
+            border-radius: 999px;
+            display: inline-block;
+        }
+
+        .table td .positive {
+            color: #0a7d2c;
+            background-color: #e6ffe6;
+        }
+
+        .table td .negative {
+            color: #d32f2f;
+            background-color: #ffe6e6;
+        }
+
+        /* Modal updates to match main page */
+        .modal-content {
+            background: var(--color-background);
+            border: none;
+            border-radius: 12px;
+        }
+
+        .modal-header {
+            border-bottom: 1px solid var(--color-border);
+            padding: 24px 32px;
+        }
+
+        .modal-body {
+            padding: 32px;
+        }
+
+        .modal-footer {
+            border-top: 1px solid var(--color-border);
+            padding: 24px 32px;
+        }
+
+        /* Form control updates to match main page */
+        .modal .form-select, 
+        .modal .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            height: 65px;
+            font-size: 16px;
+            background: #FFFFFF;
+        }
+
+        .modal .form-select:focus, 
+        .modal .form-control:focus {
+            outline: none;
+            border-color: #007AFF;
+            box-shadow: 0 0 0 2px rgba(0,122,255,0.1);
+        }
+
+        /* Typography updates */
+        .modal-title {
+            font-weight: 800;
+            font-size: 1.4rem;
+        }
+
+        .modal label {
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        /* Button updates to match main page */
+        .modal .btn {
+            font-size: 0.9rem !important;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 8px;
+        }
+
+        .modal .btn-outline-primary {
+            border-color: var(--color-border);
+            color: var(--color-text);
+        }
+
+        .modal .btn-outline-primary:hover {
+            background-color: var(--color-background);
+            border-color: var(--color-text);
+            color: var(--color-text);
+        }
+
+        /* Modal header typography */
+        .modal-header {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .modal-header h6 {
+            font-size: 0.9rem;
+            color: #666;
+            font-weight: 500;
+            margin: 0;
+        }
+
+        .modal-header h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            margin: 0;
+        }
+
+        /* Section headers */
+        .modal-body h5 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--color-text);
+        }
+
+        .trend-metrics {
+            margin-top: 3.5rem;
+        }
+
+        .metrics-summary {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .metric {
+            margin-bottom: 10px;
+        }
+
+        .metric label {
+            display: block;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .metric span {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        /* Add this grid layout */
+        .current-period .stats,
+        .trend-metrics .metrics-summary {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin: 15px 0;
+        }
+
+        .table-number {
+            font-size: 0.9rem;  /* or 14px */
+        }
+
+        /* Update title sizes */
+        .section-title {
+            font-size: 1.2rem;  /* Smaller than default h2 */
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        /* Add more spacing between sections */
+        .metrics-container {
+            margin-bottom: 3.5rem;  /* Increased to 3.5rem */
+        }
+
+        /* Adjust card spacing */
+        .card {
+            margin-bottom: 1.5rem;  /* Add space between cards */
+        }
+
+        /* Adjust metric label sizes */
+        .metric-label {
+            font-size: 0.9rem;
+            color: var(--color-text);
+            opacity: 0.7;
+        }
+
+        .metrics-container {
+            margin-bottom: 3.5rem;
+        }
+
+        .metrics-container h2 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--color-text);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            background: #f9f9f9;
+            padding: 24px;
+            border-radius: 8px;
+        }
+
+        .metric-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            color: #666;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .metric-value {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--color-text);
+        }
+
+        .bi-info-circle {
+            font-size: 0.8rem;
+            color: #999;
+            cursor: help;
+        }
+
+        .network-graph-container {
+            width: 100%;
+            height: 600px;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .network-graph-container svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .btn-close {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            opacity: 0.5;
+            transition: opacity 0.2s;
+        }
+
+        .btn-close:hover {
+            opacity: 1;
+        }
+
+        .panel-header {
+            position: relative;
+            padding-right: 40px;
+        }
+
+        .partner-item {
+            padding: 8px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        .partner-item:hover {
+            background-color: var(--color-background-darker);
+        }
+
+        .value {
+            margin-left: 8px;
+            font-weight: 600;
+        }
+
+        .value.positive {
+            color: #28a745;
+        }
+
+        .value.negative {
+            color: #dc3545;
+        }
+
+        .period {
+            color: #666;
+            font-size: 0.9em;
+            margin-left: 8px;
+        }
+
+        /* Add these styles in the existing <style> section */
+        .partnership-carousel {
+            overflow: hidden;
+            position: relative;
+            margin: 0 -15px;  /* Compensate for column padding */
+        }
+
+        .partnership-slide {
+            display: flex;
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 0 15px;
+            width: 100%;
+        }
+
+        .partnership-nav-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+            z-index: 10;
+        }
+
+        .partnership-nav {
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background-color: #007bff;
+            border: none;
+            color: white;
+            transition: background-color 0.2s ease;
+        }
+
+        .partnership-nav:hover:not(:disabled) {
+            background-color: #0056b3;
+        }
+
+        .partnership-nav:disabled {
+            background-color: #e9ecef;
+            color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .partnership-indicators {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #dee2e6;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .indicator.active {
+            background-color: #007bff;
+        }
+
+        /* Update the partnership health card styling */
+        .partnership-health-card {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            padding: 1rem 1.5rem;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+        }
+
+        .health-metric {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .health-metric-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .health-metric-value {
+            font-weight: 600;
+            font-size: 1.2rem;
+        }
+
+        .health-metric-value.positive {
+            color: #28a745;
+        }
+
+        .health-metric-value.negative {
+            color: #dc3545;
+        }
+
+        /* Update the button styles */
+        .partnership-nav {
+            background-color: #007bff !important;
+            color: white !important;
+        }
+
+        .partnership-nav:hover:not(:disabled) {
+            background-color: #0056b3 !important;
+        }
+
+        /* Update the search and manual referrals container */
+        .search-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Update the HTML structure for the partnership health section */
+        .partnership-health-card {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            padding: 1rem 1.5rem;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Add these styles to your existing style section */
+        .sortable {
+            cursor: pointer;
+            position: relative;
+        }
+
+        .sortable:after {
+            content: '\2195';  /* Unicode for ↕ */
+            font-size: 12px;
+            color: #999;
+            margin-left: 5px;
+        }
+
+        .sortable.asc:after {
+            content: '\2191';  /* Unicode for ↑ */
+            color: #007bff;
+        }
+
+        .sortable.desc:after {
+            content: '\2193';  /* Unicode for ↓ */
+            color: #007bff;
+        }
+
+        /* Form control styles */
+        .form-control {
+            height: 36px;
+            padding: 8px 16px;
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            font-size: 14px;
+            background: #FFFFFF;
+            line-height: 20px;
+        }
+
+        /* Search and button container styles */
+        .d-flex.justify-content-between .form-control {
+            height: 38px;
+            width: 250px;
+            padding: 0.375rem 0.75rem;
+        }
+
+        .d-flex.justify-content-between .btn {
+            height: 38px;
+            padding: 0.375rem 0.75rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Footer styles */
+        .footer {
+            width: 100%;
+            background: white;
+            padding: 12px 24px;
+            border-top: 1px solid var(--color-border);
+            text-align: center;
+            font-size: 0.9rem;
+            margin-top: 2rem;
+        }
+
+        .footer a {
+            color: var(--color-text);
+            text-decoration: none;
+            opacity: 0.7;
+            transition: opacity 0.2s ease;
+        }
+
+        .footer a:hover {
+            opacity: 1;
+        }
+    </style>
+    <!-- Add this in the head section with other scripts -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <div class="container mt-4">
+        <h2 class="mb-4">Creator Network Analytics</h2>
+        
+        <!-- Add Client and Date Selectors -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="clientSelect">Client</label>
+                    <select class="form-select" id="clientSelect">
+                        <option value="all">All Clients</option>
+                        <option value="Demo Client">Demo Client</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="dateRangeSelect">Date Range</label>
+                    <select class="form-select" id="dateRangeSelect">
+                        <option value="1">24 hours</option>
+                        <option value="2">48 hours</option>
+                        <option value="7">7 days</option>
+                        <option value="14">14 days</option>
+                        <option value="30" selected>30 days</option>
+                        <option value="90">90 days</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add this after the date selector, before the table -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5>Partnership Health</h5>
+                        <div class="d-flex justify-content-between">
+                            <div class="metric">
+                                <label>Improving</label>
+                                <span class="value positive">1</span>
                             </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="dateRangeSelect">Date Range</label>
-                                <select class="form-select" id="dateRangeSelect">
-                                    <option value="1">24 hours</option>
-                                    <option value="2">48 hours</option>
-                                    <option value="7">7 days</option>
-                                    <option value="14">14 days</option>
-                                    <option value="30" selected>30 days</option>
-                                    <option value="90">90 days</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Add this after the date selector, before the table -->
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-body">
-                                    <h5>Partnership Health</h5>
-                                    <div class="d-flex justify-content-between">
-                                        <div class="metric">
-                                            <label>Improving</label>
-                                            <span class="value positive">1</span>
-                                        </div>
-                                        <div class="metric">
-                                            <label>Declining</label>
-                                            <span class="value negative">3</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <h6>Fastest Growing</h6>
-                                            <div class="fastest-growing">
-                                                <!-- Growing partnerships will go here -->
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <h6>Fastest Declining</h6>
-                                            <div class="fastest-declining">
-                                                <!-- Declining partnerships will go here -->
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                            <div class="metric">
+                                <label>Declining</label>
+                                <span class="value negative">3</span>
                             </div>
                         </div>
                     </div>
-
-                    <div id="masterDashboard" class="mb-5">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
                         <div class="row">
-                            <!-- Overall Health Card -->
-                            <div class="col-md-4">
-                                <div class="card">
-                                    <div class="card-body">
-                                        <h5>Network Health</h5>
-                                        <div class="d-flex justify-content-between">
-                                            <div class="metric">
-                                                <label>Total Active Partnerships</label>
-                                                <span id="totalPartnerships" class="value">0</span>
-                                            </div>
-                                            <div class="metric">
-                                                <label>Troubled Partnerships</label>
-                                                <span id="troubledPartnerships" class="value negative">0</span>
-                                            </div>
-                                        </div>
-                                    </div>
+                            <div class="col-md-6">
+                                <h6>Fastest Growing</h6>
+                                <div class="fastest-growing">
+                                    <!-- Growing partnerships will go here -->
                                 </div>
                             </div>
-                            
-                            <!-- Most Imbalanced Card -->
-                            <div class="col-md-4">
-                                <div class="card">
-                                    <div class="card-body">
-                                        <h5>Most Imbalanced Partnerships</h5>
-                                        <div id="topImbalances">
-                                            <!-- Will be populated dynamically -->
-                                        </div>
-                                    </div>
+                            <div class="col-md-6">
+                                <h6>Fastest Declining</h6>
+                                <div class="fastest-declining">
+                                    <!-- Declining partnerships will go here -->
                                 </div>
                             </div>
-                            
-                            <!-- Inactive Partnerships Card -->
-                            <div class="col-md-4">
-                                <div class="card">
-                                    <div class="card-body">
-                                        <h5>Recently Inactive</h5>
-                                        <div id="recentlyInactive">
-                                            <!-- Will be populated dynamically -->
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Network Graph -->
-                        <div class="row mt-4">
-                            <div class="col-12">
-                                <div class="card mb-4">
-                                    <h2>Network Graph</h2>
-                                    <div id="networkGraph" class="network-graph-container"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="defaultDashboard">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h3 class="mb-0">Largest Referral Imbalances</h3>
-                            <div class="d-flex align-items-center gap-3">
-                                <input type="text" 
-                                    class="form-control form-control-sm" 
-                                    placeholder="Search partners..." 
-                                    id="partnerSearch"
-                                    style="width: 250px; height: 38px;"
-                                    oninput="filterPartners(this.value)">
-                                <button class="btn btn-outline-primary d-inline-flex align-items-center gap-2" 
-                                        style="height: 38px;"
-                                        data-bs-toggle="modal" 
-                                        data-bs-target="#manualEntryModal">
-                                    <i class="bi bi-plus-circle"></i> Add Manual Referrals
-                                </button>
-                            </div>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th class="sortable" onclick="sortTable('partner')">Partner</th>
-                                        <th class="sortable" onclick="sortTable('received')">Received</th>
-                                        <th class="sortable" onclick="sortTable('sent')">Sent</th>
-                                        <th class="sortable desc" onclick="sortTable('balance')">Balance</th>
-                                        <th class="sortable" onclick="sortTable('allTimeBalance')">All-Time Balance</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="activePartners">
-                                    <!-- Active partners will go here -->
-                                </tbody>
-                                
-                                <tbody id="inactivePartnersSection" class="collapse">
-                                    <!-- Inactive partners will go here -->
-                                </tbody>
-                            </table>
-                            
-                            <button class="show-more-button" type="button" 
-                                    data-bs-toggle="collapse" 
-                                    data-bs-target="#inactivePartnersSection" 
-                                    aria-expanded="false">
-                                <span class="button-text">Show inactive partners</span>
-                                <i class="bi bi-chevron-down"></i>
-                            </button>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <!-- Trends Panel -->
-                <div id="trendsPanel" class="trends-panel">
-                    <div class="panel-header">
-                        <div class="title-section">
-                            <h6>Partnership Trends</h6>
-                            <h1 id="partnerName" class="partner-name"></h1>
-                        </div>
-                        <button type="button" class="btn-close" onclick="closeTrendsPanel()"></button>
-                    </div>
-                    
-                    <div class="metrics-container">
-                        <h2>Current Period <span class="period-label" id="period-label"></span></h2>
-                        <div class="metrics-grid">
-                            <div class="metric-item">
-                                <div class="metric-label">Received</div>
-                                <div class="metric-value" id="receivedMetric">5</div>
-                            </div>
-                            <div class="metric-item">
-                                <div class="metric-label">Sent</div>
-                                <div class="metric-value" id="sentMetric">1,884</div>
-                            </div>
-                            <div class="metric-item">
-                                <div class="metric-label">Balance</div>
-                                <div class="metric-value" id="balanceMetric">-1,879</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="metrics-container">
-                        <h2>Growth Metrics</h2>
-                        <div class="metrics-grid">
-                            <div class="metric-item">
-                                <div class="metric-label">
-                                    Daily Change 
-                                    <i class="bi bi-info-circle" data-bs-toggle="tooltip" data-bs-placement="top" title="Average daily change in referrals"></i>
+        <div id="masterDashboard" class="mb-5">
+            <div class="row">
+                <!-- Overall Health Card -->
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5>Network Health</h5>
+                            <div class="d-flex justify-content-between">
+                                <div class="metric">
+                                    <label>Total Active Partnerships</label>
+                                    <span id="totalPartnerships" class="value">0</span>
                                 </div>
-                                <div class="metric-value" id="dailyChangeMetric">944.5</div>
-                            </div>
-                            <div class="metric-item">
-                                <div class="metric-label">
-                                    Growth Rate 
-                                    <i class="bi bi-info-circle" data-bs-toggle="tooltip" data-bs-placement="top" title="Percentage growth over period"></i>
+                                <div class="metric">
+                                    <label>Troubled Partnerships</label>
+                                    <span id="troubledPartnerships" class="value negative">0</span>
                                 </div>
-                                <div class="metric-value" id="growthRateMetric">166.6%</div>
                             </div>
-                            <div class="metric-item">
-                                <div class="metric-label">
-                                    Trend 
-                                    <i class="bi bi-info-circle" data-bs-toggle="tooltip" data-bs-placement="top" title="Overall trend direction"></i>
-                                </div>
-                                <div class="metric-value" id="trendMetric">Declining</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="metrics-container">
-                        <h2>Historical Trend</h2>
-                        <div class="chart-container">
-                            <canvas id="trendChart"></canvas>
-                        </div>
-                    </div>
-
-                    <div class="metrics-container">
-                        <h2>Conversion Rate</h2>
-                        <div class="chart-container">
-                            <canvas id="conversionRateChart"></canvas>
-                        </div>
-                    </div>
-
-                    <div class="metrics-container">
-                        <h2>Daily Changes</h2>
-                        <div class="chart-container">
-                            <canvas id="dailyChangesChart"></canvas>
                         </div>
                     </div>
                 </div>
+                
+                <!-- Most Imbalanced Card -->
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5>Most Imbalanced Partnerships</h5>
+                            <div id="topImbalances">
+                                <!-- Will be populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Inactive Partnerships Card -->
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5>Recently Inactive</h5>
+                            <div id="recentlyInactive">
+                                <!-- Will be populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                <script>
-                    // Add this at the very top of your JavaScript section
-                    const API_BASE_URL = window.location.hostname === 'localhost'
-                        ? 'http://localhost:5001'
-                        : 'https://referral-tracker-8dea3f9d92b7.herokuapp.com';
+            <!-- Network Graph -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card mb-4">
+                        <h2>Network Graph</h2>
+                        <div id="networkGraph" class="network-graph-container"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="defaultDashboard">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="mb-0">Largest Referral Imbalances</h3>
+                <div class="d-flex align-items-center gap-3">
+                    <input type="text" 
+                        class="form-control form-control-sm" 
+                        placeholder="Search partners..." 
+                        id="partnerSearch"
+                        style="width: 250px; height: 38px;"
+                        oninput="filterPartners(this.value)">
+                    <button class="btn btn-outline-primary d-inline-flex align-items-center gap-2" 
+                            style="height: 38px;"
+                            data-bs-toggle="modal" 
+                            data-bs-target="#manualEntryModal">
+                        <i class="bi bi-plus-circle"></i> Add Manual Referrals
+                    </button>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th class="sortable" onclick="sortTable('partner')">Partner</th>
+                            <th class="sortable" onclick="sortTable('received')">Received</th>
+                            <th class="sortable" onclick="sortTable('sent')">Sent</th>
+                            <th class="sortable desc" onclick="sortTable('balance')">Balance</th>
+                            <th class="sortable" onclick="sortTable('allTimeBalance')">All-Time Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody id="activePartners">
+                        <!-- Active partners will go here -->
+                    </tbody>
                     
-                    console.log('Current hostname:', window.location.hostname);
-                    console.log('API_BASE_URL set to:', API_BASE_URL);
+                    <tbody id="inactivePartnersSection" class="collapse">
+                        <!-- Inactive partners will go here -->
+                    </tbody>
+                </table>
+                
+                <button class="show-more-button" type="button" 
+                        data-bs-toggle="collapse" 
+                        data-bs-target="#inactivePartnersSection" 
+                        aria-expanded="false">
+                    <span class="button-text">Show inactive partners</span>
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+            </div>
+        </div>
+    </div>
 
-                    // 1. Global variables (declare only once)
-                    let exchangeChart = null;
-                    let currentSort = { column: 'balance', direction: 'desc' };
-                    let tableData = [];
-                    let avatar_mapping = {};
-                    let trendChart = null;  // Global reference to chart
-                    let dailyChangesChart = null; // Add this as a global variable at the top with other declarations
-                    let conversionRateChart = null;  // Add this variable
+    <!-- Trends Panel -->
+    <div id="trendsPanel" class="trends-panel">
+        <div class="panel-header">
+            <div class="title-section">
+                <h6>Partnership Trends</h6>
+                <h1 id="partnerName" class="partner-name"></h1>
+            </div>
+            <button type="button" class="btn-close" onclick="closeTrendsPanel()"></button>
+        </div>
+        
+        <div class="metrics-container">
+            <h2>Current Period <span class="period-label" id="period-label"></span></h2>
+            <div class="metrics-grid">
+                <div class="metric-item">
+                    <div class="metric-label">Received</div>
+                    <div class="metric-value" id="receivedMetric">5</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-label">Sent</div>
+                    <div class="metric-value" id="sentMetric">1,884</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-label">Balance</div>
+                    <div class="metric-value" id="balanceMetric">-1,879</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="metrics-container">
+            <h2>Growth Metrics</h2>
+            <div class="metrics-grid">
+                <div class="metric-item">
+                    <div class="metric-label">
+                        Daily Change 
+                        <i class="bi bi-info-circle" data-bs-toggle="tooltip" data-bs-placement="top" title="Average daily change in referrals"></i>
+                    </div>
+                    <div class="metric-value" id="dailyChangeMetric">944.5</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-label">
+                        Growth Rate 
+                        <i class="bi bi-info-circle" data-bs-toggle="tooltip" data-bs-placement="top" title="Percentage growth over period"></i>
+                    </div>
+                    <div class="metric-value" id="growthRateMetric">166.6%</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-label">
+                        Trend 
+                        <i class="bi bi-info-circle" data-bs-toggle="tooltip" data-bs-placement="top" title="Overall trend direction"></i>
+                    </div>
+                    <div class="metric-value" id="trendMetric">Declining</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="metrics-container">
+            <h2>Historical Trend</h2>
+            <div class="chart-container">
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
 
-                    // Define populateClientDropdown function
-                    async function populateClientDropdown() {
-                        try {
-                            const response = await fetch(`${API_BASE_URL}/api/available-accounts`);
-                            const data = await response.json();
-                            
-                            if (data.success) {
-                                const clientSelect = document.getElementById('clientSelect');
-                                clientSelect.innerHTML = '<option value="All Clients">All Clients</option>';
-                                
-                                // Only add enabled accounts to the dropdown
-                                data.enabled_accounts.forEach(account => {
-                                    const option = document.createElement('option');
-                                    option.value = account;
-                                    option.textContent = account;
-                                    clientSelect.appendChild(option);
-                                });
-                            } else {
-                                console.error('Failed to get accounts:', data.error);
-                                alert('Error loading accounts: ' + data.error);
-                            }
-                        } catch (error) {
-                            console.error('Error loading accounts:', error);
-                            alert('Error loading accounts: ' + error.message);
-                        }
+        <div class="metrics-container">
+            <h2>Conversion Rate</h2>
+            <div class="chart-container">
+                <canvas id="conversionRateChart"></canvas>
+            </div>
+        </div>
+
+        <div class="metrics-container">
+            <h2>Daily Changes</h2>
+            <div class="chart-container">
+                <canvas id="dailyChangesChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Add this at the very top of your JavaScript section
+        const API_BASE_URL = window.location.hostname === 'localhost'
+            ? 'http://localhost:5001'
+            : 'https://referral-tracker-8dea3f9d92b7.herokuapp.com';
+        
+        console.log('Current hostname:', window.location.hostname);
+        console.log('API_BASE_URL set to:', API_BASE_URL);
+
+        // 1. Global variables (declare only once)
+        let exchangeChart = null;
+        let currentSort = { column: 'balance', direction: 'desc' };
+        let tableData = [];
+        let avatar_mapping = {};
+        let trendChart = null;  // Global reference to chart
+        let dailyChangesChart = null; // Add this as a global variable at the top with other declarations
+        let conversionRateChart = null;  // Add this variable
+
+        // Define populateClientDropdown function
+        async function populateClientDropdown() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/available-accounts`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const clientSelect = document.getElementById('clientSelect');
+                    clientSelect.innerHTML = '<option value="All Clients">All Clients</option>';
+                    
+                    // Only add enabled accounts to the dropdown
+                    data.enabled_accounts.forEach(account => {
+                        const option = document.createElement('option');
+                        option.value = account;
+                        option.textContent = account;
+                        clientSelect.appendChild(option);
+                    });
+                } else {
+                    console.error('Failed to get accounts:', data.error);
+                    alert('Error loading accounts: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error loading accounts:', error);
+                alert('Error loading accounts: ' + error.message);
+            }
+        }
+
+        // 2. DOM Ready handler (single one)
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('DOMContentLoaded event fired');
+            try {
+                // Load avatar mapping
+                const avatarResponse = await fetch(`${API_BASE_URL}/data/avatars/avatar_mapping.json`);
+                avatar_mapping = await avatarResponse.json();
+                
+                // Populate client dropdown first
+                console.log('Calling populateClientDropdown');
+                await populateClientDropdown();
+
+                // Initialize master dashboard view
+                toggleDashboardView('master');
+                await updateMasterDashboard();
+                
+                // Initialize tooltips
+                const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+                if (tooltips.length > 0 && typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+                    tooltips.forEach(el => new bootstrap.Tooltip(el));
+                }
+            } catch (error) {
+                console.error('Error during initialization:', error);
+            }
+        });
+
+        // 3. Format number function
+        function formatNumber(num) {
+            if (num === null || num === undefined) return '0';
+            return num.toLocaleString();
+        }
+        
+        // 4. Show trends panel function
+        function showTrendsPanel(partner, account) {
+            console.log('Showing trends panel for:', partner, 'Account:', account);
+            
+            document.getElementById('partnerName').textContent = partner;
+            const panel = document.getElementById('trendsPanel');
+            panel.classList.add('active');
+            
+            // Get date range
+            const dateRange = document.getElementById('dateRangeSelect').value;
+            const end = new Date();
+            const start = new Date();
+            start.setDate(end.getDate() - parseInt(dateRange));
+            
+            // Build URL with query parameters
+            const params = new URLSearchParams({
+                account: account,
+                partner: partner,
+                start: start.toISOString().split('T')[0],
+                end: end.toISOString().split('T')[0]
+            });
+            
+            const url = `${API_BASE_URL}/api/partnership-trends?${params.toString()}`;
+            
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
                     }
-
-                    // 2. DOM Ready handler (single one)
-                    document.addEventListener('DOMContentLoaded', async function() {
-                        console.log('DOMContentLoaded event fired');
-                        try {
-                            // Load avatar mapping
-                            const avatarResponse = await fetch(`${API_BASE_URL}/data/avatars/avatar_mapping.json`);
-                            avatar_mapping = await avatarResponse.json();
-                            
-                            // Populate client dropdown first
-                            console.log('Calling populateClientDropdown');
-                            await populateClientDropdown();
-
-                            // Initialize master dashboard view
-                            toggleDashboardView('master');
-                            await updateMasterDashboard();
-                            
-                            // Initialize tooltips
-                            const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-                            if (tooltips.length > 0 && typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
-                                tooltips.forEach(el => new bootstrap.Tooltip(el));
+                    return response.json();
+                })
+                .then(data => {
+                    if (!data.historical_data) {
+                        throw new Error('No historical data received');
+                    }
+                    
+                    // Update the main trend chart
+                    const trendCtx = document.getElementById('trendChart').getContext('2d');
+                    if (trendChart instanceof Chart) {
+                        trendChart.destroy();
+                    }
+                    trendChart = new Chart(trendCtx, {
+                        type: 'line',
+                        data: {
+                            labels: data.historical_data.dates,
+                            datasets: [{
+                                label: 'Received',
+                                data: data.historical_data.received,
+                                borderColor: 'rgb(75, 192, 192)',
+                                backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                                tension: 0.1,
+                                fill: true
+                            }, {
+                                label: 'Sent',
+                                data: data.historical_data.sent,
+                                borderColor: 'rgb(255, 99, 132)',
+                                backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                                tension: 0.1,
+                                fill: true
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        callback: function(value) {
+                                            return value.toLocaleString();
+                                        }
+                                    }
+                                }
                             }
-                        } catch (error) {
-                            console.error('Error during initialization:', error);
                         }
                     });
 
-                    // 3. Format number function
-                    function formatNumber(num) {
-                        if (num === null || num === undefined) return '0';
-                        return num.toLocaleString();
+                    // Render conversion rate chart
+                    const conversionCtx = document.getElementById('conversionRateChart').getContext('2d');
+                    if (conversionRateChart instanceof Chart) {
+                        conversionRateChart.destroy();
                     }
-                    
-                    // 4. Show trends panel function
-                    function showTrendsPanel(partner, account) {
-                        console.log('Showing trends panel for:', partner, 'Account:', account);
-                        
-                        document.getElementById('partnerName').textContent = partner;
-                        const panel = document.getElementById('trendsPanel');
-                        panel.classList.add('active');
-                        
-                        // Get date range
-                        const dateRange = document.getElementById('dateRangeSelect').value;
-                        const end = new Date();
-                        const start = new Date();
-                        start.setDate(end.getDate() - parseInt(dateRange));
-                        
-                        // Build URL with query parameters
-                        const params = new URLSearchParams({
-                            account: account,
-                            partner: partner,
-                            start: start.toISOString().split('T')[0],
-                            end: end.toISOString().split('T')[0]
+
+                    // Check if we have valid conversion rate data
+                    if (data.historical_data.sent_conversion_rates || data.historical_data.received_conversion_rates) {
+                        // Filter out null values and prepare data for both rates
+                        const sentData = data.historical_data.sent_conversion_rates.map((rate, index) => ({
+                            x: new Date(data.historical_data.dates[index]),  // Convert to Date object
+                            y: rate !== null ? rate * 100 : null  // Convert to percentage
+                        })).filter(point => point.y !== null);
+
+                        const receivedData = data.historical_data.received_conversion_rates.map((rate, index) => ({
+                            x: new Date(data.historical_data.dates[index]),  // Convert to Date object
+                            y: rate !== null ? rate * 100 : null  // Convert to percentage
+                        })).filter(point => point.y !== null);
+
+                        conversionRateChart = new Chart(conversionCtx, {
+                            type: 'line',
+                            data: {
+                                datasets: [{
+                                    label: 'Sent Conversion Rate',
+                                    data: sentData,
+                                    borderColor: '#dc3545',  // Red to match sent color scheme
+                                    backgroundColor: '#dc3545',
+                                    tension: 0,  // Remove curve between points
+                                    pointRadius: 4,
+                                    pointHoverRadius: 6,
+                                    spanGaps: false  // Don't connect points across gaps
+                                }, {
+                                    label: 'Received Conversion Rate',
+                                    data: receivedData,
+                                    borderColor: '#28a745',  // Green to match received color scheme
+                                    backgroundColor: '#28a745',
+                                    tension: 0,  // Remove curve between points
+                                    pointRadius: 4,
+                                    pointHoverRadius: 6,
+                                    spanGaps: false  // Don't connect points across gaps
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                interaction: {
+                                    intersect: false,
+                                    mode: 'index'
+                                },
+                                plugins: {
+                                    legend: {
+                                        position: 'top'
+                                    },
+                                    tooltip: {
+                                        callbacks: {
+                                            label: context => `${context.dataset.label}: ${context.parsed.y.toFixed(1)}%`,
+                                            title: (tooltipItems) => {
+                                                const date = new Date(tooltipItems[0].parsed.x);
+                                                return date.toLocaleDateString('en-US', { 
+                                                    month: 'short', 
+                                                    day: 'numeric',
+                                                    year: 'numeric'
+                                                });
+                                            }
+                                        }
+                                    },
+                                    zoom: {
+                                        pan: {
+                                            enabled: true,
+                                            mode: 'x',
+                                            modifierKey: 'ctrl'
+                                        },
+                                        zoom: {
+                                            wheel: {
+                                                enabled: true,
+                                                modifierKey: 'ctrl'
+                                            },
+                                            pinch: {
+                                                enabled: true
+                                            },
+                                            mode: 'x'
+                                        }
+                                    }
+                                },
+                                scales: {
+                                    x: {
+                                        type: 'time',
+                                        time: {
+                                            unit: 'day',
+                                            displayFormats: {
+                                                day: 'MMM d'
+                                            }
+                                        },
+                                        title: {
+                                            display: true,
+                                            text: 'Date'
+                                        }
+                                    },
+                                    y: {
+                                        beginAtZero: true,
+                                        max: 100,  // Set max to 100%
+                                        ticks: {
+                                            callback: value => value.toFixed(1) + '%'
+                                        },
+                                        title: {
+                                            display: true,
+                                            text: 'Conversion Rate (%)'
+                                        }
+                                    }
+                                }
+                            }
                         });
-                        
-                        const url = `${API_BASE_URL}/api/partnership-trends?${params.toString()}`;
-                        
-                        fetch(url)
-                            .then(response => {
-                                if (!response.ok) {
-                                    throw new Error(`HTTP error! status: ${response.status}`);
-                                }
-                                return response.json();
-                            })
-                            .then(data => {
-                                if (!data.historical_data) {
-                                    throw new Error('No historical data received');
-                                }
-                                
-                                // Update the main trend chart
-                                const trendCtx = document.getElementById('trendChart').getContext('2d');
-                                if (trendChart instanceof Chart) {
-                                    trendChart.destroy();
-                                }
-                                trendChart = new Chart(trendCtx, {
-                                    type: 'line',
-                                    data: {
-                                        labels: data.historical_data.dates,
-                                        datasets: [{
-                                            label: 'Received',
-                                            data: data.historical_data.received,
-                                            borderColor: 'rgb(75, 192, 192)',
-                                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
-                                            tension: 0.1,
-                                            fill: true
-                                        }, {
-                                            label: 'Sent',
-                                            data: data.historical_data.sent,
-                                            borderColor: 'rgb(255, 99, 132)',
-                                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
-                                            tension: 0.1,
-                                            fill: true
-                                        }]
-                                    },
-                                    options: {
-                                        responsive: true,
-                                        maintainAspectRatio: false,
-                                        scales: {
-                                            y: {
-                                                beginAtZero: true,
-                                                ticks: {
-                                                    callback: function(value) {
-                                                        return value.toLocaleString();
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                });
 
-                                // Render conversion rate chart
-                                const conversionCtx = document.getElementById('conversionRateChart').getContext('2d');
-                                if (conversionRateChart instanceof Chart) {
-                                    conversionRateChart.destroy();
-                                }
+                        // Add reset zoom button
+                        const resetZoomButton = document.createElement('button');
+                        resetZoomButton.className = 'btn btn-sm btn-outline-secondary mt-2';
+                        resetZoomButton.innerHTML = 'Reset Zoom';
+                        resetZoomButton.onclick = () => {
+                            conversionRateChart.resetZoom();
+                        };
+                        conversionCtx.canvas.parentElement.appendChild(resetZoomButton);
 
-                                // Check if we have valid conversion rate data
-                                if (data.historical_data.sent_conversion_rates || data.historical_data.received_conversion_rates) {
-                                    // Filter out null values and prepare data for both rates
-                                    const sentData = data.historical_data.sent_conversion_rates.map((rate, index) => ({
-                                        x: data.historical_data.dates[index],
-                                        y: rate !== null ? rate * 100 : null  // Convert to percentage
-                                    })).filter(point => point.y !== null);
-
-                                    const receivedData = data.historical_data.received_conversion_rates.map((rate, index) => ({
-                                        x: data.historical_data.dates[index],
-                                        y: rate !== null ? rate * 100 : null  // Convert to percentage
-                                    })).filter(point => point.y !== null);
-
-                                    conversionRateChart = new Chart(conversionCtx, {
-                                        type: 'line',
-                                        data: {
-                                            datasets: [{
-                                                label: 'Sent Conversion Rate',
-                                                data: sentData,
-                                                borderColor: '#dc3545',  // Red to match sent color scheme
-                                                backgroundColor: '#dc3545',
-                                                tension: 0.4,
-                                                pointRadius: 4,
-                                                pointHoverRadius: 6
-                                            }, {
-                                                label: 'Received Conversion Rate',
-                                                data: receivedData,
-                                                borderColor: '#28a745',  // Green to match received color scheme
-                                                backgroundColor: '#28a745',
-                                                tension: 0.4,
-                                                pointRadius: 4,
-                                                pointHoverRadius: 6
-                                            }]
-                                        },
-                                        options: {
-                                            responsive: true,
-                                            maintainAspectRatio: false,
-                                            interaction: {
-                                                intersect: false,
-                                                mode: 'index'
-                                            },
-                                            plugins: {
-                                                legend: {
-                                                    position: 'top'
-                                                },
-                                                tooltip: {
-                                                    callbacks: {
-                                                        label: context => `${context.dataset.label}: ${context.parsed.y.toFixed(1)}%`
-                                                    }
-                                                }
-                                            },
-                                            scales: {
-                                                y: {
-                                                    beginAtZero: true,
-                                                    max: 100,  // Set max to 100%
-                                                    ticks: {
-                                                        callback: value => value.toFixed(1) + '%'
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    });
-                                } else {
-                                    // If no conversion rate data, show a message
-                                    const container = conversionCtx.canvas.parentElement;
-                                    container.innerHTML = `
-                                        <div class="alert alert-info text-center">
-                                            No conversion rate data available for this period
-                                        </div>
-                                    `;
-                                }
-
-                                // Get date range for display
-                                const dateRange = document.getElementById('dateRangeSelect').value;
-                                const dateRangeText = dateRange === '7' ? 'Last 7 days' : 
-                                                    dateRange === '30' ? 'Last 30 days' : 
-                                                    dateRange === '90' ? 'Last 90 days' : 'Custom range';
-
-                                // Update period label
-                                document.getElementById('period-label').textContent = dateRangeText;
-
-                                // Calculate current period metrics (using only data within the selected period)
-                                const received = data.historical_data.received;
-                                const sent = data.historical_data.sent;
-
-                                // Calculate period totals (changes within the period)
-                                const periodReceived = received[received.length - 1] - received[0];
-                                const periodSent = sent[sent.length - 1] - sent[0];
-                                const periodBalance = periodReceived - periodSent;
-
-                                // Update Current Period section
-                                document.getElementById('receivedMetric').textContent = 
-                                    data.current_period.received.toLocaleString();
-                                document.getElementById('sentMetric').textContent = 
-                                    data.current_period.sent.toLocaleString();
-                                document.getElementById('balanceMetric').textContent = 
-                                    data.current_period.balance.toLocaleString();
-
-                                // Calculate Growth Metrics
-                                // Daily Change: Average change per day over the period
-                                let totalReceivedChange = 0;
-                                let daysWithChanges = 0;
-
-                                // Calculate daily changes and growth rate
-                                for (let i = 1; i < received.length; i++) {
-                                    const receivedChange = received[i] - received[i-1];
-                                    if (receivedChange !== 0) {
-                                        totalReceivedChange += receivedChange;
-                                        daysWithChanges++;
-                                    }
-                                }
-
-                                // Daily Change: Average change on days when there were changes
-                                const avgDailyChange = daysWithChanges > 0 ? 
-                                    (totalReceivedChange / daysWithChanges).toFixed(1) : 0;
-
-                                // Growth Rate: Percentage change from start to end of period
-                                const startValue = received[0];
-                                const endValue = received[received.length - 1];
-                                const growthRate = startValue > 0 ? 
-                                    (((endValue - startValue) / startValue) * 100).toFixed(1) : 0;
-
-                                // Trend: Based on overall change during period
-                                const trend = (endValue - startValue) > 0 ? 'Improving' : 'Declining';
-
-                                // Update Growth Metrics section
-                                document.getElementById('dailyChangeMetric').textContent = 
-                                    (avgDailyChange > 0 ? '+' : '') + avgDailyChange;
-                                document.getElementById('growthRateMetric').textContent = 
-                                    (growthRate > 0 ? '+' : '') + growthRate + '%';
-                                document.getElementById('trendMetric').textContent = trend;
-
-                                // Calculate and update daily changes
-                                const dailyChanges = {
-                                    dates: data.historical_data.dates.slice(1),
-                                    received: [],
-                                    sent: []
-                                };
-                                
-                                // Find first non-zero values (baselines)
-                                let baselineReceivedIndex = data.historical_data.received.findIndex(val => val > 0);
-                                let baselineSentIndex = data.historical_data.sent.findIndex(val => val > 0);
-                                
-                                // Calculate daily changes, but only after respective baselines
-                                for (let i = 1; i < data.historical_data.dates.length; i++) {
-                                    // For received changes
-                                    if (i > baselineReceivedIndex && baselineReceivedIndex !== -1) {
-                                        dailyChanges.received.push(
-                                            data.historical_data.received[i] - data.historical_data.received[i-1]
-                                        );
-                                    } else {
-                                        dailyChanges.received.push(0);
-                                    }
-                                    
-                                    // For sent changes
-                                    if (i > baselineSentIndex && baselineSentIndex !== -1) {
-                                        dailyChanges.sent.push(
-                                            data.historical_data.sent[i] - data.historical_data.sent[i-1]
-                                        );
-                                    } else {
-                                        dailyChanges.sent.push(0);
-                                    }
-                                }
-
-                                // Update daily changes chart
-                                const dailyCtx = document.getElementById('dailyChangesChart').getContext('2d');
-                                if (dailyChangesChart instanceof Chart) {
-                                    dailyChangesChart.destroy();
-                                }
-                                dailyChangesChart = new Chart(dailyCtx, {
-                                    type: 'line', // Changed from 'bar' to 'line'
-                                    data: {
-                                        labels: dailyChanges.dates,
-                                        datasets: [{
-                                            label: 'Received Changes',
-                                            data: dailyChanges.received,
-                                            borderColor: 'rgb(75, 192, 192)',
-                                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
-                                            tension: 0.1,
-                                            fill: true
-                                        }, {
-                                            label: 'Sent Changes',
-                                            data: dailyChanges.sent,
-                                            borderColor: 'rgb(255, 99, 132)',
-                                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
-                                            tension: 0.1,
-                                            fill: true
-                                        }]
-                                    },
-                                    options: {
-                                        responsive: true,
-                                        maintainAspectRatio: false,
-                                        scales: {
-                                            y: {
-                                                beginAtZero: true,
-                                                ticks: {
-                                                    callback: function(value) {
-                                                        return value > 0 ? '+' + value.toLocaleString() : value.toLocaleString();
-                                                    }
-                                                }
-                                            }
-                                        },
-                                        plugins: {
-                                            tooltip: {
-                                                callbacks: {
-                                                    label: function(context) {
-                                                        const value = context.parsed.y;
-                                                        const formattedValue = value > 0 ? '+' + value.toLocaleString() : value.toLocaleString();
-                                                        return `${context.dataset.label}: ${formattedValue}`;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                });
-                            })
-                            .catch(error => {
-                                console.error('Error:', error);
-                                const chartContainer = document.getElementById('trendChart').parentElement;
-                                chartContainer.innerHTML = `
-                                    <div class="alert alert-danger">
-                                        Error loading trends: ${error.message}
-                                        <br>
-                                        <small>Please try refreshing the page</small>
-                                    </div>
-                                `;
-                            });
+                    } else {
+                        // If no conversion rate data, show a message
+                        const container = conversionCtx.canvas.parentElement;
+                        container.innerHTML = `
+                            <div class="alert alert-info text-center">
+                                No conversion rate data available for this period
+                            </div>
+                        `;
                     }
 
-                    // Add this cleanup function
-                    function closeTrendsPanel() {
-                        const panel = document.getElementById('trendsPanel');
-                        if (panel) {
-                            panel.classList.remove('active');
-                            // Clean up all charts
-                            if (trendChart instanceof Chart) {
-                                trendChart.destroy();
-                                trendChart = null;
-                            }
-                            if (dailyChangesChart instanceof Chart) {
-                                dailyChangesChart.destroy();
-                                dailyChangesChart = null;
-                            }
-                            if (conversionRateChart instanceof Chart) {
-                                conversionRateChart.destroy();
-                                conversionRateChart = null;
-                            }
+                    // Get date range for display
+                    const dateRange = document.getElementById('dateRangeSelect').value;
+                    const dateRangeText = dateRange === '7' ? 'Last 7 days' : 
+                                        dateRange === '30' ? 'Last 30 days' : 
+                                        dateRange === '90' ? 'Last 90 days' : 'Custom range';
+
+                    // Update period label
+                    document.getElementById('period-label').textContent = dateRangeText;
+
+                    // Calculate current period metrics (using only data within the selected period)
+                    const received = data.historical_data.received;
+                    const sent = data.historical_data.sent;
+
+                    // Calculate period totals (changes within the period)
+                    const periodReceived = received[received.length - 1] - received[0];
+                    const periodSent = sent[sent.length - 1] - sent[0];
+                    const periodBalance = periodReceived - periodSent;
+
+                    // Update Current Period section
+                    document.getElementById('receivedMetric').textContent = 
+                        data.current_period.received.toLocaleString();
+                    document.getElementById('sentMetric').textContent = 
+                        data.current_period.sent.toLocaleString();
+                    document.getElementById('balanceMetric').textContent = 
+                        data.current_period.balance.toLocaleString();
+
+                    // Calculate Growth Metrics
+                    // Daily Change: Average change per day over the period
+                    let totalReceivedChange = 0;
+                    let daysWithChanges = 0;
+
+                    // Calculate daily changes and growth rate
+                    for (let i = 1; i < received.length; i++) {
+                        const receivedChange = received[i] - received[i-1];
+                        if (receivedChange !== 0) {
+                            totalReceivedChange += receivedChange;
+                            daysWithChanges++;
                         }
                     }
-                    
 
+                    // Daily Change: Average change on days when there were changes
+                    const avgDailyChange = daysWithChanges > 0 ? 
+                        (totalReceivedChange / daysWithChanges).toFixed(1) : 0;
+
+                    // Growth Rate: Percentage change from start to end of period
+                    const startValue = received[0];
+                    const endValue = received[received.length - 1];
+                    const growthRate = startValue > 0 ? 
+                        (((endValue - startValue) / startValue) * 100).toFixed(1) : 0;
+
+                    // Trend: Based on overall change during period
+                    const trend = (endValue - startValue) > 0 ? 'Improving' : 'Declining';
+
+                    // Update Growth Metrics section
+                    document.getElementById('dailyChangeMetric').textContent = 
+                        (avgDailyChange > 0 ? '+' : '') + avgDailyChange;
+                    document.getElementById('growthRateMetric').textContent = 
+                        (growthRate > 0 ? '+' : '') + growthRate + '%';
+                    document.getElementById('trendMetric').textContent = trend;
+
+                    // Calculate and update daily changes
+                    const dailyChanges = {
+                        dates: data.historical_data.dates.slice(1),
+                        received: [],
+                        sent: []
+                    };
+                    
+                    // Find first non-zero values (baselines)
+                    let baselineReceivedIndex = data.historical_data.received.findIndex(val => val > 0);
+                    let baselineSentIndex = data.historical_data.sent.findIndex(val => val > 0);
+                    
+                    // Calculate daily changes, but only after respective baselines
+                    for (let i = 1; i < data.historical_data.dates.length; i++) {
+                        // For received changes
+                        if (i > baselineReceivedIndex && baselineReceivedIndex !== -1) {
+                            dailyChanges.received.push(
+                                data.historical_data.received[i] - data.historical_data.received[i-1]
+                            );
+                        } else {
+                            dailyChanges.received.push(0);
+                        }
+                        
+                        // For sent changes
+                        if (i > baselineSentIndex && baselineSentIndex !== -1) {
+                            dailyChanges.sent.push(
+                                data.historical_data.sent[i] - data.historical_data.sent[i-1]
+                            );
+                        } else {
+                            dailyChanges.sent.push(0);
+                        }
+                    }
+
+                    // Update daily changes chart
+                    const dailyCtx = document.getElementById('dailyChangesChart').getContext('2d');
+                    if (dailyChangesChart instanceof Chart) {
+                        dailyChangesChart.destroy();
+                    }
+                    dailyChangesChart = new Chart(dailyCtx, {
+                        type: 'line', // Changed from 'bar' to 'line'
+                        data: {
+                            labels: dailyChanges.dates,
+                            datasets: [{
+                                label: 'Received Changes',
+                                data: dailyChanges.received,
+                                borderColor: 'rgb(75, 192, 192)',
+                                backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                                tension: 0.1,
+                                fill: true
+                            }, {
+                                label: 'Sent Changes',
+                                data: dailyChanges.sent,
+                                borderColor: 'rgb(255, 99, 132)',
+                                backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                                tension: 0.1,
+                                fill: true
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        callback: function(value) {
+                                            return value > 0 ? '+' + value.toLocaleString() : value.toLocaleString();
+                                        }
+                                    }
+                                }
+                            },
+                            plugins: {
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            const value = context.parsed.y;
+                                            const formattedValue = value > 0 ? '+' + value.toLocaleString() : value.toLocaleString();
+                                            return `${context.dataset.label}: ${formattedValue}`;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    const chartContainer = document.getElementById('trendChart').parentElement;
+                    chartContainer.innerHTML = `
+                        <div class="alert alert-danger">
+                            Error loading trends: ${error.message}
+                            <br>
+                            <small>Please try refreshing the page</small>
+                        </div>
+                    `;
+                });
+    }
+
+    // Add this cleanup function
+    function closeTrendsPanel() {
+        const panel = document.getElementById('trendsPanel');
+        if (panel) {
+            panel.classList.remove('active');
+            // Clean up all charts
+            if (trendChart instanceof Chart) {
+                trendChart.destroy();
+                trendChart = null;
+            }
+            if (dailyChangesChart instanceof Chart) {
+                dailyChangesChart.destroy();
+                dailyChangesChart = null;
+            }
+            if (conversionRateChart instanceof Chart) {
+                conversionRateChart.destroy();
+                conversionRateChart = null;
+            }
+        }
+    }
+    
+
+    // 6. Update trend chart function
+    function updateTrendChart(chartData) {
+        try {
                     // 6. Update trend chart function
                     function updateTrendChart(chartData) {
                         try {

@@ -1353,22 +1353,37 @@
                                 }
 
                                 // Check if we have valid conversion rate data
-                                if (data.historical_data.conversion_rates) {
-                                    // Filter out null values and prepare data
-                                    const conversionData = data.historical_data.conversion_rates.map((rate, index) => ({
+                                if (data.historical_data.sent_conversion_rates || data.historical_data.received_conversion_rates) {
+                                    // Filter out null values and prepare data for both rates
+                                    const sentData = data.historical_data.sent_conversion_rates.map((rate, index) => ({
                                         x: data.historical_data.dates[index],
-                                        y: rate !== null ? rate * 100 : null  // Convert back to percentage
+                                        y: rate !== null ? rate * 100 : null  // Convert to percentage
+                                    })).filter(point => point.y !== null);
+
+                                    const receivedData = data.historical_data.received_conversion_rates.map((rate, index) => ({
+                                        x: data.historical_data.dates[index],
+                                        y: rate !== null ? rate * 100 : null  // Convert to percentage
                                     })).filter(point => point.y !== null);
 
                                     conversionRateChart = new Chart(conversionCtx, {
                                         type: 'line',
                                         data: {
                                             datasets: [{
-                                                label: 'Conversion Rate',
-                                                data: conversionData,
-                                                borderColor: '#9333ea',
-                                                backgroundColor: '#9333ea',
-                                                tension: 0.4
+                                                label: 'Sent Conversion Rate',
+                                                data: sentData,
+                                                borderColor: '#dc3545',  // Red to match sent color scheme
+                                                backgroundColor: '#dc3545',
+                                                tension: 0.4,
+                                                pointRadius: 4,
+                                                pointHoverRadius: 6
+                                            }, {
+                                                label: 'Received Conversion Rate',
+                                                data: receivedData,
+                                                borderColor: '#28a745',  // Green to match received color scheme
+                                                backgroundColor: '#28a745',
+                                                tension: 0.4,
+                                                pointRadius: 4,
+                                                pointHoverRadius: 6
                                             }]
                                         },
                                         options: {
@@ -1384,7 +1399,7 @@
                                                 },
                                                 tooltip: {
                                                     callbacks: {
-                                                        label: context => `${context.parsed.y.toFixed(2)}%`
+                                                        label: context => `${context.dataset.label}: ${context.parsed.y.toFixed(1)}%`
                                                     }
                                                 }
                                             },

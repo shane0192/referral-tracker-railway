@@ -766,7 +766,7 @@ def get_partnership_trends():
             dates = []
             received_values = []
             sent_values = []
-            conversion_rates = []  # New array for conversion rates
+            conversion_rates = []
             
             # Find baselines
             baseline_received = None
@@ -774,6 +774,9 @@ def get_partnership_trends():
             baseline_received_date = None
             baseline_sent_date = None
             
+            # First pass: collect actual conversion rates
+            actual_sent_rates = []  # List of (date, rate) tuples for sent
+            actual_received_rates = []  # List of (date, rate) tuples for received
             for record in sorted_records:
                 # Find first non-zero values for baselines
                 for rec in record.recommending_me:
@@ -782,6 +785,15 @@ def get_partnership_trends():
                         if received > 0 and baseline_received is None:
                             baseline_received = received
                             baseline_received_date = record.date
+                        
+                        # Try to get received conversion rate
+                        try:
+                            if 'conversion_rate' in rec:
+                                rate = float(rec['conversion_rate'])
+                                if 0 <= rate <= 100:
+                                    actual_received_rates.append((record.date, rate / 100))  # Store as decimal
+                        except (ValueError, TypeError):
+                            pass
                         break
                 
                 for rec in record.my_recommendations:
@@ -790,10 +802,21 @@ def get_partnership_trends():
                         if sent > 0 and baseline_sent is None:
                             baseline_sent = sent
                             baseline_sent_date = record.date
+                            
+                        # Try to get sent conversion rate
+                        try:
+                            if 'conversion_rate' in rec:
+                                rate = float(rec['conversion_rate'])
+                                if 0 <= rate <= 100:
+                                    actual_sent_rates.append((record.date, rate / 100))  # Store as decimal
+                        except (ValueError, TypeError):
+                            pass
                         break
 
-            # Process records with both raw and adjusted values
-            last_conversion = None  # Track last valid conversion rate
+            # Second pass: process all records with interpolation
+            sent_conversion_rates = []
+            received_conversion_rates = []
+            
             for record in sorted_records:
                 date_str = record.date.strftime('%-m/%-d')
                 
@@ -804,47 +827,88 @@ def get_partnership_trends():
                 received = safe_int_convert(partner_received['subscribers']) if partner_received else 0
                 sent = safe_int_convert(partner_sent['subscribers']) if partner_sent else 0
                 
-                # Get conversion rate if available, with safer type conversion and validation
-                try:
-                    if partner_received and 'conversion_rate' in partner_received:
-                        # Convert to float and validate
-                        rate = float(partner_received['conversion_rate'])
-                        # Ensure rate is between 0 and 100
-                        if 0 <= rate <= 100:
-                            last_conversion = rate / 100  # Convert percentage to decimal
-                        else:
-                            print(f"Invalid conversion rate {rate}% found for {partner} on {date_str}")
-                except (ValueError, TypeError) as e:
-                    print(f"Error processing conversion rate for {partner} on {date_str}: {str(e)}")
+                # Find surrounding sent conversion rates for interpolation
+                prev_sent_rate = None
+                next_sent_rate = None
+                for i, (rate_date, rate) in enumerate(actual_sent_rates):
+                    if rate_date <= record.date:
+                        prev_sent_rate = (rate_date, rate)
+                    elif rate_date > record.date:
+                        next_sent_rate = (rate_date, rate)
+                        break
+                
+                # Find surrounding received conversion rates for interpolation
+                prev_received_rate = None
+                next_received_rate = None
+                for i, (rate_date, rate) in enumerate(actual_received_rates):
+                    if rate_date <= record.date:
+                        prev_received_rate = (rate_date, rate)
+                    elif rate_date > record.date:
+                        next_received_rate = (rate_date, rate)
+                        break
+                
+                # Interpolate sent conversion rate
+                interpolated_sent_rate = None
+                if prev_sent_rate and next_sent_rate:
+                    total_days = (next_sent_rate[0] - prev_sent_rate[0]).days
+                    if total_days > 0:  # Prevent division by zero
+                        days_from_prev = (record.date - prev_sent_rate[0]).days
+                        progress = days_from_prev / total_days
+                        interpolated_sent_rate = prev_sent_rate[1] + (next_sent_rate[1] - prev_sent_rate[1]) * progress
+                elif prev_sent_rate:
+                    # Only use previous rate if it's within 7 days
+                    days_diff = (record.date - prev_sent_rate[0]).days
+                    if days_diff <= 7:
+                        interpolated_sent_rate = prev_sent_rate[1]
+                
+                # Interpolate received conversion rate
+                interpolated_received_rate = None
+                if prev_received_rate and next_received_rate:
+                    total_days = (next_received_rate[0] - prev_received_rate[0]).days
+                    if total_days > 0:  # Prevent division by zero
+                        days_from_prev = (record.date - prev_received_rate[0]).days
+                        progress = days_from_prev / total_days
+                        interpolated_received_rate = prev_received_rate[1] + (next_received_rate[1] - prev_received_rate[1]) * progress
+                elif prev_received_rate:
+                    # Only use previous rate if it's within 7 days
+                    days_diff = (record.date - prev_received_rate[0]).days
+                    if days_diff <= 7:
+                        interpolated_received_rate = prev_received_rate[1]
                 
                 dates.append(date_str)
                 received_values.append(received)
                 sent_values.append(sent)
-                conversion_rates.append(last_conversion)  # Use last known valid rate
+                sent_conversion_rates.append(interpolated_sent_rate)
+                received_conversion_rates.append(interpolated_received_rate)
 
             # Calculate current period metrics (using baselines)
             current_received = received_values[-1] - (baseline_received or 0)
             current_sent = sent_values[-1] - (baseline_sent or 0)
             
-            # Get the latest valid conversion rate
-            latest_conversion_rate = next((rate for rate in reversed(conversion_rates) if rate is not None), None)
+            # Get the latest valid conversion rates
+            latest_sent_rate = next((rate for rate in reversed(sent_conversion_rates) if rate is not None), None)
+            latest_received_rate = next((rate for rate in reversed(received_conversion_rates) if rate is not None), None)
             
             # If we have no valid conversion rates, set to None
-            if all(rate is None for rate in conversion_rates):
-                conversion_rates = None
+            if all(rate is None for rate in sent_conversion_rates):
+                sent_conversion_rates = None
+            if all(rate is None for rate in received_conversion_rates):
+                received_conversion_rates = None
             
             return jsonify({
                 'historical_data': {
                     'dates': dates,
                     'received': received_values,
                     'sent': sent_values,
-                    'conversion_rates': conversion_rates
+                    'sent_conversion_rates': sent_conversion_rates,
+                    'received_conversion_rates': received_conversion_rates
                 },
                 'current_period': {
                     'received': current_received,
                     'sent': current_sent,
                     'balance': current_received - current_sent,
-                    'conversion_rate': latest_conversion_rate
+                    'sent_conversion_rate': latest_sent_rate,
+                    'received_conversion_rate': latest_received_rate
                 },
                 'baselines': {
                     'received': {

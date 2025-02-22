@@ -749,22 +749,22 @@ def get_partnership_trends():
         
         session = db.Session()
         try:
-            # Get ALL records for this account/partner pair to get all conversion rate history
+            # Get ALL records for this account/partner pair
             all_records = session.query(ReferralData)\
                 .filter(ReferralData.account_name == account)\
                 .order_by(ReferralData.date)\
                 .all()
 
-            # Get records within date range for other metrics
+            # Get records within date range for subscriber metrics
             range_records = [r for r in all_records if start_date <= r.date <= end_date]
             
+            # Process subscriber counts within date range
             dates = []
             received_values = []
             sent_values = []
             
-            # Process each record for subscriber counts
             for record in range_records:
-                date_str = record.date.strftime('%Y-%m-%d')  # Use ISO format for dates
+                date_str = record.date.strftime('%Y-%m-%d')
                 dates.append(date_str)
                 
                 # Handle received values
@@ -777,48 +777,47 @@ def get_partnership_trends():
                 sent = safe_int_convert(partner_sent['subscribers']) if partner_sent else 0
                 sent_values.append(sent)
 
-            # Now process ALL records for conversion rates
-            conversion_dates = []
-            sent_rates = []
-            received_rates = []
+            # Process conversion rates from all records (no interpolation)
+            conversion_data = []
             
             for record in all_records:
                 date_str = record.date.strftime('%Y-%m-%d')
                 
-                # Get received conversion rate if it exists
-                received_rate = None
+                # Get received conversion rate
                 partner_received = next((rec for rec in record.recommending_me if rec['creator'] == partner), None)
                 if partner_received and 'conversion_rate' in partner_received:
                     try:
                         rate = float(partner_received['conversion_rate'])
                         if 0 <= rate <= 100:  # Validate rate is between 0-100%
-                            received_rate = rate / 100  # Convert percentage to decimal
-                            # Only add the date and rate if we have a valid rate
-                            conversion_dates.append(date_str)
-                            received_rates.append(received_rate)
-                            sent_rates.append(None)  # Add None for sent rate to keep arrays aligned
+                            conversion_data.append({
+                                'date': date_str,
+                                'received_rate': rate / 100,  # Convert percentage to decimal
+                                'sent_rate': None
+                            })
                     except (ValueError, TypeError):
                         pass
 
-                # Get sent conversion rate if it exists
-                sent_rate = None
+                # Get sent conversion rate
                 partner_sent = next((rec for rec in record.my_recommendations if rec['creator'] == partner), None)
                 if partner_sent and 'conversion_rate' in partner_sent:
                     try:
                         rate = float(partner_sent['conversion_rate'])
                         if 0 <= rate <= 100:  # Validate rate is between 0-100%
-                            sent_rate = rate / 100  # Convert percentage to decimal
-                            # Only add the date and rate if we have a valid rate and we haven't already added this date
-                            if date_str not in conversion_dates:
-                                conversion_dates.append(date_str)
-                                received_rates.append(None)  # Add None for received rate to keep arrays aligned
-                                sent_rates.append(sent_rate)
+                            # Check if we already have this date
+                            existing = next((d for d in conversion_data if d['date'] == date_str), None)
+                            if existing:
+                                existing['sent_rate'] = rate / 100
                             else:
-                                # If date exists, update the sent rate at that index
-                                idx = conversion_dates.index(date_str)
-                                sent_rates[idx] = sent_rate
+                                conversion_data.append({
+                                    'date': date_str,
+                                    'received_rate': None,
+                                    'sent_rate': rate / 100
+                                })
                     except (ValueError, TypeError):
                         pass
+
+            # Sort conversion data by date
+            conversion_data.sort(key=lambda x: x['date'])
 
             # Find baselines
             baseline_received = None
@@ -849,17 +848,17 @@ def get_partnership_trends():
             current_sent = sent_values[-1] - (baseline_sent or 0) if sent_values else 0
             
             # Get the latest valid conversion rates
-            latest_sent_rate = next((rate for rate in reversed(sent_rates) if rate is not None), None)
-            latest_received_rate = next((rate for rate in reversed(received_rates) if rate is not None), None)
+            latest_sent_rate = next((d['sent_rate'] for d in reversed(conversion_data) if d['sent_rate'] is not None), None)
+            latest_received_rate = next((d['received_rate'] for d in reversed(conversion_data) if d['received_rate'] is not None), None)
 
             return jsonify({
                 'historical_data': {
                     'dates': dates,
                     'received': received_values,
                     'sent': sent_values,
-                    'conversion_dates': conversion_dates,  # Separate dates for conversion rates
-                    'sent_conversion_rates': sent_rates,
-                    'received_conversion_rates': received_rates
+                    'conversion_dates': [d['date'] for d in conversion_data],
+                    'sent_conversion_rates': [d['sent_rate'] for d in conversion_data],
+                    'received_conversion_rates': [d['received_rate'] for d in conversion_data]
                 },
                 'current_period': {
                     'received': current_received,
@@ -1395,14 +1394,17 @@ def database_admin():
 @app.route('/admin/delete-record/<int:record_id>', methods=['DELETE'])
 @login_required
 def delete_record(record_id):
-        session = db.Session()
-        try:
+    session = db.Session()
+    try:
         record = session.query(ReferralData).get(record_id)
         if record:
             session.delete(record)
             session.commit()
             return jsonify({'success': True})
         return jsonify({'success': False, 'error': 'Record not found'})
+    except Exception as e:
+        session.rollback()
+        return jsonify({'success': False, 'error': str(e)})
     finally:
         session.close()
 
@@ -2499,54 +2501,47 @@ def get_demo_trends(partner_name):
 @app.route('/api/available-accounts')
 @login_required
 def get_available_accounts():
-    try:
     session = db.Session()
     try:
-            # Get all accounts from AllowedAccount table
-            allowed_accounts = session.query(AllowedAccount).all()
-            
-            # Get accounts that have data in ReferralData
-            db_accounts = session.query(ReferralData.account_name).distinct().all()
-            db_accounts = [account[0] for account in db_accounts]
-            
-            # Separate into enabled and known accounts
-            enabled_accounts = [acc.account_name for acc in allowed_accounts if acc.is_active]
-            known_accounts = [acc.account_name for acc in allowed_accounts]
-            
-            # Add Demo Client if not present
-            if 'Demo Client' not in enabled_accounts:
-                enabled_accounts.append('Demo Client')
-            if 'Demo Client' not in known_accounts:
-                known_accounts.append('Demo Client')
-                # Also add to database if not exists
-                demo_account = session.query(AllowedAccount).filter_by(account_name='Demo Client').first()
-                if not demo_account:
-                    demo_account = AllowedAccount(account_name='Demo Client', is_active=True)
-                    session.add(demo_account)
-                    session.commit()
-            
-            # Return all required data
-            return jsonify({
-                'success': True,
-                'accounts': sorted(list(set(known_accounts))),  # All known accounts
-                'enabled_accounts': sorted(list(set(enabled_accounts))),  # Currently enabled accounts
-                'db_accounts': sorted(list(set(db_accounts))),  # Accounts with data in DB
-                'available_accounts': sorted(list(set(known_accounts)))  # All available accounts
-            })
-        except Exception as e:
-            print(f"Error getting available accounts: {str(e)}")
-            return jsonify({
-                'success': False,
-                'error': str(e)
-            })
-        finally:
-            session.close()
+        # Get all accounts from AllowedAccount table
+        allowed_accounts = session.query(AllowedAccount).all()
+        
+        # Get accounts that have data in ReferralData
+        db_accounts = session.query(ReferralData.account_name).distinct().all()
+        db_accounts = [account[0] for account in db_accounts]
+        
+        # Separate into enabled and known accounts
+        enabled_accounts = [acc.account_name for acc in allowed_accounts if acc.is_active]
+        known_accounts = [acc.account_name for acc in allowed_accounts]
+        
+        # Add Demo Client if not present
+        if 'Demo Client' not in enabled_accounts:
+            enabled_accounts.append('Demo Client')
+        if 'Demo Client' not in known_accounts:
+            known_accounts.append('Demo Client')
+            # Also add to database if not exists
+            demo_account = session.query(AllowedAccount).filter_by(account_name='Demo Client').first()
+            if not demo_account:
+                demo_account = AllowedAccount(account_name='Demo Client', is_active=True)
+                session.add(demo_account)
+                session.commit()
+        
+        # Return all required data
+        return jsonify({
+            'success': True,
+            'accounts': sorted(list(set(known_accounts))),  # All known accounts
+            'enabled_accounts': sorted(list(set(enabled_accounts))),  # Currently enabled accounts
+            'db_accounts': sorted(list(set(db_accounts))),  # Accounts with data in DB
+            'available_accounts': sorted(list(set(known_accounts)))  # All available accounts
+        })
     except Exception as e:
         print(f"Error getting available accounts: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)
         })
+    finally:
+        session.close()
 
 @app.route('/api/update-enabled-accounts', methods=['POST'])
 @login_required

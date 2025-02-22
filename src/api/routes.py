@@ -738,7 +738,9 @@ def get_partnership_trends():
         start = request.args.get('start')
         end = request.args.get('end')
         
-        print(f"Processing partnership trends for {partner} with {account}")
+        print(f"\n=== Processing partnership trends ===")
+        print(f"Account: {account}")
+        print(f"Partner: {partner}")
         print(f"Date range: {start} to {end}")
         
         if not all([account, partner, start, end]):
@@ -755,8 +757,22 @@ def get_partnership_trends():
                 .order_by(ReferralData.date)\
                 .all()
 
+            print(f"\nFound {len(all_records)} total records")
+            print("Sample of records:")
+            for record in all_records[:5]:
+                print(f"\nDate: {record.date}")
+                print("Recommending me:")
+                for rec in record.recommending_me:
+                    if rec['creator'] == partner:
+                        print(f"  - {partner}: subs={rec.get('subscribers', 'N/A')}, rate={rec.get('conversion_rate', 'N/A')}")
+                print("My recommendations:")
+                for rec in record.my_recommendations:
+                    if rec['creator'] == partner:
+                        print(f"  - {partner}: subs={rec.get('subscribers', 'N/A')}, rate={rec.get('conversion_rate', 'N/A')}")
+
             # Get records within date range for subscriber metrics
             range_records = [r for r in all_records if start_date <= r.date <= end_date]
+            print(f"\nFound {len(range_records)} records in date range")
             
             # Process subscriber counts within date range
             dates = []
@@ -780,8 +796,7 @@ def get_partnership_trends():
             # Process conversion rates from all records (no interpolation)
             conversion_data = []
             
-            # Debug print
-            print(f"\nProcessing conversion rates for {len(all_records)} records")
+            print(f"\nProcessing conversion rates for all records:")
             
             for record in all_records:
                 date_str = record.date.strftime('%Y-%m-%d')
@@ -824,7 +839,6 @@ def get_partnership_trends():
             # Sort conversion data by date
             conversion_data.sort(key=lambda x: x['date'])
             
-            # Debug print
             print(f"\nCollected {len(conversion_data)} conversion rate data points:")
             for data in conversion_data:
                 print(f"Date: {data['date']}")
@@ -863,7 +877,7 @@ def get_partnership_trends():
             latest_sent_rate = next((d['sent_rate'] for d in reversed(conversion_data) if d['sent_rate'] is not None), None)
             latest_received_rate = next((d['received_rate'] for d in reversed(conversion_data) if d['received_rate'] is not None), None)
 
-            return jsonify({
+            response_data = {
                 'historical_data': {
                     'dates': dates,
                     'received': received_values,
@@ -889,7 +903,14 @@ def get_partnership_trends():
                         'date': baseline_sent_date.strftime('%Y-%m-%d') if baseline_sent_date else None
                     }
                 }
-            })
+            }
+
+            print("\nResponse data:")
+            print(f"Conversion dates: {response_data['historical_data']['conversion_dates']}")
+            print(f"Sent rates: {response_data['historical_data']['sent_conversion_rates']}")
+            print(f"Received rates: {response_data['historical_data']['received_conversion_rates']}")
+
+            return jsonify(response_data)
             
         finally:
             session.close()

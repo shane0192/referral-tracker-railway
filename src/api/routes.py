@@ -796,9 +796,9 @@ def get_partnership_trends():
             # Process conversion rates from all records (no interpolation)
             conversion_data = []
             
-            print(f"\nProcessing conversion rates for all records:")
+            print(f"\nProcessing conversion rates for range records:")
             
-            for record in all_records:
+            for record in range_records:  # Changed from all_records to range_records
                 date_str = record.date.strftime('%Y-%m-%d')
                 sent_rate = None
                 received_rate = None

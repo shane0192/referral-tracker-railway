@@ -780,8 +780,14 @@ def get_partnership_trends():
             # Process conversion rates from all records (no interpolation)
             conversion_data = []
             
+            # Debug print
+            print(f"\nProcessing conversion rates for {len(all_records)} records")
+            
             for record in all_records:
                 date_str = record.date.strftime('%Y-%m-%d')
+                sent_rate = None
+                received_rate = None
+                has_data = False
                 
                 # Get received conversion rate
                 partner_received = next((rec for rec in record.recommending_me if rec['creator'] == partner), None)
@@ -789,13 +795,11 @@ def get_partnership_trends():
                     try:
                         rate = float(partner_received['conversion_rate'])
                         if 0 <= rate <= 100:  # Validate rate is between 0-100%
-                            conversion_data.append({
-                                'date': date_str,
-                                'received_rate': rate / 100,  # Convert percentage to decimal
-                                'sent_rate': None
-                            })
-                    except (ValueError, TypeError):
-                        pass
+                            received_rate = rate / 100  # Convert percentage to decimal
+                            has_data = True
+                            print(f"Found received rate for {date_str}: {rate}%")
+                    except (ValueError, TypeError) as e:
+                        print(f"Error processing received rate for {date_str}: {e}")
 
                 # Get sent conversion rate
                 partner_sent = next((rec for rec in record.my_recommendations if rec['creator'] == partner), None)
@@ -803,21 +807,29 @@ def get_partnership_trends():
                     try:
                         rate = float(partner_sent['conversion_rate'])
                         if 0 <= rate <= 100:  # Validate rate is between 0-100%
-                            # Check if we already have this date
-                            existing = next((d for d in conversion_data if d['date'] == date_str), None)
-                            if existing:
-                                existing['sent_rate'] = rate / 100
-                            else:
-                                conversion_data.append({
-                                    'date': date_str,
-                                    'received_rate': None,
-                                    'sent_rate': rate / 100
-                                })
-                    except (ValueError, TypeError):
-                        pass
+                            sent_rate = rate / 100  # Convert percentage to decimal
+                            has_data = True
+                            print(f"Found sent rate for {date_str}: {rate}%")
+                    except (ValueError, TypeError) as e:
+                        print(f"Error processing sent rate for {date_str}: {e}")
+
+                # Only add to conversion_data if we have at least one valid rate
+                if has_data:
+                    conversion_data.append({
+                        'date': date_str,
+                        'sent_rate': sent_rate,
+                        'received_rate': received_rate
+                    })
 
             # Sort conversion data by date
             conversion_data.sort(key=lambda x: x['date'])
+            
+            # Debug print
+            print(f"\nCollected {len(conversion_data)} conversion rate data points:")
+            for data in conversion_data:
+                print(f"Date: {data['date']}")
+                print(f"  Sent rate: {data['sent_rate']*100 if data['sent_rate'] is not None else 'None'}%")
+                print(f"  Received rate: {data['received_rate']*100 if data['received_rate'] is not None else 'None'}%")
 
             # Find baselines
             baseline_received = None

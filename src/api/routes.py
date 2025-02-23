@@ -735,51 +735,28 @@ def get_partnership_trends():
     try:
         account = request.args.get('account')
         partner = request.args.get('partner')
-        start = request.args.get('start')
-        end = request.args.get('end')
-        
-        print(f"\n=== Processing partnership trends ===")
-        print(f"Account: {account}")
-        print(f"Partner: {partner}")
-        print(f"Date range: {start} to {end}")
-        
-        if not all([account, partner, start, end]):
-            return jsonify({'error': 'Missing required parameters'}), 400
-            
-        start_date = datetime.strptime(start, '%Y-%m-%d')
-        end_date = datetime.strptime(end, '%Y-%m-%d')
+        start_date = datetime.strptime(request.args.get('start'), '%Y-%m-%d')
+        end_date = datetime.strptime(request.args.get('end'), '%Y-%m-%d').replace(hour=23, minute=59, second=59)
         
         session = db.Session()
         try:
-            # Get ALL records for this account/partner pair
-            all_records = session.query(ReferralData)\
+            # Get records within date range
+            records = session.query(ReferralData)\
                 .filter(ReferralData.account_name == account)\
+                .filter(ReferralData.date >= start_date)\
+                .filter(ReferralData.date <= end_date)\
                 .order_by(ReferralData.date)\
                 .all()
-
-            print(f"\nFound {len(all_records)} total records")
-            print("Sample of records:")
-            for record in all_records[:5]:
-                print(f"\nDate: {record.date}")
-                print("Recommending me:")
-                for rec in record.recommending_me:
-                    if rec['creator'] == partner:
-                        print(f"  - {partner}: subs={rec.get('subscribers', 'N/A')}, rate={rec.get('conversion_rate', 'N/A')}")
-                print("My recommendations:")
-                for rec in record.my_recommendations:
-                    if rec['creator'] == partner:
-                        print(f"  - {partner}: subs={rec.get('subscribers', 'N/A')}, rate={rec.get('conversion_rate', 'N/A')}")
-
-            # Get records within date range for subscriber metrics
-            range_records = [r for r in all_records if start_date <= r.date <= end_date]
-            print(f"\nFound {len(range_records)} records in date range")
             
-            # Process subscriber counts within date range
+            print(f"\nFound {len(records)} records")
+            
+            # Process subscriber counts and conversion rates
             dates = []
             received_values = []
             sent_values = []
+            conversion_data = []
             
-            for record in range_records:
+            for record in records:
                 date_str = record.date.strftime('%Y-%m-%d')
                 dates.append(date_str)
                 
@@ -792,20 +769,12 @@ def get_partnership_trends():
                 partner_sent = next((rec for rec in record.my_recommendations if rec['creator'] == partner), None)
                 sent = safe_int_convert(partner_sent['subscribers']) if partner_sent else 0
                 sent_values.append(sent)
-
-            # Process conversion rates from all records (no interpolation)
-            conversion_data = []
-            
-            print(f"\nProcessing conversion rates for range records:")
-            
-            for record in range_records:  # Changed from all_records to range_records
-                date_str = record.date.strftime('%Y-%m-%d')
+                
+                # Handle conversion rates
                 sent_rate = None
                 received_rate = None
                 has_data = False
                 
-                # Get received conversion rate
-                partner_received = next((rec for rec in record.recommending_me if rec['creator'] == partner), None)
                 if partner_received and 'conversion_rate' in partner_received:
                     try:
                         rate = float(partner_received['conversion_rate'])
@@ -816,8 +785,6 @@ def get_partnership_trends():
                     except (ValueError, TypeError) as e:
                         print(f"Error processing received rate for {date_str}: {e}")
 
-                # Get sent conversion rate
-                partner_sent = next((rec for rec in record.my_recommendations if rec['creator'] == partner), None)
                 if partner_sent and 'conversion_rate' in partner_sent:
                     try:
                         rate = float(partner_sent['conversion_rate'])
@@ -828,7 +795,7 @@ def get_partnership_trends():
                     except (ValueError, TypeError) as e:
                         print(f"Error processing sent rate for {date_str}: {e}")
 
-                # Only add to conversion_data if we have at least one valid rate
+                # Add conversion data point if we have any valid rates
                 if has_data:
                     conversion_data.append({
                         'date': date_str,
@@ -851,7 +818,7 @@ def get_partnership_trends():
             baseline_received_date = None
             baseline_sent_date = None
             
-            for record in range_records:
+            for record in records:
                 # Find first non-zero values for baselines
                 for rec in record.recommending_me:
                     if rec['creator'] == partner:
@@ -2489,204 +2456,3 @@ def get_demo_data():
     except Exception as e:
         print(f"Error generating demo data: {str(e)}")
         return jsonify({'error': str(e)}), 500
-
-@app.route('/api/trends/demo/<partner_name>')
-@login_required
-def get_demo_trends(partner_name):
-    """Get trend data for a demo partnership"""
-    try:
-        demo_data = db.generate_demo_data()
-        
-        trend_data = {
-            'dates': [],
-            'received': [],
-            'sent': [],
-            'balance': []
-        }
-        
-        # Process each day's data
-        for record in demo_data:
-            # Find partner data in receiving list
-            received = next(
-                (int(rec['subscribers']) for rec in record.recommending_me 
-                 if rec['creator'] == partner_name), 
-                0
-            )
-            
-            # Find partner data in sending list
-            sent = next(
-                (int(rec['subscribers']) for rec in record.my_recommendations 
-                 if rec['creator'] == partner_name), 
-                0
-            )
-            
-            trend_data['dates'].append(record.date.strftime('%Y-%m-%d'))
-            trend_data['received'].append(received)
-            trend_data['sent'].append(sent)
-            trend_data['balance'].append(received - sent)
-            
-        return jsonify(trend_data)
-        
-    except Exception as e:
-        print(f"Error getting demo trends: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/available-accounts')
-@login_required
-def get_available_accounts():
-    session = db.Session()
-    try:
-        # Get all accounts from AllowedAccount table
-        allowed_accounts = session.query(AllowedAccount).all()
-        
-        # Get accounts that have data in ReferralData
-        db_accounts = session.query(ReferralData.account_name).distinct().all()
-        db_accounts = [account[0] for account in db_accounts]
-        
-        # Separate into enabled and known accounts
-        enabled_accounts = [acc.account_name for acc in allowed_accounts if acc.is_active]
-        known_accounts = [acc.account_name for acc in allowed_accounts]
-        
-        # Add Demo Client if not present
-        if 'Demo Client' not in enabled_accounts:
-            enabled_accounts.append('Demo Client')
-        if 'Demo Client' not in known_accounts:
-            known_accounts.append('Demo Client')
-            # Also add to database if not exists
-            demo_account = session.query(AllowedAccount).filter_by(account_name='Demo Client').first()
-            if not demo_account:
-                demo_account = AllowedAccount(account_name='Demo Client', is_active=True)
-                session.add(demo_account)
-                session.commit()
-        
-        # Return all required data
-        return jsonify({
-            'success': True,
-            'accounts': sorted(list(set(known_accounts))),  # All known accounts
-            'enabled_accounts': sorted(list(set(enabled_accounts))),  # Currently enabled accounts
-            'db_accounts': sorted(list(set(db_accounts))),  # Accounts with data in DB
-            'available_accounts': sorted(list(set(known_accounts)))  # All available accounts
-        })
-    except Exception as e:
-        print(f"Error getting available accounts: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        })
-    finally:
-        session.close()
-
-@app.route('/api/update-enabled-accounts', methods=['POST'])
-@login_required
-def update_enabled_accounts():
-    try:
-        data = request.get_json()
-        enabled_accounts = data.get('accounts', [])
-        
-        # Get config file path
-        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'config')
-        os.makedirs(config_path, exist_ok=True)
-        config_file = os.path.join(config_path, 'enabled_accounts.json')
-        
-        # Load existing config to get known accounts
-        try:
-            with open(config_file, 'r') as f:
-                config_data = json.load(f)
-                if isinstance(config_data, list):
-                    # Old format - migrate to new format
-                    known_accounts = config_data
-                else:
-                    known_accounts = config_data.get('known', [])
-        except (FileNotFoundError, json.JSONDecodeError):
-            known_accounts = []
-        
-        # Add any newly enabled accounts to known accounts
-        known_accounts.extend([acc for acc in enabled_accounts if acc not in known_accounts])
-        
-        # Save both lists to JSON
-        with open(config_file, 'w') as f:
-            json.dump({
-                'enabled': enabled_accounts,
-                'known': known_accounts
-            }, f)
-            
-        # Update database
-        session = db.Session()
-        try:
-            # First, get all known accounts and set them as inactive
-            for account_name in known_accounts:
-                account = session.query(AllowedAccount).filter_by(account_name=account_name).first()
-                if account:
-                    account.is_active = False
-                else:
-                    # Create new account record if it doesn't exist
-                    account = AllowedAccount(account_name=account_name, is_active=False)
-                    session.add(account)
-            
-            # Then set enabled accounts as active
-            for account_name in enabled_accounts:
-                account = session.query(AllowedAccount).filter_by(account_name=account_name).first()
-                if account:
-                    account.is_active = True
-                else:
-                    # Create new account record if it doesn't exist
-                    account = AllowedAccount(account_name=account_name, is_active=True)
-                    session.add(account)
-            
-            session.commit()
-        except Exception as e:
-            session.rollback()
-            raise
-        finally:
-            session.close()
-            
-        return jsonify({'success': True})
-    except Exception as e:
-        print(f"Error updating enabled accounts: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)})
-
-@app.route('/bulk_delete', methods=['POST'])
-@login_required
-def bulk_delete():
-    try:
-        entries = request.json.get('entries', [])
-        if not entries:
-            return jsonify({'error': 'No entries selected'}), 400
-            
-        # Delete entries from database
-        with DBManager() as db:
-            for entry_id in entries:
-                db.delete_entry(entry_id)
-                
-        return jsonify({'message': f'Successfully deleted {len(entries)} entries'}), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('login'))
-
-if __name__ == '__main__':
-    print("Starting Flask server...")
-    print("API endpoints:")
-    print("  - GET /")
-    print("  - GET /api/partnership-metrics")
-    print("  - GET /api/earliest-date")
-    print("  - GET /api/largest-imbalances")
-    print("  - GET /api/trends/<account_name>")
-    print("  - GET /api/trends/summary")
-    print("  - GET /debug/db")
-    print("  - GET /debug/trends")
-    print("  - GET /api/test/import-csv")
-    print("  - GET /admin/database")
-    print("  - DELETE /admin/delete-record/<int:record_id>")
-    print("  - POST /admin/clear-database")
-    print("  - POST /api/run-scraper")
-    print("  - GET /api/last-scrape-time")
-    print("  - POST /admin/cleanup-duplicates")
-    print("  - POST /admin/bulk-delete")
-    print("  - GET /api/available-accounts")
-    print("  - POST /api/update-enabled-accounts")
-    print("  - POST /bulk_delete")
-    app.run(host='0.0.0.0', port=5001, debug=True)

@@ -777,7 +777,9 @@ def get_partnership_trends():
                 
                 if partner_received and 'conversion_rate' in partner_received:
                     try:
-                        rate = float(partner_received['conversion_rate'])
+                        # Remove % sign and convert to float
+                        rate_str = str(partner_received['conversion_rate']).replace('%', '').strip()
+                        rate = float(rate_str)
                         if 0 <= rate <= 100:  # Validate rate is between 0-100%
                             received_rate = rate / 100  # Convert percentage to decimal
                             has_data = True
@@ -787,7 +789,9 @@ def get_partnership_trends():
 
                 if partner_sent and 'conversion_rate' in partner_sent:
                     try:
-                        rate = float(partner_sent['conversion_rate'])
+                        # Remove % sign and convert to float
+                        rate_str = str(partner_sent['conversion_rate']).replace('%', '').strip()
+                        rate = float(rate_str)
                         if 0 <= rate <= 100:  # Validate rate is between 0-100%
                             sent_rate = rate / 100  # Convert percentage to decimal
                             has_data = True

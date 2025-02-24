@@ -974,7 +974,7 @@
                             <div class="card">
                                 <div class="card-body">
                                     <h5>Total Referrals</h5>
-                                    <div class="chart-container" style="height: 200px !important;">
+                                    <div class="chart-container" style="height: 300px !important; position: relative;">
                                         <canvas id="totalReferralsChart"></canvas>
                                     </div>
                                 </div>
@@ -1259,7 +1259,7 @@
                         try {
                             console.log("Updating total referrals chart with data:", data);
                             
-                            // Calculate totals per date
+                            // Group data by date
                             const dateMap = new Map();
                             data.forEach(item => {
                                 const date = item.latest_date;
@@ -1283,6 +1283,8 @@
                                 received: sortedDates.map(d => dateMap.get(d).received),
                                 sent: sortedDates.map(d => dateMap.get(d).sent)
                             };
+
+                            console.log('Processed chart data:', chartData);
 
                             const ctx = document.getElementById('totalReferralsChart').getContext('2d');
                             if (!ctx) {
@@ -2459,11 +2461,8 @@
                             const start = new Date();
                             start.setDate(end.getDate() - parseInt(dateRange));
 
-                            // Use largest-imbalances for dashboard view, partnership-metrics for client view
-                            const endpoint = client === 'all' ? 
-                                'largest-imbalances' : 'partnership-metrics';
-                            
-                            const url = `${API_BASE_URL}/api/${endpoint}?` +
+                            // Use partnership-metrics endpoint
+                            const url = `${API_BASE_URL}/api/partnership-metrics?` +
                                 `start=${start.toISOString().split('T')[0]}&` +
                                 `end=${end.toISOString().split('T')[0]}` +
                                 (client !== 'all' ? `&account=${encodeURIComponent(client)}` : '');
@@ -2476,7 +2475,7 @@
                             updateFastestGrowingDeclining(data);
                             updateDashboardMetrics(data);
                             updateNetworkGraph(data);
-                            updateTotalReferralsChart(data);
+                            updateTotalReferralsChart(data);  // Add this line
                             
                             // Update table
                             tableData = data;

@@ -973,16 +973,9 @@
                         <div class="col-md-6">
                             <div class="card">
                                 <div class="card-body">
-                                    <h5>Partnership Health</h5>
-                                    <div class="d-flex justify-content-between">
-                                        <div class="metric">
-                                            <label>Improving</label>
-                                            <span class="value positive">1</span>
-                                        </div>
-                                        <div class="metric">
-                                            <label>Declining</label>
-                                            <span class="value negative">3</span>
-                                        </div>
+                                    <h5>Total Referrals</h5>
+                                    <div class="chart-container" style="height: 200px !important;">
+                                        <canvas id="totalReferralsChart"></canvas>
                                     </div>
                                 </div>
                             </div>
@@ -1016,14 +1009,26 @@
                                 <div class="card">
                                     <div class="card-body">
                                         <h5>Network Health</h5>
-                                        <div class="d-flex justify-content-between">
-                                            <div class="metric">
-                                                <label>Total Active Partnerships</label>
-                                                <span id="totalPartnerships" class="value">0</span>
+                                        <div class="d-flex flex-column">
+                                            <div class="d-flex justify-content-between mb-3">
+                                                <div class="metric">
+                                                    <label>Total Active Partnerships</label>
+                                                    <span id="totalPartnerships" class="value">0</span>
+                                                </div>
+                                                <div class="metric">
+                                                    <label>Troubled Partnerships</label>
+                                                    <span id="troubledPartnerships" class="value negative">0</span>
+                                                </div>
                                             </div>
-                                            <div class="metric">
-                                                <label>Troubled Partnerships</label>
-                                                <span id="troubledPartnerships" class="value negative">0</span>
+                                            <div class="d-flex justify-content-between">
+                                                <div class="metric">
+                                                    <label>Improving</label>
+                                                    <span id="improvingPartnerships" class="value positive">0</span>
+                                                </div>
+                                                <div class="metric">
+                                                    <label>Declining</label>
+                                                    <span id="decliningPartnerships" class="value negative">0</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -1246,6 +1251,106 @@
                     let dailyChangesChart = null; // Add this as a global variable at the top with other declarations
                     let conversionRateChart = null;  // Add this variable
 
+                    // Add this to your global variables
+                    let totalReferralsChart = null;
+
+                    // Add this function to create and update the total referrals chart
+                    function updateTotalReferralsChart(data) {
+                        try {
+                            console.log("Updating total referrals chart with data:", data);
+                            
+                            // Calculate totals per date
+                            const dateMap = new Map();
+                            data.forEach(item => {
+                                const date = item.latest_date;
+                                if (!dateMap.has(date)) {
+                                    dateMap.set(date, {
+                                        received: 0,
+                                        sent: 0
+                                    });
+                                }
+                                dateMap.get(date).received += item.period_received || 0;
+                                dateMap.get(date).sent += item.period_sent || 0;
+                            });
+
+                            // Convert to arrays and sort by date
+                            const sortedDates = Array.from(dateMap.keys()).sort();
+                            const chartData = {
+                                dates: sortedDates.map(d => new Date(d).toLocaleDateString('en-US', { 
+                                    month: 'short',
+                                    day: 'numeric'
+                                })),
+                                received: sortedDates.map(d => dateMap.get(d).received),
+                                sent: sortedDates.map(d => dateMap.get(d).sent)
+                            };
+
+                            const ctx = document.getElementById('totalReferralsChart').getContext('2d');
+                            if (!ctx) {
+                                throw new Error('Total referrals chart canvas not found');
+                            }
+                            
+                            // Destroy existing chart if it exists
+                            if (totalReferralsChart instanceof Chart) {
+                                totalReferralsChart.destroy();
+                            }
+
+                            // Create new chart
+                            totalReferralsChart = new Chart(ctx, {
+                                type: 'bar',
+                                data: {
+                                    labels: chartData.dates,
+                                    datasets: [
+                                        {
+                                            label: 'Received',
+                                            data: chartData.received,
+                                            backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                                            borderColor: 'rgb(75, 192, 192)',
+                                            borderWidth: 1
+                                        },
+                                        {
+                                            label: 'Sent',
+                                            data: chartData.sent,
+                                            backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                                            borderColor: 'rgb(255, 99, 132)',
+                                            borderWidth: 1
+                                        }
+                                    ]
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    scales: {
+                                        y: {
+                                            beginAtZero: true,
+                                            ticks: {
+                                                callback: function(value) {
+                                                    return value.toLocaleString();
+                                                }
+                                            }
+                                        }
+                                    },
+                                    plugins: {
+                                        tooltip: {
+                                            callbacks: {
+                                                label: function(context) {
+                                                    return `${context.dataset.label}: ${context.parsed.y.toLocaleString()}`;
+                                                }
+                                            }
+                                        }
+                                    },
+                                    interaction: {
+                                        mode: 'index',
+                                        intersect: false
+                                    }
+                                }
+                            });
+                        } catch (error) {
+                            console.error('Error updating total referrals chart:', error);
+                            const container = document.getElementById('totalReferralsChart').parentElement;
+                            container.innerHTML = `<div class="alert alert-danger">Error displaying chart: ${error.message}</div>`;
+                        }
+                    }
+
                     // Define populateClientDropdown function
                     async function populateClientDropdown() {
                         try {
@@ -1361,6 +1466,35 @@
                             if (!data.historical_data) {
                                 throw new Error('No historical data received');
                             }
+
+                            // Format dates based on aggregation type
+                            const formattedData = {
+                                ...data.historical_data,
+                                dates: data.historical_data.dates.map(date => {
+                                    const d = new Date(date);
+                                    switch(aggregation) {
+                                        case 'week':
+                                            // Get the first day of the week (Monday)
+                                            const day = d.getDay();
+                                            const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is Sunday
+                                            const firstDay = new Date(d.setDate(diff));
+                                            return firstDay.toLocaleDateString('en-US', { 
+                                                month: 'short', 
+                                                day: 'numeric'
+                                            });
+                                        case 'month':
+                                            return d.toLocaleDateString('en-US', { 
+                                                month: 'short', 
+                                                year: 'numeric'
+                                            });
+                                        default: // day
+                                            return d.toLocaleDateString('en-US', { 
+                                                month: 'short', 
+                                                day: 'numeric'
+                                            });
+                                    }
+                                })
+                            };
                             
                             // Update period label based on aggregation
                             const periodLabel = document.getElementById('period-label');
@@ -1374,10 +1508,10 @@
                                 periodLabel.textContent = `(${periodText}, by ${aggregation})`;
                             }
                             
-                            // Update all charts
-                            updateTrendChart(data.historical_data);
-                            updateConversionChart(data.historical_data);
-                            updateDailyChangesChart(data.historical_data);
+                            // Update all charts with formatted data
+                            updateTrendChart(formattedData);
+                            updateConversionChart(formattedData);
+                            updateDailyChangesChart(formattedData);
                             updateTrendMetrics(data);
                             
                         } catch (error) {
@@ -2342,6 +2476,7 @@
                             updateFastestGrowingDeclining(data);
                             updateDashboardMetrics(data);
                             updateNetworkGraph(data);
+                            updateTotalReferralsChart(data);
                             
                             // Update table
                             tableData = data;

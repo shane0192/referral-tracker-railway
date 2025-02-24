@@ -2456,3 +2456,53 @@ def get_demo_data():
     except Exception as e:
         print(f"Error generating demo data: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/available-accounts')
+@login_required
+def get_available_accounts():
+    try:
+        # Get accounts from database
+        session = db.Session()
+        db_accounts = session.query(ReferralData.account_name).distinct().all()
+        db_accounts = [account[0] for account in db_accounts]
+        
+        # Get enabled accounts from config
+        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'config')
+        os.makedirs(config_path, exist_ok=True)
+        config_file = os.path.join(config_path, 'enabled_accounts.json')
+        
+        try:
+            with open(config_file, 'r') as f:
+                config_data = json.load(f)
+                if isinstance(config_data, list):
+                    enabled_accounts = config_data
+                    known_accounts = enabled_accounts.copy()
+                else:
+                    enabled_accounts = config_data.get('enabled', [])
+                    known_accounts = config_data.get('known', [])
+        except (FileNotFoundError, json.JSONDecodeError):
+            enabled_accounts = []
+            known_accounts = []
+
+        # Add Demo Client to enabled accounts if not present
+        if 'Demo Client' not in enabled_accounts:
+            enabled_accounts.append('Demo Client')
+        if 'Demo Client' not in known_accounts:
+            known_accounts.append('Demo Client')
+
+        # Return all required data
+        return jsonify({
+            'success': True,
+            'accounts': sorted(list(set(known_accounts))),  # All known accounts
+            'enabled_accounts': sorted(list(set(enabled_accounts))),  # Currently enabled accounts
+            'db_accounts': sorted(list(set(db_accounts))),  # Accounts with data in DB
+            'available_accounts': sorted(list(set(known_accounts)))  # All available accounts
+        })
+    except Exception as e:
+        print(f"Error getting available accounts: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
+    finally:
+        session.close()

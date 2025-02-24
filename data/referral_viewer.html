@@ -1321,52 +1321,63 @@
                     }
 
                     async function loadTrendData(partner, account) {
-                        const timeRange = document.getElementById('trendTimeRange').value;
-                        const aggregation = document.getElementById('trendAggregation').value;
-                        
-                        // Calculate dates
-                        let start, end = new Date();
-                        
-                        if (timeRange === 'custom') {
-                            start = new Date(document.getElementById('trendStartDate').value);
-                            end = new Date(document.getElementById('trendEndDate').value);
-                        } else {
-                            start = new Date();
-                            start.setDate(end.getDate() - parseInt(timeRange));
-                        }
-                        
-                        // Build URL with query parameters
-                        const params = new URLSearchParams({
-                            account: account,
-                            partner: partner,
-                            start: start.toISOString().split('T')[0],
-                            end: end.toISOString().split('T')[0],
-                            aggregation: aggregation
-                        });
-                        
-                        const url = `${API_BASE_URL}/api/partnership-trends?${params.toString()}`;
-                        
                         try {
+                            const timeRange = document.getElementById('trendTimeRange').value;
+                            const aggregation = document.getElementById('trendAggregation').value;
+                            
+                            // Calculate dates
+                            let start, end = new Date();
+                            
+                            if (timeRange === 'custom') {
+                                start = new Date(document.getElementById('trendStartDate').value);
+                                end = new Date(document.getElementById('trendEndDate').value);
+                                if (!start || !end) {
+                                    throw new Error('Please select both start and end dates');
+                                }
+                            } else {
+                                start = new Date();
+                                start.setDate(end.getDate() - parseInt(timeRange));
+                            }
+                            
+                            // Build URL with query parameters
+                            const params = new URLSearchParams({
+                                account: account,
+                                partner: partner,
+                                start: start.toISOString().split('T')[0],
+                                end: end.toISOString().split('T')[0],
+                                aggregation: aggregation
+                            });
+                            
+                            const url = `${API_BASE_URL}/api/partnership-trends?${params.toString()}`;
+                            console.log('Fetching trends with URL:', url);
+                            
                             const response = await fetch(url);
                             if (!response.ok) {
                                 throw new Error(`HTTP error! status: ${response.status}`);
                             }
                             const data = await response.json();
+                            console.log('Received trend data:', data);
                             
                             if (!data.historical_data) {
                                 throw new Error('No historical data received');
                             }
                             
-                            // Update the main trend chart
+                            // Update period label based on aggregation
+                            const periodLabel = document.getElementById('period-label');
+                            if (periodLabel) {
+                                let periodText = '';
+                                if (timeRange === 'custom') {
+                                    periodText = `${start.toLocaleDateString()} - ${end.toLocaleDateString()}`;
+                                } else {
+                                    periodText = `Last ${timeRange} days`;
+                                }
+                                periodLabel.textContent = `(${periodText}, by ${aggregation})`;
+                            }
+                            
+                            // Update all charts
                             updateTrendChart(data.historical_data);
-                            
-                            // Update conversion rate chart
                             updateConversionChart(data.historical_data);
-                            
-                            // Update daily changes chart
                             updateDailyChangesChart(data.historical_data);
-                            
-                            // Update metrics
                             updateTrendMetrics(data);
                             
                         } catch (error) {
@@ -1639,23 +1650,25 @@
 
                             // Create new chart
                             dailyChangesChart = new Chart(ctx, {
-                                type: 'bar',
+                                type: 'line',
                                 data: {
                                     labels: chartData.dates.slice(1),
                                     datasets: [
                                         {
                                             label: 'Received Changes',
                                             data: receivedChanges,
-                                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
                                             borderColor: 'rgb(75, 192, 192)',
-                                            borderWidth: 1
+                                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                                            tension: 0.1,
+                                            fill: true
                                         },
                                         {
                                             label: 'Sent Changes',
                                             data: sentChanges,
-                                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
                                             borderColor: 'rgb(255, 99, 132)',
-                                            borderWidth: 1
+                                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                                            tension: 0.1,
+                                            fill: true
                                         }
                                     ]
                                 },
@@ -1690,6 +1703,69 @@
                             // Show error in UI
                             const container = document.getElementById('dailyChangesChart').parentElement;
                             container.innerHTML = `<div class="alert alert-danger">Error displaying daily changes chart: ${error.message}</div>`;
+                        }
+                    }
+
+                    // Update trend metrics function
+                    function updateTrendMetrics(data) {
+                        try {
+                            console.log("Updating trend metrics with data:", data);
+                            
+                            // Update current period metrics
+                            const receivedMetric = document.getElementById('receivedMetric');
+                            const sentMetric = document.getElementById('sentMetric');
+                            const balanceMetric = document.getElementById('balanceMetric');
+                            
+                            if (data.current_period) {
+                                receivedMetric.textContent = data.current_period.received.toLocaleString();
+                                sentMetric.textContent = data.current_period.sent.toLocaleString();
+                                balanceMetric.textContent = data.current_period.balance.toLocaleString();
+                                
+                                // Add color classes based on balance
+                                balanceMetric.className = 'metric-value ' + 
+                                    (data.current_period.balance >= 0 ? 'text-success' : 'text-danger');
+                            }
+
+                            // Calculate daily change and growth rate
+                            const dailyChangeMetric = document.getElementById('dailyChangeMetric');
+                            const growthRateMetric = document.getElementById('growthRateMetric');
+                            const trendMetric = document.getElementById('trendMetric');
+                            
+                            if (data.historical_data && data.historical_data.received && data.historical_data.received.length > 1) {
+                                const firstReceived = data.historical_data.received[0];
+                                const lastReceived = data.historical_data.received[data.historical_data.received.length - 1];
+                                const dayCount = data.historical_data.received.length;
+                                
+                                // Calculate daily change
+                                const totalChange = lastReceived - firstReceived;
+                                const avgDailyChange = totalChange / (dayCount - 1);
+                                dailyChangeMetric.textContent = avgDailyChange.toLocaleString(undefined, {
+                                    minimumFractionDigits: 1,
+                                    maximumFractionDigits: 1
+                                });
+                                
+                                // Calculate growth rate
+                                if (firstReceived > 0) {
+                                    const growthRate = ((lastReceived - firstReceived) / firstReceived) * 100;
+                                    growthRateMetric.textContent = growthRate.toFixed(1) + '%';
+                                } else {
+                                    growthRateMetric.textContent = 'N/A';
+                                }
+                                
+                                // Determine trend
+                                if (totalChange > 0) {
+                                    trendMetric.textContent = 'Growing';
+                                    trendMetric.className = 'metric-value text-success';
+                                } else if (totalChange < 0) {
+                                    trendMetric.textContent = 'Declining';
+                                    trendMetric.className = 'metric-value text-danger';
+                                } else {
+                                    trendMetric.textContent = 'Stable';
+                                    trendMetric.className = 'metric-value';
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Error updating trend metrics:', error);
                         }
                     }
 

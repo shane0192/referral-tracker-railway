@@ -1438,6 +1438,7 @@
                     
 
                     // 6. Update trend chart function
+                    // This function updates the main trend chart with received and sent data
                     function updateTrendChart(chartData) {
                         try {
                             console.log("Updating trend chart with data:", chartData);
@@ -1507,6 +1508,103 @@
                             // Show error in UI
                             const container = document.getElementById('trendChart').parentElement;
                             container.innerHTML = `<div class="alert alert-danger">Error displaying chart: ${error.message}</div>`;
+                        }
+                    }
+
+                    // Update conversion rate chart function
+                    function updateConversionChart(chartData) {
+                        try {
+                            console.log("Updating conversion rate chart with data:", chartData);
+                            
+                            // Validate data
+                            if (!chartData.conversion_dates || (!chartData.sent_conversion_rates && !chartData.received_conversion_rates)) {
+                                throw new Error('Missing required conversion rate data');
+                            }
+
+                            const ctx = document.getElementById('conversionRateChart').getContext('2d');
+                            if (!ctx) {
+                                throw new Error('Conversion rate chart canvas not found');
+                            }
+                            
+                            // Destroy existing chart if it exists
+                            if (conversionRateChart instanceof Chart) {
+                                conversionRateChart.destroy();
+                            }
+
+                            // Filter out null values and prepare data
+                            const validSentData = chartData.conversion_dates.map((date, i) => ({
+                                date,
+                                rate: chartData.sent_conversion_rates[i]
+                            })).filter(item => item.rate !== null);
+
+                            const validReceivedData = chartData.conversion_dates.map((date, i) => ({
+                                date,
+                                rate: chartData.received_conversion_rates[i]
+                            })).filter(item => item.rate !== null);
+
+                            if (validSentData.length === 0 && validReceivedData.length === 0) {
+                                throw new Error('No valid conversion rate data available');
+                            }
+
+                            // Create new chart
+                            conversionRateChart = new Chart(ctx, {
+                                type: 'line',
+                                data: {
+                                    labels: chartData.conversion_dates,
+                                    datasets: [
+                                        {
+                                            label: 'Sent Conversion Rate',
+                                            data: chartData.sent_conversion_rates.map(rate => rate !== null ? rate * 100 : null),
+                                            borderColor: 'rgb(255, 99, 132)',
+                                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                                            tension: 0.1,
+                                            fill: true,
+                                            pointRadius: 4,
+                                            pointHoverRadius: 6,
+                                            spanGaps: false
+                                        },
+                                        {
+                                            label: 'Received Conversion Rate',
+                                            data: chartData.received_conversion_rates.map(rate => rate !== null ? rate * 100 : null),
+                                            borderColor: 'rgb(75, 192, 192)',
+                                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                                            tension: 0.1,
+                                            fill: true,
+                                            pointRadius: 4,
+                                            pointHoverRadius: 6,
+                                            spanGaps: false
+                                        }
+                                    ]
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    scales: {
+                                        y: {
+                                            beginAtZero: true,
+                                            ticks: {
+                                                callback: function(value) {
+                                                    return value.toFixed(1) + '%';
+                                                }
+                                            }
+                                        }
+                                    },
+                                    plugins: {
+                                        tooltip: {
+                                            callbacks: {
+                                                label: function(context) {
+                                                    return `${context.dataset.label}: ${context.parsed.y.toFixed(1)}%`;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+                        } catch (error) {
+                            console.error('Error updating conversion rate chart:', error);
+                            // Show error in UI
+                            const container = document.getElementById('conversionRateChart').parentElement;
+                            container.innerHTML = `<div class="alert alert-danger">Error displaying conversion rate chart: ${error.message}</div>`;
                         }
                     }
 
@@ -3467,7 +3565,7 @@
                                 await updateDashboardMetrics(metricsData);
                                 renderTable();
                                 
-                            } catch (error) {
+                        } catch (error) {
                                 console.error('Error loading client data:', error);
                             }
                         }

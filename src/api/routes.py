@@ -2461,48 +2461,42 @@ def get_demo_data():
 @login_required
 def get_available_accounts():
     try:
-        # Get accounts from database
         session = db.Session()
-        db_accounts = session.query(ReferralData.account_name).distinct().all()
-        db_accounts = [account[0] for account in db_accounts]
-        
-        # Get enabled accounts from config
-        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'config')
-        os.makedirs(config_path, exist_ok=True)
-        config_file = os.path.join(config_path, 'enabled_accounts.json')
-        
         try:
-            with open(config_file, 'r') as f:
-                config_data = json.load(f)
-                if isinstance(config_data, list):
-                    enabled_accounts = config_data
-                    known_accounts = enabled_accounts.copy()
-                else:
-                    enabled_accounts = config_data.get('enabled', [])
-                    known_accounts = config_data.get('known', [])
-        except (FileNotFoundError, json.JSONDecodeError):
-            enabled_accounts = []
-            known_accounts = []
+            # Get all accounts from the database
+            allowed_accounts = session.query(AllowedAccount)\
+                .filter(AllowedAccount.is_active == True)\
+                .all()
+            
+            # Get accounts that have data
+            db_accounts = session.query(ReferralData.account_name)\
+                .distinct()\
+                .all()
+            db_accounts = [account[0] for account in db_accounts]
+            
+            # Add Demo Client if not present
+            if 'Demo Client' not in [acc.account_name for acc in allowed_accounts]:
+                demo_account = AllowedAccount(
+                    account_name='Demo Client',
+                    is_active=True
+                )
+                session.add(demo_account)
+                session.commit()
+                allowed_accounts.append(demo_account)
 
-        # Add Demo Client to enabled accounts if not present
-        if 'Demo Client' not in enabled_accounts:
-            enabled_accounts.append('Demo Client')
-        if 'Demo Client' not in known_accounts:
-            known_accounts.append('Demo Client')
-
-        # Return all required data
-        return jsonify({
-            'success': True,
-            'accounts': sorted(list(set(known_accounts))),  # All known accounts
-            'enabled_accounts': sorted(list(set(enabled_accounts))),  # Currently enabled accounts
-            'db_accounts': sorted(list(set(db_accounts))),  # Accounts with data in DB
-            'available_accounts': sorted(list(set(known_accounts)))  # All available accounts
-        })
+            # Return all required data
+            return jsonify({
+                'success': True,
+                'accounts': sorted([acc.account_name for acc in allowed_accounts]),  # All accounts
+                'enabled_accounts': sorted([acc.account_name for acc in allowed_accounts if acc.is_active]),  # Active accounts
+                'db_accounts': sorted(db_accounts),  # Accounts with data in DB
+                'available_accounts': sorted([acc.account_name for acc in allowed_accounts if acc.is_active])  # Available accounts
+            })
+        finally:
+            session.close()
     except Exception as e:
         print(f"Error getting available accounts: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)
         })
-    finally:
-        session.close()

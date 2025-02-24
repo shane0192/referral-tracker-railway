@@ -1259,29 +1259,17 @@
                         try {
                             console.log("Updating total referrals chart with data:", data);
                             
-                            // Group data by date
-                            const dateMap = new Map();
-                            data.forEach(item => {
-                                const date = item.latest_date;
-                                if (!dateMap.has(date)) {
-                                    dateMap.set(date, {
-                                        received: 0,
-                                        sent: 0
-                                    });
-                                }
-                                dateMap.get(date).received += item.period_received || 0;
-                                dateMap.get(date).sent += item.period_sent || 0;
-                            });
+                            if (!data || !data.dates || !data.received || !data.sent) {
+                                throw new Error('Invalid data format for total referrals chart');
+                            }
 
-                            // Convert to arrays and sort by date
-                            const sortedDates = Array.from(dateMap.keys()).sort();
                             const chartData = {
-                                dates: sortedDates.map(d => new Date(d).toLocaleDateString('en-US', { 
+                                dates: data.dates.map(d => new Date(d).toLocaleDateString('en-US', { 
                                     month: 'short',
                                     day: 'numeric'
                                 })),
-                                received: sortedDates.map(d => dateMap.get(d).received),
-                                sent: sortedDates.map(d => dateMap.get(d).sent)
+                                received: data.received,
+                                sent: data.sent
                             };
 
                             console.log('Processed chart data:', chartData);
@@ -1298,23 +1286,25 @@
 
                             // Create new chart
                             totalReferralsChart = new Chart(ctx, {
-                                type: 'bar',
+                                type: 'line',  // Changed to line chart
                                 data: {
                                     labels: chartData.dates,
                                     datasets: [
                                         {
                                             label: 'Received',
                                             data: chartData.received,
-                                            backgroundColor: 'rgba(75, 192, 192, 0.5)',
                                             borderColor: 'rgb(75, 192, 192)',
-                                            borderWidth: 1
+                                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                                            borderWidth: 2,
+                                            fill: true
                                         },
                                         {
                                             label: 'Sent',
                                             data: chartData.sent,
-                                            backgroundColor: 'rgba(255, 99, 132, 0.5)',
                                             borderColor: 'rgb(255, 99, 132)',
-                                            borderWidth: 1
+                                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                                            borderWidth: 2,
+                                            fill: true
                                         }
                                     ]
                                 },
@@ -2461,28 +2451,49 @@
                             const start = new Date();
                             start.setDate(end.getDate() - parseInt(dateRange));
 
-                            // Use partnership-metrics endpoint
-                            const url = `${API_BASE_URL}/api/partnership-metrics?` +
+                            // Use partnership-metrics endpoint for other components
+                            const metricsUrl = `${API_BASE_URL}/api/partnership-metrics?` +
                                 `start=${start.toISOString().split('T')[0]}&` +
                                 `end=${end.toISOString().split('T')[0]}` +
                                 (client !== 'all' ? `&account=${encodeURIComponent(client)}` : '');
-
-                            const response = await fetch(url);
-                            const data = await response.json();
                             
-                            // Update all dashboard components with the same data
-                            updateTopImbalances(data);
-                            updateFastestGrowingDeclining(data);
-                            updateDashboardMetrics(data);
-                            updateNetworkGraph(data);
-                            updateTotalReferralsChart(data);  // Add this line
+                            console.log('Fetching metrics data from:', metricsUrl);
+                            const metricsResponse = await fetch(metricsUrl);
+                            const metricsData = await metricsResponse.json();
+                            console.log('Received metrics data:', metricsData);
+
+                            // Update metrics components
+                            updateTopImbalances(metricsData);
+                            updateFastestGrowingDeclining(metricsData);
+                            updateDashboardMetrics(metricsData);
+                            updateNetworkGraph(metricsData);
+                            
+                            // Get total referrals data from trends endpoint
+                            const trendsUrl = `${API_BASE_URL}/api/trends/${encodeURIComponent(client)}?days=${dateRange}`;
+                            console.log('Fetching trends data from:', trendsUrl);
+                            const trendsResponse = await fetch(trendsUrl);
+                            const trendsData = await trendsResponse.json();
+                            console.log('Received trends data:', trendsData);
+
+                            // Calculate total referrals per day
+                            const totalReferralsData = {
+                                dates: trendsData.trends.dates,
+                                received: trendsData.trends.received,
+                                sent: trendsData.trends.sent
+                            };
+                            
+                            // Update total referrals chart
+                            updateTotalReferralsChart(totalReferralsData);
                             
                             // Update table
-                            tableData = data;
+                            tableData = metricsData;
                             renderTable();
                             
                         } catch (error) {
                             console.error('Error loading dashboard data:', error);
+                            // Display error in the chart container
+                            const container = document.getElementById('totalReferralsChart').parentElement;
+                            container.innerHTML = `<div class="alert alert-danger">Error loading data: ${error.message}</div>`;
                         }
                     }
 

@@ -1608,6 +1608,91 @@
                         }
                     }
 
+                    // Update daily changes chart function
+                    function updateDailyChangesChart(chartData) {
+                        try {
+                            console.log("Updating daily changes chart with data:", chartData);
+                            
+                            // Validate data
+                            if (!chartData.dates || !chartData.received || !chartData.sent) {
+                                throw new Error('Missing required chart data');
+                            }
+
+                            const ctx = document.getElementById('dailyChangesChart').getContext('2d');
+                            if (!ctx) {
+                                throw new Error('Daily changes chart canvas not found');
+                            }
+                            
+                            // Destroy existing chart if it exists
+                            if (dailyChangesChart instanceof Chart) {
+                                dailyChangesChart.destroy();
+                            }
+
+                            // Calculate daily changes
+                            const receivedChanges = [];
+                            const sentChanges = [];
+                            
+                            for (let i = 1; i < chartData.received.length; i++) {
+                                receivedChanges.push(chartData.received[i] - chartData.received[i-1]);
+                                sentChanges.push(chartData.sent[i] - chartData.sent[i-1]);
+                            }
+
+                            // Create new chart
+                            dailyChangesChart = new Chart(ctx, {
+                                type: 'bar',
+                                data: {
+                                    labels: chartData.dates.slice(1),
+                                    datasets: [
+                                        {
+                                            label: 'Received Changes',
+                                            data: receivedChanges,
+                                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                                            borderColor: 'rgb(75, 192, 192)',
+                                            borderWidth: 1
+                                        },
+                                        {
+                                            label: 'Sent Changes',
+                                            data: sentChanges,
+                                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                                            borderColor: 'rgb(255, 99, 132)',
+                                            borderWidth: 1
+                                        }
+                                    ]
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    scales: {
+                                        y: {
+                                            beginAtZero: true,
+                                            ticks: {
+                                                callback: function(value) {
+                                                    return value.toLocaleString();
+                                                }
+                                            }
+                                        }
+                                    },
+                                    plugins: {
+                                        tooltip: {
+                                            callbacks: {
+                                                label: function(context) {
+                                                    const change = context.parsed.y;
+                                                    const sign = change >= 0 ? '+' : '';
+                                                    return `${context.dataset.label}: ${sign}${change.toLocaleString()}`;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+                        } catch (error) {
+                            console.error('Error updating daily changes chart:', error);
+                            // Show error in UI
+                            const container = document.getElementById('dailyChangesChart').parentElement;
+                            container.innerHTML = `<div class="alert alert-danger">Error displaying daily changes chart: ${error.message}</div>`;
+                        }
+                    }
+
                     // 7. Format balance value function
                     function formatBalanceValue(value) {
                         if (isNaN(value)) value = 0;

@@ -737,6 +737,7 @@ def get_partnership_trends():
         partner = request.args.get('partner')
         start_date = datetime.strptime(request.args.get('start'), '%Y-%m-%d')
         end_date = datetime.strptime(request.args.get('end'), '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+        aggregation = request.args.get('aggregation', 'day')  # 'day', 'week', or 'month'
         
         session = db.Session()
         try:
@@ -756,55 +757,78 @@ def get_partnership_trends():
             sent_values = []
             conversion_data = []
             
+            # Group records by aggregation period
+            aggregated_data = {}
             for record in records:
-                date_str = record.date.strftime('%Y-%m-%d')
-                dates.append(date_str)
+                # Get the period key based on aggregation type
+                if aggregation == 'week':
+                    period_key = record.date.strftime('%Y-%W')  # Year-WeekNumber
+                elif aggregation == 'month':
+                    period_key = record.date.strftime('%Y-%m')  # Year-Month
+                else:  # day
+                    period_key = record.date.strftime('%Y-%m-%d')
+                
+                if period_key not in aggregated_data:
+                    aggregated_data[period_key] = {
+                        'date': record.date,
+                        'received': 0,
+                        'sent': 0,
+                        'sent_rate': None,
+                        'received_rate': None,
+                        'has_conversion_data': False
+                    }
                 
                 # Handle received values
                 partner_received = next((rec for rec in record.recommending_me if rec['creator'] == partner), None)
                 received = safe_int_convert(partner_received['subscribers']) if partner_received else 0
-                received_values.append(received)
+                aggregated_data[period_key]['received'] = max(aggregated_data[period_key]['received'], received)
 
                 # Handle sent values
                 partner_sent = next((rec for rec in record.my_recommendations if rec['creator'] == partner), None)
                 sent = safe_int_convert(partner_sent['subscribers']) if partner_sent else 0
-                sent_values.append(sent)
+                aggregated_data[period_key]['sent'] = max(aggregated_data[period_key]['sent'], sent)
                 
-                # Handle conversion rates
-                sent_rate = None
-                received_rate = None
-                has_data = False
-                
+                # Handle conversion rates - take the latest rates in the period
                 if partner_received and 'conversion_rate' in partner_received:
                     try:
-                        # Remove % sign and convert to float
                         rate_str = str(partner_received['conversion_rate']).replace('%', '').strip()
                         rate = float(rate_str)
-                        if 0 <= rate <= 100:  # Validate rate is between 0-100%
-                            received_rate = rate / 100  # Convert percentage to decimal
-                            has_data = True
-                            print(f"Found received rate for {date_str}: {rate}%")
+                        if 0 <= rate <= 100:
+                            aggregated_data[period_key]['received_rate'] = rate / 100
+                            aggregated_data[period_key]['has_conversion_data'] = True
                     except (ValueError, TypeError) as e:
-                        print(f"Error processing received rate for {date_str}: {e}")
+                        print(f"Error processing received rate: {e}")
 
                 if partner_sent and 'conversion_rate' in partner_sent:
                     try:
-                        # Remove % sign and convert to float
                         rate_str = str(partner_sent['conversion_rate']).replace('%', '').strip()
                         rate = float(rate_str)
-                        if 0 <= rate <= 100:  # Validate rate is between 0-100%
-                            sent_rate = rate / 100  # Convert percentage to decimal
-                            has_data = True
-                            print(f"Found sent rate for {date_str}: {rate}%")
+                        if 0 <= rate <= 100:
+                            aggregated_data[period_key]['sent_rate'] = rate / 100
+                            aggregated_data[period_key]['has_conversion_data'] = True
                     except (ValueError, TypeError) as e:
-                        print(f"Error processing sent rate for {date_str}: {e}")
+                        print(f"Error processing sent rate: {e}")
 
-                # Add conversion data point if we have any valid rates
-                if has_data:
+            # Convert aggregated data to lists
+            sorted_periods = sorted(aggregated_data.items())
+            for period_key, data in sorted_periods:
+                # Format display date based on aggregation
+                if aggregation == 'week':
+                    display_date = data['date'].strftime('Week %W, %Y')
+                elif aggregation == 'month':
+                    display_date = data['date'].strftime('%b %Y')
+                else:
+                    display_date = data['date'].strftime('%Y-%m-%d')
+                
+                dates.append(display_date)
+                received_values.append(data['received'])
+                sent_values.append(data['sent'])
+                
+                if data['has_conversion_data']:
                     conversion_data.append({
-                        'date': date_str,
-                        'sent_rate': sent_rate,
-                        'received_rate': received_rate
+                        'date': display_date,
+                        'sent_rate': data['sent_rate'],
+                        'received_rate': data['received_rate']
                     })
 
             # Sort conversion data by date
@@ -855,7 +879,8 @@ def get_partnership_trends():
                     'sent': sent_values,
                     'conversion_dates': [d['date'] for d in conversion_data],
                     'sent_conversion_rates': [d['sent_rate'] for d in conversion_data],
-                    'received_conversion_rates': [d['received_rate'] for d in conversion_data]
+                    'received_conversion_rates': [d['received_rate'] for d in conversion_data],
+                    'aggregation': aggregation
                 },
                 'current_period': {
                     'received': current_received,

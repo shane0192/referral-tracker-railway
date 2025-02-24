@@ -1125,6 +1125,42 @@
                         <button type="button" class="btn-close" onclick="closeTrendsPanel()"></button>
                     </div>
                     
+                    <!-- Add time range controls -->
+                    <div class="time-controls mb-4">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label class="form-label">Time Range</label>
+                                <select class="form-select" id="trendTimeRange">
+                                    <option value="30">Last 30 days</option>
+                                    <option value="90">Last 90 days</option>
+                                    <option value="180">Last 6 months</option>
+                                    <option value="365">Last year</option>
+                                    <option value="custom">Custom Range</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">View By</label>
+                                <select class="form-select" id="trendAggregation">
+                                    <option value="day">Day</option>
+                                    <option value="week">Week</option>
+                                    <option value="month">Month</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Custom date range picker (hidden by default) -->
+                        <div id="customDateRange" class="row mt-3" style="display: none;">
+                            <div class="col-md-6">
+                                <label class="form-label">Start Date</label>
+                                <input type="date" class="form-control" id="trendStartDate">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">End Date</label>
+                                <input type="date" class="form-control" id="trendEndDate">
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="metrics-container">
                         <h2>Current Period <span class="period-label" id="period-label"></span></h2>
                         <div class="metrics-grid">
@@ -1277,311 +1313,107 @@
                         const panel = document.getElementById('trendsPanel');
                         panel.classList.add('active');
                         
-                        // Get date range
-                        const dateRange = document.getElementById('dateRangeSelect').value;
-                        const end = new Date();
-                        const start = new Date();
-                        start.setDate(end.getDate() - parseInt(dateRange));
+                        // Store the current partner and account for refreshing
+                        panel.dataset.partner = partner;
+                        panel.dataset.account = account;
+                        
+                        loadTrendData(partner, account);
+                    }
+
+                    async function loadTrendData(partner, account) {
+                        const timeRange = document.getElementById('trendTimeRange').value;
+                        const aggregation = document.getElementById('trendAggregation').value;
+                        
+                        // Calculate dates
+                        let start, end = new Date();
+                        
+                        if (timeRange === 'custom') {
+                            start = new Date(document.getElementById('trendStartDate').value);
+                            end = new Date(document.getElementById('trendEndDate').value);
+                        } else {
+                            start = new Date();
+                            start.setDate(end.getDate() - parseInt(timeRange));
+                        }
                         
                         // Build URL with query parameters
                         const params = new URLSearchParams({
                             account: account,
                             partner: partner,
                             start: start.toISOString().split('T')[0],
-                            end: end.toISOString().split('T')[0]
+                            end: end.toISOString().split('T')[0],
+                            aggregation: aggregation
                         });
                         
                         const url = `${API_BASE_URL}/api/partnership-trends?${params.toString()}`;
                         
-                        fetch(url)
-                            .then(response => {
-                                if (!response.ok) {
-                                    throw new Error(`HTTP error! status: ${response.status}`);
-                                }
-                                return response.json();
-                            })
-                            .then(data => {
-                                if (!data.historical_data) {
-                                    throw new Error('No historical data received');
-                                }
-                                
-                                // Update the main trend chart
-                                const trendCtx = document.getElementById('trendChart').getContext('2d');
-                                if (trendChart instanceof Chart) {
-                                    trendChart.destroy();
-                                }
-                                trendChart = new Chart(trendCtx, {
-                                    type: 'line',
-                                    data: {
-                                        labels: data.historical_data.dates,
-                                        datasets: [{
-                                            label: 'Received',
-                                            data: data.historical_data.received,
-                                            borderColor: 'rgb(75, 192, 192)',
-                                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
-                                            tension: 0.1,
-                                            fill: true
-                                        }, {
-                                            label: 'Sent',
-                                            data: data.historical_data.sent,
-                                            borderColor: 'rgb(255, 99, 132)',
-                                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
-                                            tension: 0.1,
-                                            fill: true
-                                        }]
-                                    },
-                                    options: {
-                                        responsive: true,
-                                        maintainAspectRatio: false,
-                                        scales: {
-                                            y: {
-                                                beginAtZero: true,
-                                                ticks: {
-                                                    callback: function(value) {
-                                                        return value.toLocaleString();
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                });
-
-                                // Render conversion rate chart
-                                const conversionCtx = document.getElementById('conversionRateChart').getContext('2d');
-                                if (conversionRateChart instanceof Chart) {
-                                    conversionRateChart.destroy();
-                                }
-
-                                // Check if we have valid conversion rate data
-                                if (data.historical_data.sent_conversion_rates || data.historical_data.received_conversion_rates) {
-                                    // Filter out null values and prepare data for both rates
-                                    const sentData = data.historical_data.sent_conversion_rates.map((rate, index) => ({
-                                        x: data.historical_data.conversion_dates[index],  // Use conversion_dates array
-                                        y: rate !== null ? rate * 100 : null  // Convert to percentage
-                                    })).filter(point => point.y !== null);
-
-                                    const receivedData = data.historical_data.received_conversion_rates.map((rate, index) => ({
-                                        x: data.historical_data.conversion_dates[index],  // Use conversion_dates array
-                                        y: rate !== null ? rate * 100 : null  // Convert to percentage
-                                    })).filter(point => point.y !== null);
-
-                                    conversionRateChart = new Chart(conversionCtx, {
-                                        type: 'line',
-                                        data: {
-                                            datasets: [{
-                                                label: 'Sent Conversion Rate',
-                                                data: sentData,
-                                                borderColor: '#dc3545',  // Red to match sent color scheme
-                                                backgroundColor: '#dc3545',
-                                                tension: 0,  // Remove curve between points
-                                                pointRadius: 4,
-                                                pointHoverRadius: 6,
-                                                spanGaps: false  // Don't connect points across gaps
-                                            }, {
-                                                label: 'Received Conversion Rate',
-                                                data: receivedData,
-                                                borderColor: '#28a745',  // Green to match received color scheme
-                                                backgroundColor: '#28a745',
-                                                tension: 0,  // Remove curve between points
-                                                pointRadius: 4,
-                                                pointHoverRadius: 6,
-                                                spanGaps: false  // Don't connect points across gaps
-                                            }]
-                                        },
-                                        options: {
-                                            responsive: true,
-                                            maintainAspectRatio: false,
-                                            interaction: {
-                                                intersect: false,
-                                                mode: 'index'
-                                            },
-                                            plugins: {
-                                                legend: {
-                                                    position: 'top'
-                                                },
-                                                tooltip: {
-                                                    callbacks: {
-                                                        label: context => `${context.dataset.label}: ${context.parsed.y.toFixed(1)}%`
-                                                    }
-                                                }
-                                            },
-                                            scales: {
-                                                y: {
-                                                    beginAtZero: true,
-                                                    max: 100,  // Set max to 100%
-                                                    ticks: {
-                                                        callback: value => value.toFixed(1) + '%'
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    });
-                                } else {
-                                    // If no conversion rate data, show a message
-                                    const container = conversionCtx.canvas.parentElement;
-                                    container.innerHTML = `
-                                        <div class="alert alert-info text-center">
-                                            No conversion rate data available for this period
-                                        </div>
-                                    `;
-                                }
-
-                                // Get date range for display
-                                const dateRange = document.getElementById('dateRangeSelect').value;
-                                const dateRangeText = dateRange === '7' ? 'Last 7 days' : 
-                                                    dateRange === '30' ? 'Last 30 days' : 
-                                                    dateRange === '90' ? 'Last 90 days' : 'Custom range';
-
-                                // Update period label
-                                document.getElementById('period-label').textContent = dateRangeText;
-
-                                // Calculate current period metrics (using only data within the selected period)
-                                const received = data.historical_data.received;
-                                const sent = data.historical_data.sent;
-
-                                // Calculate period totals (changes within the period)
-                                const periodReceived = received[received.length - 1] - received[0];
-                                const periodSent = sent[sent.length - 1] - sent[0];
-                                const periodBalance = periodReceived - periodSent;
-
-                                // Update Current Period section
-                                document.getElementById('receivedMetric').textContent = 
-                                    data.current_period.received.toLocaleString();
-                                document.getElementById('sentMetric').textContent = 
-                                    data.current_period.sent.toLocaleString();
-                                document.getElementById('balanceMetric').textContent = 
-                                    data.current_period.balance.toLocaleString();
-
-                                // Calculate Growth Metrics
-                                // Daily Change: Average change per day over the period
-                                let totalReceivedChange = 0;
-                                let daysWithChanges = 0;
-
-                                // Calculate daily changes and growth rate
-                                for (let i = 1; i < received.length; i++) {
-                                    const receivedChange = received[i] - received[i-1];
-                                    if (receivedChange !== 0) {
-                                        totalReceivedChange += receivedChange;
-                                        daysWithChanges++;
-                                    }
-                                }
-
-                                // Daily Change: Average change on days when there were changes
-                                const avgDailyChange = daysWithChanges > 0 ? 
-                                    (totalReceivedChange / daysWithChanges).toFixed(1) : 0;
-
-                                // Growth Rate: Percentage change from start to end of period
-                                const startValue = received[0];
-                                const endValue = received[received.length - 1];
-                                const growthRate = startValue > 0 ? 
-                                    (((endValue - startValue) / startValue) * 100).toFixed(1) : 0;
-
-                                // Trend: Based on overall change during period
-                                const trend = (endValue - startValue) > 0 ? 'Improving' : 'Declining';
-
-                                // Update Growth Metrics section
-                                document.getElementById('dailyChangeMetric').textContent = 
-                                    (avgDailyChange > 0 ? '+' : '') + avgDailyChange;
-                                document.getElementById('growthRateMetric').textContent = 
-                                    (growthRate > 0 ? '+' : '') + growthRate + '%';
-                                document.getElementById('trendMetric').textContent = trend;
-
-                                // Calculate and update daily changes
-                                const dailyChanges = {
-                                    dates: data.historical_data.dates.slice(1),
-                                    received: [],
-                                    sent: []
-                                };
-                                
-                                // Find first non-zero values (baselines)
-                                let baselineReceivedIndex = data.historical_data.received.findIndex(val => val > 0);
-                                let baselineSentIndex = data.historical_data.sent.findIndex(val => val > 0);
-                                
-                                // Calculate daily changes, but only after respective baselines
-                                for (let i = 1; i < data.historical_data.dates.length; i++) {
-                                    // For received changes
-                                    if (i > baselineReceivedIndex && baselineReceivedIndex !== -1) {
-                                        dailyChanges.received.push(
-                                            data.historical_data.received[i] - data.historical_data.received[i-1]
-                                        );
-                                    } else {
-                                        dailyChanges.received.push(0);
-                                    }
-                                    
-                                    // For sent changes
-                                    if (i > baselineSentIndex && baselineSentIndex !== -1) {
-                                        dailyChanges.sent.push(
-                                            data.historical_data.sent[i] - data.historical_data.sent[i-1]
-                                        );
-                                    } else {
-                                        dailyChanges.sent.push(0);
-                                    }
-                                }
-
-                                // Update daily changes chart
-                                const dailyCtx = document.getElementById('dailyChangesChart').getContext('2d');
-                                if (dailyChangesChart instanceof Chart) {
-                                    dailyChangesChart.destroy();
-                                }
-                                dailyChangesChart = new Chart(dailyCtx, {
-                                    type: 'line', // Changed from 'bar' to 'line'
-                                    data: {
-                                        labels: dailyChanges.dates,
-                                        datasets: [{
-                                            label: 'Received Changes',
-                                            data: dailyChanges.received,
-                                            borderColor: 'rgb(75, 192, 192)',
-                                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
-                                            tension: 0.1,
-                                            fill: true
-                                        }, {
-                                            label: 'Sent Changes',
-                                            data: dailyChanges.sent,
-                                            borderColor: 'rgb(255, 99, 132)',
-                                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
-                                            tension: 0.1,
-                                            fill: true
-                                        }]
-                                    },
-                                    options: {
-                                        responsive: true,
-                                        maintainAspectRatio: false,
-                                        scales: {
-                                            y: {
-                                                beginAtZero: true,
-                                                ticks: {
-                                                    callback: function(value) {
-                                                        return value > 0 ? '+' + value.toLocaleString() : value.toLocaleString();
-                                                    }
-                                                }
-                                            }
-                                        },
-                                        plugins: {
-                                            tooltip: {
-                                                callbacks: {
-                                                    label: function(context) {
-                                                        const value = context.parsed.y;
-                                                        const formattedValue = value > 0 ? '+' + value.toLocaleString() : value.toLocaleString();
-                                                        return `${context.dataset.label}: ${formattedValue}`;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                });
-                            })
-                            .catch(error => {
-                                console.error('Error:', error);
-                                const chartContainer = document.getElementById('trendChart').parentElement;
-                                chartContainer.innerHTML = `
-                                    <div class="alert alert-danger">
-                                        Error loading trends: ${error.message}
-                                        <br>
-                                        <small>Please try refreshing the page</small>
-                                    </div>
-                                `;
-                            });
+                        try {
+                            const response = await fetch(url);
+                            if (!response.ok) {
+                                throw new Error(`HTTP error! status: ${response.status}`);
+                            }
+                            const data = await response.json();
+                            
+                            if (!data.historical_data) {
+                                throw new Error('No historical data received');
+                            }
+                            
+                            // Update the main trend chart
+                            updateTrendChart(data.historical_data);
+                            
+                            // Update conversion rate chart
+                            updateConversionChart(data.historical_data);
+                            
+                            // Update daily changes chart
+                            updateDailyChangesChart(data.historical_data);
+                            
+                            // Update metrics
+                            updateTrendMetrics(data);
+                            
+                        } catch (error) {
+                            console.error('Error:', error);
+                            const chartContainer = document.getElementById('trendChart').parentElement;
+                            chartContainer.innerHTML = `
+                                <div class="alert alert-danger">
+                                    Error loading trends: ${error.message}
+                                    <br>
+                                    <small>Please try refreshing the page</small>
+                                </div>
+                            `;
+                        }
                     }
+
+                    // Add event listeners for the controls
+                    document.getElementById('trendTimeRange').addEventListener('change', function() {
+                        const customDateRange = document.getElementById('customDateRange');
+                        customDateRange.style.display = this.value === 'custom' ? 'flex' : 'none';
+                        
+                        const panel = document.getElementById('trendsPanel');
+                        if (panel.dataset.partner && panel.dataset.account) {
+                            loadTrendData(panel.dataset.partner, panel.dataset.account);
+                        }
+                    });
+
+                    document.getElementById('trendAggregation').addEventListener('change', function() {
+                        const panel = document.getElementById('trendsPanel');
+                        if (panel.dataset.partner && panel.dataset.account) {
+                            loadTrendData(panel.dataset.partner, panel.dataset.account);
+                        }
+                    });
+
+                    // Add event listeners for custom date inputs
+                    document.getElementById('trendStartDate').addEventListener('change', function() {
+                        const panel = document.getElementById('trendsPanel');
+                        if (panel.dataset.partner && panel.dataset.account) {
+                            loadTrendData(panel.dataset.partner, panel.dataset.account);
+                        }
+                    });
+
+                    document.getElementById('trendEndDate').addEventListener('change', function() {
+                        const panel = document.getElementById('trendsPanel');
+                        if (panel.dataset.partner && panel.dataset.account) {
+                            loadTrendData(panel.dataset.partner, panel.dataset.account);
+                        }
+                    });
 
                     // Add this cleanup function
                     function closeTrendsPanel() {

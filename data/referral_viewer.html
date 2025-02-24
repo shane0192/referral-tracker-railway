@@ -1355,35 +1355,37 @@
                                 // Check if we have valid conversion rate data
                                 if (data.historical_data.sent_conversion_rates || data.historical_data.received_conversion_rates) {
                                     // Filter out null values and prepare data for both rates
-                                    const sentRates = data.historical_data.sent_conversion_rates.map(rate => 
-                                        rate !== null ? rate * 100 : null
-                                    );
-                                    const receivedRates = data.historical_data.received_conversion_rates.map(rate => 
-                                        rate !== null ? rate * 100 : null
-                                    );
+                                    const sentData = data.historical_data.sent_conversion_rates.map((rate, index) => ({
+                                        x: data.historical_data.conversion_dates[index],  // Use conversion_dates array
+                                        y: rate !== null ? rate * 100 : null  // Convert to percentage
+                                    })).filter(point => point.y !== null);
+
+                                    const receivedData = data.historical_data.received_conversion_rates.map((rate, index) => ({
+                                        x: data.historical_data.conversion_dates[index],  // Use conversion_dates array
+                                        y: rate !== null ? rate * 100 : null  // Convert to percentage
+                                    })).filter(point => point.y !== null);
 
                                     conversionRateChart = new Chart(conversionCtx, {
                                         type: 'line',
                                         data: {
-                                            labels: data.historical_data.conversion_dates,
                                             datasets: [{
                                                 label: 'Sent Conversion Rate',
-                                                data: sentRates,
+                                                data: sentData,
                                                 borderColor: '#dc3545',  // Red to match sent color scheme
                                                 backgroundColor: '#dc3545',
                                                 tension: 0,  // Remove curve between points
                                                 pointRadius: 4,
                                                 pointHoverRadius: 6,
-                                                spanGaps: true  // Connect points across gaps
+                                                spanGaps: false  // Don't connect points across gaps
                                             }, {
                                                 label: 'Received Conversion Rate',
-                                                data: receivedRates,
+                                                data: receivedData,
                                                 borderColor: '#28a745',  // Green to match received color scheme
                                                 backgroundColor: '#28a745',
                                                 tension: 0,  // Remove curve between points
                                                 pointRadius: 4,
                                                 pointHoverRadius: 6,
-                                                spanGaps: true  // Connect points across gaps
+                                                spanGaps: false  // Don't connect points across gaps
                                             }]
                                         },
                                         options: {

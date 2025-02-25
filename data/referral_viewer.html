@@ -1266,7 +1266,7 @@
                         }
                         
                         // Get the chart container
-                        const container = document.getElementById('totalReferralsChartContainer');
+                        const container = canvas.parentElement;
                         if (!container) {
                             console.error("Could not find container for total referrals chart");
                             return;
@@ -1276,11 +1276,11 @@
                         container.querySelectorAll('.error-message').forEach(el => el.remove());
                         
                         try {
-                            // Extract data from the trends object
-                            const trendsData = data.trends || {};
-                            const dates = trendsData.dates || [];
-                            const received = trendsData.received || [];
-                            const sent = trendsData.sent || [];
+                            // Extract data from the total_referrals object
+                            const totalReferrals = data.total_referrals || {};
+                            const dates = totalReferrals.dates || [];
+                            const received = totalReferrals.received || [];
+                            const sent = totalReferrals.sent || [];
                             
                             console.log("Processed data:", {
                                 dates: dates,
@@ -1320,8 +1320,7 @@
                                     maintainAspectRatio: false,
                                     plugins: {
                                         title: {
-                                            display: true,
-                                            text: 'Total Referrals Over Time'
+                                            display: false
                                         },
                                         tooltip: {
                                             mode: 'index',
@@ -1348,11 +1347,43 @@
                         } catch (error) {
                             console.error("Error updating total referrals chart:", error);
                             const errorMessage = document.createElement('div');
-                            errorMessage.className = 'error-message';
+                            errorMessage.className = 'error-message text-danger';
                             errorMessage.textContent = 'Error loading chart data';
                             container.appendChild(errorMessage);
                         }
                     }
+
+                    // Add this function to fetch and update the chart data
+                    async function updateDashboardData() {
+                        try {
+                            const account = document.getElementById('clientSelect').value;
+                            const days = document.getElementById('dateRangeSelect').value;
+                            
+                            // Fetch partnership metrics
+                            const response = await fetch(`${API_BASE_URL}/api/partnership-metrics?account=${account}&days=${days}`);
+                            if (!response.ok) {
+                                throw new Error(`HTTP error! status: ${response.status}`);
+                            }
+                            
+                            const data = await response.json();
+                            console.log("Received dashboard data:", data);
+                            
+                            // Update the total referrals chart
+                            updateTotalReferralsChart(data);
+                            
+                            // Update other dashboard components...
+                            updatePartnershipTable(data.partner_metrics);
+                            updateGrowthLists(data.partner_metrics);
+                            
+                        } catch (error) {
+                            console.error("Error updating dashboard:", error);
+                            alert("Error updating dashboard data. Please try again.");
+                        }
+                    }
+
+                    // Add event listeners for the dropdowns
+                    document.getElementById('clientSelect').addEventListener('change', updateDashboardData);
+                    document.getElementById('dateRangeSelect').addEventListener('change', updateDashboardData);
 
                     // Define populateClientDropdown function
                     async function populateClientDropdown() {
@@ -1392,6 +1423,10 @@
                             // Populate client dropdown first
                             console.log('Calling populateClientDropdown');
                             await populateClientDropdown();
+
+                            // Initialize dashboard data
+                            console.log('Initializing dashboard data');
+                            await updateDashboardData();
 
                             // Initialize master dashboard view
                             toggleDashboardView('master');

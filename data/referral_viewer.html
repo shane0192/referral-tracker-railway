@@ -1265,16 +1265,6 @@
                             return;
                         }
                         
-                        // Get the chart container
-                        const container = document.getElementById('totalReferralsChartContainer');
-                        if (!container) {
-                            console.error("Could not find container for total referrals chart");
-                            return;
-                        }
-                        
-                        // Clear any error messages
-                        container.querySelectorAll('.error-message').forEach(el => el.remove());
-                        
                         try {
                             // Extract data from the trends object
                             const trendsData = data.trends || {};
@@ -1303,15 +1293,17 @@
                                             label: 'Received',
                                             data: received,
                                             borderColor: 'rgb(75, 192, 192)',
+                                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
                                             tension: 0.1,
-                                            fill: false
+                                            fill: true
                                         },
                                         {
                                             label: 'Sent',
                                             data: sent,
                                             borderColor: 'rgb(255, 99, 132)',
+                                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
                                             tension: 0.1,
-                                            fill: false
+                                            fill: true
                                         }
                                     ]
                                 },
@@ -1320,37 +1312,47 @@
                                     maintainAspectRatio: false,
                                     plugins: {
                                         title: {
-                                            display: true,
-                                            text: 'Total Referrals Over Time'
+                                            display: false
                                         },
                                         tooltip: {
                                             mode: 'index',
-                                            intersect: false
+                                            intersect: false,
+                                            callbacks: {
+                                                label: function(context) {
+                                                    return `${context.dataset.label}: ${context.parsed.y.toLocaleString()}`;
+                                                }
+                                            }
                                         }
                                     },
                                     scales: {
                                         y: {
                                             beginAtZero: true,
-                                            title: {
-                                                display: true,
-                                                text: 'Number of Referrals'
+                                            ticks: {
+                                                callback: function(value) {
+                                                    return value.toLocaleString();
+                                                }
                                             }
                                         },
                                         x: {
-                                            title: {
-                                                display: true,
-                                                text: 'Date'
+                                            ticks: {
+                                                maxRotation: 45,
+                                                minRotation: 45
                                             }
                                         }
+                                    },
+                                    interaction: {
+                                        mode: 'nearest',
+                                        axis: 'x',
+                                        intersect: false
                                     }
                                 }
                             });
                         } catch (error) {
                             console.error("Error updating total referrals chart:", error);
                             const errorMessage = document.createElement('div');
-                            errorMessage.className = 'error-message';
+                            errorMessage.className = 'alert alert-danger';
                             errorMessage.textContent = 'Error loading chart data';
-                            container.appendChild(errorMessage);
+                            canvas.parentElement.appendChild(errorMessage);
                         }
                     }
 
@@ -1393,29 +1395,8 @@
                             console.log('Calling populateClientDropdown');
                             await populateClientDropdown();
 
-                            // Load initial total referrals data
-                            const selectedClient = document.getElementById('clientSelect').value;
-                            const selectedDays = document.getElementById('dateRangeSelect').value;
-                            const endDate = new Date();
-                            const startDate = new Date();
-                            startDate.setDate(endDate.getDate() - parseInt(selectedDays));
-                            
-                            const params = new URLSearchParams({
-                                account: selectedClient,
-                                start: startDate.toISOString().split('T')[0],
-                                end: endDate.toISOString().split('T')[0]
-                            });
-                            
-                            const trendsResponse = await fetch(`${API_BASE_URL}/api/trends/${selectedClient}?${params.toString()}`);
-                            if (!trendsResponse.ok) {
-                                throw new Error(`HTTP error! status: ${trendsResponse.status}`);
-                            }
-                            const trendsData = await trendsResponse.json();
-                            updateTotalReferralsChart(trendsData);
-
-                            // Initialize master dashboard view
-                            toggleDashboardView('master');
-                            await updateMasterDashboard();
+                            // Load initial data
+                            await loadData();
                             
                             // Initialize tooltips
                             const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
@@ -1424,47 +1405,8 @@
                             }
 
                             // Add event listeners for client and date range changes
-                            document.getElementById('clientSelect').addEventListener('change', async function() {
-                                const selectedClient = this.value;
-                                const selectedDays = document.getElementById('dateRangeSelect').value;
-                                const endDate = new Date();
-                                const startDate = new Date();
-                                startDate.setDate(endDate.getDate() - parseInt(selectedDays));
-                                
-                                const params = new URLSearchParams({
-                                    account: selectedClient,
-                                    start: startDate.toISOString().split('T')[0],
-                                    end: endDate.toISOString().split('T')[0]
-                                });
-                                
-                                const trendsResponse = await fetch(`${API_BASE_URL}/api/trends/${selectedClient}?${params.toString()}`);
-                                if (!trendsResponse.ok) {
-                                    throw new Error(`HTTP error! status: ${trendsResponse.status}`);
-                                }
-                                const trendsData = await trendsResponse.json();
-                                updateTotalReferralsChart(trendsData);
-                            });
-
-                            document.getElementById('dateRangeSelect').addEventListener('change', async function() {
-                                const selectedClient = document.getElementById('clientSelect').value;
-                                const selectedDays = this.value;
-                                const endDate = new Date();
-                                const startDate = new Date();
-                                startDate.setDate(endDate.getDate() - parseInt(selectedDays));
-                                
-                                const params = new URLSearchParams({
-                                    account: selectedClient,
-                                    start: startDate.toISOString().split('T')[0],
-                                    end: endDate.toISOString().split('T')[0]
-                                });
-                                
-                                const trendsResponse = await fetch(`${API_BASE_URL}/api/trends/${selectedClient}?${params.toString()}`);
-                                if (!trendsResponse.ok) {
-                                    throw new Error(`HTTP error! status: ${trendsResponse.status}`);
-                                }
-                                const trendsData = await trendsResponse.json();
-                                updateTotalReferralsChart(trendsData);
-                            });
+                            document.getElementById('clientSelect').addEventListener('change', loadData);
+                            document.getElementById('dateRangeSelect').addEventListener('change', loadData);
                         } catch (error) {
                             console.error('Error during initialization:', error);
                         }
@@ -2528,10 +2470,15 @@
                             start.setDate(end.getDate() - parseInt(dateRange));
 
                             // Get total referrals data from trends endpoint
-                            const trendsUrl = `${API_BASE_URL}/api/trends/${encodeURIComponent(client)}?days=${dateRange}`;
+                            const trendsUrl = `${API_BASE_URL}/api/trends/${encodeURIComponent(client)}`;
                             console.log('Fetching trends data from:', trendsUrl);
                             
-                            const trendsResponse = await fetch(trendsUrl);
+                            const trendsResponse = await fetch(trendsUrl, {
+                                credentials: 'include',
+                                headers: {
+                                    'Cache-Control': 'no-cache'
+                                }
+                            });
                             console.log('Trends response status:', trendsResponse.status);
                             const trendsData = await trendsResponse.json();
                             console.log('Received trends data:', trendsData);
@@ -2547,7 +2494,12 @@
                                 (client !== 'all' ? `&account=${encodeURIComponent(client)}` : '');
                             
                             console.log('Fetching metrics data from:', metricsUrl);
-                            const metricsResponse = await fetch(metricsUrl);
+                            const metricsResponse = await fetch(metricsUrl, {
+                                credentials: 'include',
+                                headers: {
+                                    'Cache-Control': 'no-cache'
+                                }
+                            });
                             console.log('Metrics response status:', metricsResponse.status);
                             const metricsData = await metricsResponse.json();
                             console.log('Received metrics data:', metricsData);
@@ -2560,8 +2512,8 @@
                             
                             // Update total referrals chart
                             if (trendsData.trends) {
-                                console.log('Updating total referrals chart with data:', trendsData.trends);
-                                updateTotalReferralsChart(trendsData.trends);
+                                console.log('Updating total referrals chart with data:', trendsData);
+                                updateTotalReferralsChart(trendsData);
                             } else {
                                 console.error('No trends data found in API response');
                                 throw new Error('No trends data available');

@@ -552,9 +552,14 @@ def debug_db():
 @login_required
 def get_trends(account_name):
     try:
+        print("\n=== Starting get_trends ===")
+        print(f"Account: {account_name}")
+        
         partner = request.args.get('partner')
         days = request.args.get('days', default=30, type=int)
         end_date = request.args.get('end_date')
+        
+        print(f"Parameters: partner={partner}, days={days}, end_date={end_date}")
         
         if end_date:
             end_date = datetime.strptime(end_date, '%Y-%m-%d')
@@ -562,9 +567,11 @@ def get_trends(account_name):
             end_date = datetime.now()
             
         start_date = end_date - timedelta(days=days)
+        print(f"Date range: {start_date} to {end_date}")
         
         # Handle Demo Client request
         if account_name == "Demo Client":
+            print("Generating demo data...")
             demo_data = db.generate_demo_data()
             
             trend_data = {
@@ -608,14 +615,19 @@ def get_trends(account_name):
                 trend_data['trends']['received'].append(received)
                 trend_data['trends']['sent'].append(sent)
                 trend_data['trends']['balance'].append(received - sent)
-                
+            
+            print("Generated demo trend data:", trend_data)
             return jsonify(trend_data)
             
         # Original code for real clients
+        print("Getting trends for real client...")
         trends = db.get_account_trends(account_name, start_date, end_date)
-        growth = db.calculate_growth_metrics(account_name, start_date, end_date)
+        print("Got trends:", trends)
         
-        return jsonify({
+        growth = db.calculate_growth_metrics(account_name, start_date, end_date)
+        print("Got growth metrics:", growth)
+        
+        response_data = {
             'trends': trends,
             'growth': {
                 'subscriber_growth': growth[0] if growth else 0,
@@ -626,10 +638,13 @@ def get_trends(account_name):
                 'start': start_date.strftime('%Y-%m-%d'),
                 'end': end_date.strftime('%Y-%m-%d')
             }
-        })
+        }
+        print("Sending response:", response_data)
+        return jsonify(response_data)
             
     except Exception as e:
         print(f"Error getting trends: {str(e)}")
+        print("Error traceback:", traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/trends/summary')

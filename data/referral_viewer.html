@@ -1257,12 +1257,14 @@
                     // Add this function to create and update the total referrals chart
                     function updateTotalReferralsChart(data) {
                         try {
-                            console.log("Updating total referrals chart with data:", data);
+                            console.log("Starting updateTotalReferralsChart with data:", data);
                             
                             if (!data || !data.dates || !data.received || !data.sent) {
+                                console.error('Invalid data format:', data);
                                 throw new Error('Invalid data format for total referrals chart');
                             }
 
+                            console.log('Data validation passed');
                             const chartData = {
                                 dates: data.dates.map(d => new Date(d).toLocaleDateString('en-US', { 
                                     month: 'short',
@@ -1274,19 +1276,36 @@
 
                             console.log('Processed chart data:', chartData);
 
-                            const ctx = document.getElementById('totalReferralsChart').getContext('2d');
+                            const ctx = document.getElementById('totalReferralsChart');
                             if (!ctx) {
+                                console.error('Chart canvas element not found');
                                 throw new Error('Total referrals chart canvas not found');
                             }
+                            console.log('Found chart canvas element');
+
+                            const context = ctx.getContext('2d');
+                            if (!context) {
+                                console.error('Failed to get 2D context');
+                                throw new Error('Failed to get chart context');
+                            }
+                            console.log('Got 2D context');
                             
                             // Destroy existing chart if it exists
                             if (totalReferralsChart instanceof Chart) {
+                                console.log('Destroying existing chart');
                                 totalReferralsChart.destroy();
                             }
 
                             // Create new chart
-                            totalReferralsChart = new Chart(ctx, {
-                                type: 'line',  // Changed to line chart
+                            console.log('Creating new chart with config:', {
+                                type: 'line',
+                                labels: chartData.dates,
+                                receivedData: chartData.received,
+                                sentData: chartData.sent
+                            });
+
+                            totalReferralsChart = new Chart(context, {
+                                type: 'line',
                                 data: {
                                     labels: chartData.dates,
                                     datasets: [
@@ -1336,8 +1355,11 @@
                                     }
                                 }
                             });
+                            console.log('Chart created successfully');
+
                         } catch (error) {
                             console.error('Error updating total referrals chart:', error);
+                            console.error('Error stack:', error.stack);
                             const container = document.getElementById('totalReferralsChart').parentElement;
                             container.innerHTML = `<div class="alert alert-danger">Error displaying chart: ${error.message}</div>`;
                         }
@@ -2447,11 +2469,26 @@
                         try {
                             const dateRange = document.getElementById('dateRangeSelect').value;
                             const client = document.getElementById('clientSelect').value;
+                            console.log('Loading data with:', { dateRange, client });
+
                             const end = new Date();
                             const start = new Date();
                             start.setDate(end.getDate() - parseInt(dateRange));
 
-                            // Use partnership-metrics endpoint for other components
+                            // Get total referrals data from trends endpoint
+                            const trendsUrl = `${API_BASE_URL}/api/trends/${encodeURIComponent(client)}?days=${dateRange}`;
+                            console.log('Fetching trends data from:', trendsUrl);
+                            
+                            const trendsResponse = await fetch(trendsUrl);
+                            console.log('Trends response status:', trendsResponse.status);
+                            const trendsData = await trendsResponse.json();
+                            console.log('Received trends data:', trendsData);
+
+                            if (trendsData.error) {
+                                throw new Error(`API Error: ${trendsData.error}`);
+                            }
+
+                            // Get metrics data
                             const metricsUrl = `${API_BASE_URL}/api/partnership-metrics?` +
                                 `start=${start.toISOString().split('T')[0]}&` +
                                 `end=${end.toISOString().split('T')[0]}` +
@@ -2459,6 +2496,7 @@
                             
                             console.log('Fetching metrics data from:', metricsUrl);
                             const metricsResponse = await fetch(metricsUrl);
+                            console.log('Metrics response status:', metricsResponse.status);
                             const metricsData = await metricsResponse.json();
                             console.log('Received metrics data:', metricsData);
 
@@ -2468,22 +2506,14 @@
                             updateDashboardMetrics(metricsData);
                             updateNetworkGraph(metricsData);
                             
-                            // Get total referrals data from trends endpoint
-                            const trendsUrl = `${API_BASE_URL}/api/trends/${encodeURIComponent(client)}?days=${dateRange}`;
-                            console.log('Fetching trends data from:', trendsUrl);
-                            const trendsResponse = await fetch(trendsUrl);
-                            const trendsData = await trendsResponse.json();
-                            console.log('Received trends data:', trendsData);
-
-                            // Calculate total referrals per day
-                            const totalReferralsData = {
-                                dates: trendsData.trends.dates,
-                                received: trendsData.trends.received,
-                                sent: trendsData.trends.sent
-                            };
-                            
                             // Update total referrals chart
-                            updateTotalReferralsChart(totalReferralsData);
+                            if (trendsData.trends) {
+                                console.log('Updating total referrals chart with data:', trendsData.trends);
+                                updateTotalReferralsChart(trendsData.trends);
+                            } else {
+                                console.error('No trends data found in API response');
+                                throw new Error('No trends data available');
+                            }
                             
                             // Update table
                             tableData = metricsData;

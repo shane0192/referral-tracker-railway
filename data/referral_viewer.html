@@ -1393,6 +1393,26 @@
                             console.log('Calling populateClientDropdown');
                             await populateClientDropdown();
 
+                            // Load initial total referrals data
+                            const selectedClient = document.getElementById('clientSelect').value;
+                            const selectedDays = document.getElementById('dateRangeSelect').value;
+                            const endDate = new Date();
+                            const startDate = new Date();
+                            startDate.setDate(endDate.getDate() - parseInt(selectedDays));
+                            
+                            const params = new URLSearchParams({
+                                account: selectedClient,
+                                start: startDate.toISOString().split('T')[0],
+                                end: endDate.toISOString().split('T')[0]
+                            });
+                            
+                            const trendsResponse = await fetch(`${API_BASE_URL}/api/trends/${selectedClient}?${params.toString()}`);
+                            if (!trendsResponse.ok) {
+                                throw new Error(`HTTP error! status: ${trendsResponse.status}`);
+                            }
+                            const trendsData = await trendsResponse.json();
+                            updateTotalReferralsChart(trendsData);
+
                             // Initialize master dashboard view
                             toggleDashboardView('master');
                             await updateMasterDashboard();
@@ -1402,6 +1422,49 @@
                             if (tooltips.length > 0 && typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
                                 tooltips.forEach(el => new bootstrap.Tooltip(el));
                             }
+
+                            // Add event listeners for client and date range changes
+                            document.getElementById('clientSelect').addEventListener('change', async function() {
+                                const selectedClient = this.value;
+                                const selectedDays = document.getElementById('dateRangeSelect').value;
+                                const endDate = new Date();
+                                const startDate = new Date();
+                                startDate.setDate(endDate.getDate() - parseInt(selectedDays));
+                                
+                                const params = new URLSearchParams({
+                                    account: selectedClient,
+                                    start: startDate.toISOString().split('T')[0],
+                                    end: endDate.toISOString().split('T')[0]
+                                });
+                                
+                                const trendsResponse = await fetch(`${API_BASE_URL}/api/trends/${selectedClient}?${params.toString()}`);
+                                if (!trendsResponse.ok) {
+                                    throw new Error(`HTTP error! status: ${trendsResponse.status}`);
+                                }
+                                const trendsData = await trendsResponse.json();
+                                updateTotalReferralsChart(trendsData);
+                            });
+
+                            document.getElementById('dateRangeSelect').addEventListener('change', async function() {
+                                const selectedClient = document.getElementById('clientSelect').value;
+                                const selectedDays = this.value;
+                                const endDate = new Date();
+                                const startDate = new Date();
+                                startDate.setDate(endDate.getDate() - parseInt(selectedDays));
+                                
+                                const params = new URLSearchParams({
+                                    account: selectedClient,
+                                    start: startDate.toISOString().split('T')[0],
+                                    end: endDate.toISOString().split('T')[0]
+                                });
+                                
+                                const trendsResponse = await fetch(`${API_BASE_URL}/api/trends/${selectedClient}?${params.toString()}`);
+                                if (!trendsResponse.ok) {
+                                    throw new Error(`HTTP error! status: ${trendsResponse.status}`);
+                                }
+                                const trendsData = await trendsResponse.json();
+                                updateTotalReferralsChart(trendsData);
+                            });
                         } catch (error) {
                             console.error('Error during initialization:', error);
                         }
@@ -2634,6 +2697,7 @@
                         // Calculate dates with proper time components
                         const end = new Date();
                         const start = new Date();
+
 
                         if (dateRange === "1" || dateRange === "2") {
                             // For 24/48 hours, subtract hours

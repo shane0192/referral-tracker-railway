@@ -1256,112 +1256,101 @@
 
                     // Add this function to create and update the total referrals chart
                     function updateTotalReferralsChart(data) {
+                        console.log("Updating total referrals chart with data:", data);
+                        
+                        // Get the canvas element
+                        const canvas = document.getElementById('totalReferralsChart');
+                        if (!canvas) {
+                            console.error("Could not find canvas element for total referrals chart");
+                            return;
+                        }
+                        
+                        // Get the chart container
+                        const container = document.getElementById('totalReferralsChartContainer');
+                        if (!container) {
+                            console.error("Could not find container for total referrals chart");
+                            return;
+                        }
+                        
+                        // Clear any error messages
+                        container.querySelectorAll('.error-message').forEach(el => el.remove());
+                        
                         try {
-                            console.log("Starting updateTotalReferralsChart with data:", data);
+                            // Extract data from the trends object
+                            const trendsData = data.trends || {};
+                            const dates = trendsData.dates || [];
+                            const received = trendsData.received || [];
+                            const sent = trendsData.sent || [];
                             
-                            if (!data || !data.dates || !data.received || !data.sent) {
-                                console.error('Invalid data format:', data);
-                                throw new Error('Invalid data format for total referrals chart');
-                            }
-
-                            console.log('Data validation passed');
-                            const chartData = {
-                                dates: data.dates.map(d => new Date(d).toLocaleDateString('en-US', { 
-                                    month: 'short',
-                                    day: 'numeric'
-                                })),
-                                received: data.received,
-                                sent: data.sent
-                            };
-
-                            console.log('Processed chart data:', chartData);
-
-                            const ctx = document.getElementById('totalReferralsChart');
-                            if (!ctx) {
-                                console.error('Chart canvas element not found');
-                                throw new Error('Total referrals chart canvas not found');
-                            }
-                            console.log('Found chart canvas element');
-
-                            const context = ctx.getContext('2d');
-                            if (!context) {
-                                console.error('Failed to get 2D context');
-                                throw new Error('Failed to get chart context');
-                            }
-                            console.log('Got 2D context');
+                            console.log("Processed data:", {
+                                dates: dates,
+                                received: received,
+                                sent: sent
+                            });
                             
                             // Destroy existing chart if it exists
-                            if (totalReferralsChart instanceof Chart) {
-                                console.log('Destroying existing chart');
+                            if (totalReferralsChart) {
                                 totalReferralsChart.destroy();
                             }
-
+                            
                             // Create new chart
-                            console.log('Creating new chart with config:', {
-                                type: 'line',
-                                labels: chartData.dates,
-                                receivedData: chartData.received,
-                                sentData: chartData.sent
-                            });
-
-                            totalReferralsChart = new Chart(context, {
+                            totalReferralsChart = new Chart(canvas, {
                                 type: 'line',
                                 data: {
-                                    labels: chartData.dates,
+                                    labels: dates,
                                     datasets: [
                                         {
                                             label: 'Received',
-                                            data: chartData.received,
+                                            data: received,
                                             borderColor: 'rgb(75, 192, 192)',
-                                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
-                                            borderWidth: 2,
-                                            fill: true
+                                            tension: 0.1,
+                                            fill: false
                                         },
                                         {
                                             label: 'Sent',
-                                            data: chartData.sent,
+                                            data: sent,
                                             borderColor: 'rgb(255, 99, 132)',
-                                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
-                                            borderWidth: 2,
-                                            fill: true
+                                            tension: 0.1,
+                                            fill: false
                                         }
                                     ]
                                 },
                                 options: {
                                     responsive: true,
                                     maintainAspectRatio: false,
+                                    plugins: {
+                                        title: {
+                                            display: true,
+                                            text: 'Total Referrals Over Time'
+                                        },
+                                        tooltip: {
+                                            mode: 'index',
+                                            intersect: false
+                                        }
+                                    },
                                     scales: {
                                         y: {
                                             beginAtZero: true,
-                                            ticks: {
-                                                callback: function(value) {
-                                                    return value.toLocaleString();
-                                                }
+                                            title: {
+                                                display: true,
+                                                text: 'Number of Referrals'
+                                            }
+                                        },
+                                        x: {
+                                            title: {
+                                                display: true,
+                                                text: 'Date'
                                             }
                                         }
-                                    },
-                                    plugins: {
-                                        tooltip: {
-                                            callbacks: {
-                                                label: function(context) {
-                                                    return `${context.dataset.label}: ${context.parsed.y.toLocaleString()}`;
-                                                }
-                                            }
-                                        }
-                                    },
-                                    interaction: {
-                                        mode: 'index',
-                                        intersect: false
                                     }
                                 }
                             });
-                            console.log('Chart created successfully');
-
                         } catch (error) {
-                            console.error('Error updating total referrals chart:', error);
-                            console.error('Error stack:', error.stack);
-                            const container = document.getElementById('totalReferralsChart').parentElement;
-                            container.innerHTML = `<div class="alert alert-danger">Error displaying chart: ${error.message}</div>`;
+                            console.error("Error updating total referrals chart:", error);
+                            const errorMessage = document.createElement('div');
+                            errorMessage.className = 'error-message';
+                            errorMessage.textContent = 'Error loading chart data';
+                            container.appendChild(errorMessage);
                         }
                     }
 

@@ -401,30 +401,31 @@ class DatabaseManager:
         """Get trend data for a specific account over the specified date range"""
         session = self.Session()
         try:
-            query = session.query(
-                ReferralData.date,
-                ReferralData.subscribers,
-                ReferralData.conversions,
-                ReferralData.earnings,
-                func.round(
-                    100.0 * ReferralData.conversions / 
-                    case([(ReferralData.subscribers == 0, 1)], else_=ReferralData.subscribers),
-                    2
-                ).label('conversion_rate')
-            ).filter(
-                ReferralData.account_name == account_name,
-                ReferralData.date.between(start_date, end_date)
-            ).order_by(ReferralData.date.asc())
-
-            results = query.all()
+            records = session.query(ReferralData)\
+                .filter(ReferralData.account_name == account_name)\
+                .filter(ReferralData.date.between(start_date, end_date))\
+                .order_by(ReferralData.date.asc())\
+                .all()
             
-            return {
-                'dates': [r.date.strftime('%Y-%m-%d') for r in results],
-                'subscribers': [r.subscribers for r in results],
-                'conversions': [r.conversions for r in results],
-                'earnings': [r.earnings for r in results],
-                'conversion_rates': [float(r.conversion_rate or 0) for r in results]
+            trend_data = {
+                'dates': [],
+                'received': [],
+                'sent': [],
+                'balance': []
             }
+            
+            for record in records:
+                # Calculate total received and sent for this date
+                received = sum(int(rec['subscribers']) for rec in record.recommending_me)
+                sent = sum(int(rec['subscribers']) for rec in record.my_recommendations)
+                
+                trend_data['dates'].append(record.date.strftime('%Y-%m-%d'))
+                trend_data['received'].append(received)
+                trend_data['sent'].append(sent)
+                trend_data['balance'].append(received - sent)
+            
+            return trend_data
+            
         finally:
             session.close()
 

@@ -628,7 +628,12 @@ def get_trends(account_name):
         print("Got growth metrics:", growth)
         
         response_data = {
-            'trends': trends,
+            'trends': {  # Wrap trends data in 'trends' object
+                'dates': trends['dates'],
+                'received': trends['received'],
+                'sent': trends['sent'],
+                'balance': trends['balance']
+            },
             'growth': {
                 'subscriber_growth': growth[0] if growth else 0,
                 'conversion_growth': growth[1] if growth else 0,

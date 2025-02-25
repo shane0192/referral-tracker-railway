@@ -247,10 +247,71 @@ def interpolate_missing_days(data, start_date, end_date):
 @login_required
 def get_partnership_metrics():
     try:
+        print("\n\n=== PARTNERSHIP METRICS DEBUG ===")
+        
+        start_date_str = request.args.get('start')
+        end_date_str = request.args.get('end')
         account = request.args.get('account')
-        days = request.args.get('days', default=30, type=int)
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=days)
+
+        print(f"Request for account: {account}")
+
+        # Always return demo data for Demo Client
+        if account == "Demo Client":
+            print("Generating fresh demo data...")
+            demo_data = db.generate_demo_data()
+            
+            # Get the most recent demo record
+            latest_record = demo_data[0]  # Most recent due to date ordering
+            earliest_record = demo_data[-1]  # Earliest record
+            
+            print(f"Processing demo data with {len(demo_data)} records")
+            
+            # Process metrics similar to real data
+            metrics = []
+            all_partners = set(
+                [rec['creator'] for rec in latest_record.recommending_me] + 
+                [rec['creator'] for rec in latest_record.my_recommendations]
+            )
+            
+            for partner in all_partners:
+                # Get latest values
+                latest_received = next((int(rec['subscribers']) 
+                    for rec in latest_record.recommending_me if rec['creator'] == partner), 0)
+                latest_sent = next((int(rec['subscribers']) 
+                    for rec in latest_record.my_recommendations if rec['creator'] == partner), 0)
+                
+                # Get earliest values
+                earliest_received = next((int(rec['subscribers']) 
+                    for rec in earliest_record.recommending_me if rec['creator'] == partner), 0)
+                earliest_sent = next((int(rec['subscribers']) 
+                    for rec in earliest_record.my_recommendations if rec['creator'] == partner), 0)
+                
+                # Calculate changes
+                period_received = latest_received - earliest_received
+                period_sent = latest_sent - earliest_sent
+                
+                metrics.append({
+                    'partner': partner,
+                    'period_received': period_received,
+                    'period_sent': period_sent,
+                    'period_balance': period_received - period_sent,
+                    'all_time_balance': latest_received - latest_sent,
+                    'account': 'Demo Client'
+                })
+            
+            # Sort by period balance (most negative first)
+            metrics.sort(key=lambda x: x['period_balance'])
+            print(f"Returning {len(metrics)} demo metrics")
+            return jsonify(metrics)
+
+        # Continue with existing code for real clients...
+        if not start_date_str:
+            start_date_str = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        if not end_date_str:
+            end_date_str = datetime.now().strftime('%Y-%m-%d')
+
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
         
         session = db.Session()
         try:
@@ -267,44 +328,9 @@ def get_partnership_metrics():
             records = query.all()
                 
             if not records:
-                return jsonify({
-                    'partner_metrics': [],
-                    'total_referrals': {
-                        'dates': [],
-                        'received': [],
-                        'sent': []
-                    }
-                })
+                return jsonify([])
             
-            # Process total referrals data first
-            date_totals = {}
-            for record in records:
-                date_str = record.date.strftime('%-m/%-d')
-                if date_str not in date_totals:
-                    date_totals[date_str] = {'received': 0, 'sent': 0}
-                
-                # Sum up all referrals for this date
-                total_received = sum(safe_int_convert(rec['subscribers']) for rec in record.recommending_me)
-                total_sent = sum(safe_int_convert(rec['subscribers']) for rec in record.my_recommendations)
-                
-                # Update the totals for this date (take max in case of multiple records per day)
-                date_totals[date_str]['received'] = max(date_totals[date_str]['received'], total_received)
-                date_totals[date_str]['sent'] = max(date_totals[date_str]['sent'], total_sent)
-            
-            # Convert date_totals to sorted arrays
-            total_referrals = {
-                'dates': [],
-                'received': [],
-                'sent': []
-            }
-            
-            sorted_dates = sorted(date_totals.keys())
-            for date in sorted_dates:
-                total_referrals['dates'].append(date)
-                total_referrals['received'].append(date_totals[date]['received'])
-                total_referrals['sent'].append(date_totals[date]['sent'])
-            
-            # Continue with existing partner metrics processing
+            # Group records by account
             account_records = {}
             for record in records:
                 if record.account_name not in account_records:
@@ -388,11 +414,8 @@ def get_partnership_metrics():
             
             # Sort by period balance, most negative first
             results.sort(key=lambda x: x['period_balance'])
-
-            return jsonify({
-                'partner_metrics': results,
-                'total_referrals': total_referrals
-            })
+            
+            return jsonify(results)
             
         finally:
             session.close()

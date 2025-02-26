@@ -1258,10 +1258,42 @@
                     function updateTotalReferralsChart(data) {
                         console.log("Updating total referrals chart with data:", JSON.stringify(data));
                         
+                        // Get the canvas element
+                        const canvas = document.getElementById('totalReferralsChart');
+                        if (!canvas) {
+                            console.error("Could not find canvas element for total referrals chart");
+                            return;
+                        }
+                        
+                        // Add debug button to the chart container - ENSURE THIS RUNS FIRST
+                        const container = canvas.parentElement;
+                        
+                        // Remove any existing debug button to avoid duplicates
+                        const existingButton = container.querySelector('#debugChartButton');
+                        if (existingButton) {
+                            existingButton.remove();
+                        }
+                        
+                        // Create a more prominent debug button
+                        const debugButton = document.createElement('button');
+                        debugButton.id = 'debugChartButton';
+                        debugButton.className = 'btn btn-warning mt-2';
+                        debugButton.style.display = 'block';
+                        debugButton.style.marginBottom = '10px';
+                        debugButton.textContent = '🔍 Debug Chart Data';
+                        debugButton.onclick = function() {
+                            debugTotalReferralsData();
+                        };
+                        
+                        // Insert the button at the beginning of the container
+                        container.insertBefore(debugButton, container.firstChild);
+                        
                         // Debug function to check data
                         function debugTotalReferralsData() {
                             const client = document.getElementById('clientSelect').value;
                             const dateRange = document.getElementById('dateRangeSelect').value;
+                            
+                            console.log("Calling debug endpoint for", client, "with date range", dateRange);
                             
                             // Call the debug endpoint
                             fetch(`${API_BASE_URL}/api/debug/trends/${encodeURIComponent(client)}?days=${dateRange}`)
@@ -1290,27 +1322,6 @@
                                 });
                         }
                         
-                        // Add debug button to the chart container
-                        const canvas = document.getElementById('totalReferralsChart');
-                        if (canvas) {
-                            const container = canvas.parentElement;
-                            const debugButton = document.createElement('button');
-                            debugButton.className = 'btn btn-sm btn-outline-secondary mt-2';
-                            debugButton.textContent = 'Debug Chart Data';
-                            debugButton.onclick = debugTotalReferralsData;
-                            
-                            // Only add the button if it doesn't exist already
-                            if (!container.querySelector('.btn-outline-secondary')) {
-                                container.appendChild(debugButton);
-                            }
-                        }
-                        
-                        // Get the canvas element
-                        if (!canvas) {
-                            console.error("Could not find canvas element for total referrals chart");
-                            return;
-                        }
-                        
                         try {
                             // Extract data from the trends object
                             const trendsData = data.trends || {};
@@ -1330,15 +1341,15 @@
                             // Check if we have valid data
                             if (dates.length === 0 || received.length === 0 || sent.length === 0) {
                                 console.error("No valid data for total referrals chart");
-                                const container = canvas.parentElement;
-                                container.innerHTML = `<div class="alert alert-warning">No referral data available for the selected period.</div>`;
+                                container.innerHTML = `
+                                    <button id="debugChartButton" class="btn btn-warning mt-2" style="display: block; margin-bottom: 10px;">🔍 Debug Chart Data</button>
+                                    <div class="alert alert-warning">No referral data available for the selected period.</div>
+                                `;
                                 
-                                // Re-add the debug button
-                                const debugButton = document.createElement('button');
-                                debugButton.className = 'btn btn-sm btn-outline-secondary mt-2';
-                                debugButton.textContent = 'Debug Chart Data';
-                                debugButton.onclick = debugTotalReferralsData;
-                                container.appendChild(debugButton);
+                                // Re-add the event listener since we replaced the HTML
+                                document.getElementById('debugChartButton').onclick = function() {
+                                    debugTotalReferralsData();
+                                };
                                 return;
                             }
                             
@@ -1413,10 +1424,15 @@
                             });
                         } catch (error) {
                             console.error("Error updating total referrals chart:", error);
-                            const errorMessage = document.createElement('div');
-                            errorMessage.className = 'alert alert-danger';
-                            errorMessage.textContent = 'Error loading chart data';
-                            canvas.parentElement.appendChild(errorMessage);
+                            container.innerHTML = `
+                                <button id="debugChartButton" class="btn btn-warning mt-2" style="display: block; margin-bottom: 10px;">🔍 Debug Chart Data</button>
+                                <div class="alert alert-danger">Error loading chart data: ${error.message}</div>
+                            `;
+                            
+                            // Re-add the event listener since we replaced the HTML
+                            document.getElementById('debugChartButton').onclick = function() {
+                                debugTotalReferralsData();
+                            };
                         }
                     }
 

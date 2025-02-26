@@ -1256,7 +1256,7 @@
 
                     // Add this function to create and update the total referrals chart
                     function updateTotalReferralsChart(data) {
-                        console.log("Updating total referrals chart with data:", data);
+                        console.log("Updating total referrals chart with data:", JSON.stringify(data));
                         
                         // Get the canvas element
                         const canvas = document.getElementById('totalReferralsChart');
@@ -1272,11 +1272,22 @@
                             const received = trendsData.received || [];
                             const sent = trendsData.sent || [];
                             
-                            console.log("Processed data:", {
+                            console.log("Processed data for chart:", {
                                 dates: dates,
                                 received: received,
-                                sent: sent
+                                sent: sent,
+                                datesLength: dates.length,
+                                receivedLength: received.length,
+                                sentLength: sent.length
                             });
+                            
+                            // Check if we have valid data
+                            if (dates.length === 0 || received.length === 0 || sent.length === 0) {
+                                console.error("No valid data for total referrals chart");
+                                const container = canvas.parentElement;
+                                container.innerHTML = `<div class="alert alert-warning">No referral data available for the selected period.</div>`;
+                                return;
+                            }
                             
                             // Destroy existing chart if it exists
                             if (totalReferralsChart) {

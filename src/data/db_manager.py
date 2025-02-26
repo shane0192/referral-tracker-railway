@@ -401,11 +401,15 @@ class DatabaseManager:
         """Get trend data for a specific account over the specified date range"""
         session = self.Session()
         try:
+            print(f"DB: Getting trends for {account_name} from {start_date} to {end_date}")
+            
             records = session.query(ReferralData)\
                 .filter(ReferralData.account_name == account_name)\
                 .filter(ReferralData.date.between(start_date, end_date))\
                 .order_by(ReferralData.date.asc())\
                 .all()
+            
+            print(f"DB: Found {len(records)} records")
             
             trend_data = {
                 'dates': [],
@@ -414,18 +418,36 @@ class DatabaseManager:
                 'balance': []
             }
             
-            for record in records:
-                # Calculate total received and sent for this date
-                received = sum(int(rec['subscribers']) for rec in record.recommending_me)
-                sent = sum(int(rec['subscribers']) for rec in record.my_recommendations)
-                
-                trend_data['dates'].append(record.date.strftime('%Y-%m-%d'))
-                trend_data['received'].append(received)
-                trend_data['sent'].append(sent)
-                trend_data['balance'].append(received - sent)
+            if not records:
+                print(f"DB: No records found for {account_name} in the specified date range")
+                return trend_data
             
+            for record in records:
+                try:
+                    # Calculate total received and sent for this date
+                    received = sum(int(rec.get('subscribers', 0)) for rec in record.recommending_me or [])
+                    sent = sum(int(rec.get('subscribers', 0)) for rec in record.my_recommendations or [])
+                    
+                    trend_data['dates'].append(record.date.strftime('%Y-%m-%d'))
+                    trend_data['received'].append(received)
+                    trend_data['sent'].append(sent)
+                    trend_data['balance'].append(received - sent)
+                except Exception as e:
+                    print(f"DB: Error processing record {record.id}: {str(e)}")
+                    # Continue with next record
+            
+            print(f"DB: Processed {len(trend_data['dates'])} data points")
             return trend_data
             
+        except Exception as e:
+            print(f"DB: Error in get_account_trends: {str(e)}")
+            # Return empty data structure
+            return {
+                'dates': [],
+                'received': [],
+                'sent': [],
+                'balance': []
+            }
         finally:
             session.close()
 

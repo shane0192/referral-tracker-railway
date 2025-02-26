@@ -622,7 +622,30 @@ def get_trends(account_name):
         # Original code for real clients
         print("Getting trends for real client...")
         trends = db.get_account_trends(account_name, start_date, end_date)
-        print("Got trends:", trends)
+        print("Got trends data structure:", {k: len(v) for k, v in trends.items()})
+        
+        # Ensure we have data
+        if not trends['dates'] or len(trends['dates']) == 0:
+            print("WARNING: No trend data found for this account and date range")
+            # Return empty structure with proper format
+            return jsonify({
+                'trends': {
+                    'dates': [],
+                    'received': [],
+                    'sent': [],
+                    'balance': []
+                },
+                'growth': {
+                    'subscriber_growth': 0,
+                    'conversion_growth': 0,
+                    'earnings_growth': 0
+                },
+                'period': {
+                    'start': start_date.strftime('%Y-%m-%d'),
+                    'end': end_date.strftime('%Y-%m-%d')
+                },
+                'error': 'No data available for this account and date range'
+            })
         
         growth = db.calculate_growth_metrics(account_name, start_date, end_date)
         print("Got growth metrics:", growth)
@@ -644,7 +667,11 @@ def get_trends(account_name):
                 'end': end_date.strftime('%Y-%m-%d')
             }
         }
-        print("Sending response:", response_data)
+        print("Sending response with data lengths:", {
+            'dates': len(response_data['trends']['dates']),
+            'received': len(response_data['trends']['received']),
+            'sent': len(response_data['trends']['sent'])
+        })
         return jsonify(response_data)
             
     except Exception as e:

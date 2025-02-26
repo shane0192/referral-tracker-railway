@@ -1258,6 +1258,33 @@
                     function updateTotalReferralsChart(data) {
                         console.log("Updating total referrals chart with data:", JSON.stringify(data));
                         
+                        // SUPER VISIBLE DEBUG BUTTON - Add at the very top of the page
+                        const topContainer = document.querySelector('.container');
+                        if (topContainer) {
+                            // Remove any existing top debug buttons
+                            const existingTopButton = document.getElementById('topDebugButton');
+                            if (existingTopButton) {
+                                existingTopButton.remove();
+                            }
+                            
+                            // Create a very visible debug button at the top
+                            const topDebugButton = document.createElement('button');
+                            topDebugButton.id = 'topDebugButton';
+                            topDebugButton.className = 'btn btn-danger';
+                            topDebugButton.style.display = 'block';
+                            topDebugButton.style.width = '100%';
+                            topDebugButton.style.padding = '15px';
+                            topDebugButton.style.marginBottom = '20px';
+                            topDebugButton.style.fontSize = '18px';
+                            topDebugButton.textContent = '🔍 DEBUG TOTAL REFERRALS CHART DATA';
+                            topDebugButton.onclick = function() {
+                                debugTotalReferralsData();
+                            };
+                            
+                            // Insert at the very top
+                            topContainer.insertBefore(topDebugButton, topContainer.firstChild);
+                        }
+                        
                         // Get the canvas element
                         const canvas = document.getElementById('totalReferralsChart');
                         if (!canvas) {

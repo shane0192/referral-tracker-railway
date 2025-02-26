@@ -1258,8 +1258,54 @@
                     function updateTotalReferralsChart(data) {
                         console.log("Updating total referrals chart with data:", JSON.stringify(data));
                         
-                        // Get the canvas element
+                        // Debug function to check data
+                        function debugTotalReferralsData() {
+                            const client = document.getElementById('clientSelect').value;
+                            const dateRange = document.getElementById('dateRangeSelect').value;
+                            
+                            // Call the debug endpoint
+                            fetch(`${API_BASE_URL}/api/debug/trends/${encodeURIComponent(client)}?days=${dateRange}`)
+                                .then(response => response.json())
+                                .then(debugData => {
+                                    console.log("DEBUG DATA FROM SERVER:", debugData);
+                                    
+                                    // Show debug info in an alert
+                                    const debugInfo = `
+                                        Account: ${debugData.account}
+                                        Date Range: ${debugData.start_date} to ${debugData.end_date}
+                                        Dates Count: ${debugData.dates_count}
+                                        Received Count: ${debugData.received_count}
+                                        Sent Count: ${debugData.sent_count}
+                                        
+                                        First few dates: ${debugData.dates.slice(0, 3).join(', ')}
+                                        First few received: ${debugData.received.slice(0, 3).join(', ')}
+                                        First few sent: ${debugData.sent.slice(0, 3).join(', ')}
+                                    `;
+                                    
+                                    alert(debugInfo);
+                                })
+                                .catch(error => {
+                                    console.error("Error fetching debug data:", error);
+                                    alert("Error fetching debug data: " + error);
+                                });
+                        }
+                        
+                        // Add debug button to the chart container
                         const canvas = document.getElementById('totalReferralsChart');
+                        if (canvas) {
+                            const container = canvas.parentElement;
+                            const debugButton = document.createElement('button');
+                            debugButton.className = 'btn btn-sm btn-outline-secondary mt-2';
+                            debugButton.textContent = 'Debug Chart Data';
+                            debugButton.onclick = debugTotalReferralsData;
+                            
+                            // Only add the button if it doesn't exist already
+                            if (!container.querySelector('.btn-outline-secondary')) {
+                                container.appendChild(debugButton);
+                            }
+                        }
+                        
+                        // Get the canvas element
                         if (!canvas) {
                             console.error("Could not find canvas element for total referrals chart");
                             return;
@@ -1286,6 +1332,13 @@
                                 console.error("No valid data for total referrals chart");
                                 const container = canvas.parentElement;
                                 container.innerHTML = `<div class="alert alert-warning">No referral data available for the selected period.</div>`;
+                                
+                                // Re-add the debug button
+                                const debugButton = document.createElement('button');
+                                debugButton.className = 'btn btn-sm btn-outline-secondary mt-2';
+                                debugButton.textContent = 'Debug Chart Data';
+                                debugButton.onclick = debugTotalReferralsData;
+                                container.appendChild(debugButton);
                                 return;
                             }
                             

@@ -2576,3 +2576,44 @@ def get_available_accounts():
             'success': False,
             'error': str(e)
         })
+
+@app.route('/api/debug/trends/<account_name>')
+@login_required
+def debug_trends(account_name):
+    try:
+        days = request.args.get('days', default=30, type=int)
+        end_date = request.args.get('end_date')
+        
+        if end_date:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d')
+        else:
+            end_date = datetime.now()
+            
+        start_date = end_date - timedelta(days=days)
+        
+        # Get the trends data
+        trends = db.get_account_trends(account_name, start_date, end_date)
+        
+        # Add detailed debug info
+        debug_info = {
+            'account': account_name,
+            'start_date': start_date.strftime('%Y-%m-%d'),
+            'end_date': end_date.strftime('%Y-%m-%d'),
+            'days_requested': days,
+            'dates_count': len(trends['dates']),
+            'received_count': len(trends['received']),
+            'sent_count': len(trends['sent']),
+            'balance_count': len(trends['balance']),
+            'dates': trends['dates'],
+            'received': trends['received'],
+            'sent': trends['sent'],
+            'balance': trends['balance']
+        }
+        
+        return jsonify(debug_info)
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }), 500

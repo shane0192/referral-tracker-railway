@@ -6,3 +6,7 @@ healthcheckPath = "/"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
+
+# Force fresh deployment - clean Flask app
+[env]
+PORT = "8080"

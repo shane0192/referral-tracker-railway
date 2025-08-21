@@ -13,7 +13,6 @@ from functools import wraps
 # Add the project root to Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from src.data.db_manager import DatabaseManager, ReferralData, AllowedAccount
-from src.scraper.scheduler import ScraperScheduler
 
 app = Flask(__name__, static_folder='../../frontend/build', static_url_path='/')
 app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-here')
@@ -1521,70 +1520,14 @@ def debug_database():
 @app.route('/api/run-scraper', methods=['POST'])
 @login_required
 def run_scraper():
-    try:
-        app.logger.info("Starting scraper run")
-        
-        # Get config file path
-        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'config')
-        config_file = os.path.join(config_path, 'enabled_accounts.json')
-        
-        # Load current config
-        try:
-            with open(config_file, 'r') as f:
-                config_data = json.load(f)
-                if isinstance(config_data, list):
-                    enabled_accounts = config_data
-                    known_accounts = enabled_accounts.copy()
-                else:
-                    enabled_accounts = config_data.get('enabled', [])
-                    known_accounts = config_data.get('known', [])
-        except (FileNotFoundError, json.JSONDecodeError):
-            enabled_accounts = []
-            known_accounts = []
-            
-        app.logger.info(f"Enabled accounts: {enabled_accounts}")
-        
-        # First discover any new accounts from ConvertKit
-        try:
-            from src.scraper.convertkit_scraper import ConvertKitScraper
-            scraper = ConvertKitScraper(headless=True)
-            
-            if scraper.login():
-                available_accounts = [acc['name'] for acc in scraper.get_available_accounts()]
-                app.logger.info(f"Found accounts in ConvertKit: {available_accounts}")
-                
-                # Add any new accounts to known list
-                new_accounts = [acc for acc in available_accounts if acc not in known_accounts]
-                if new_accounts:
-                    app.logger.info(f"Found new accounts: {new_accounts}")
-                    known_accounts.extend(new_accounts)
-                    
-                    # Save updated known accounts list
-                    with open(config_file, 'w') as f:
-                        json.dump({
-                            'enabled': enabled_accounts,
-                            'known': known_accounts
-                        }, f)
-            
-            # Clean up browser
-            try:
-                scraper.driver.quit()
-            except:
-                pass
-                
-        except Exception as e:
-            app.logger.error(f"Error discovering new accounts: {str(e)}")
-            # Continue with scraping even if discovery fails
-        
-        app.logger.info(f"Processing enabled accounts: {enabled_accounts}")
-        
-        # Initialize and run scraper with just the enabled accounts
-        scheduler = ScraperScheduler(enabled_accounts=enabled_accounts)
-        scheduler.run_scraper(force=True)  # Force run for manual trigger
-        
-        return jsonify({'success': True})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+    """
+    Note: In the Railway deployment, the scraper runs locally on your computer.
+    This endpoint is maintained for UI compatibility but doesn't perform scraping.
+    """
+    return jsonify({
+        'success': True, 
+        'message': 'Scraper runs locally on your computer, not on this web server. Check your local scraper setup.'
+    })
 
 @app.route('/api/last-scrape-time')
 @login_required

@@ -45,6 +45,11 @@ CORS(app, resources={
 })
 db = DatabaseManager()
 
+# Health check endpoint for Railway
+@app.route('/')
+def health_check():
+    return jsonify({'status': 'healthy', 'service': 'referral-tracker'})
+
 # Login required decorator
 def login_required(f):
     @wraps(f)

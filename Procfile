@@ -1,2 +1,1 @@
-web: gunicorn src.api.routes:app
-clock: python src/clock.py
+web: gunicorn --bind 0.0.0.0:$PORT src.api.routes:app
